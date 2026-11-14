@@ -1,0 +1,32 @@
+# Keeps the free Supabase project from pausing (it pauses after 7 days with no activity).
+# Pings the database every 3 days. Also refreshes a tiny file once a month so GitHub
+# doesn't switch this schedule off for an inactive repo (it does that after 60 days).
+name: Keep Supabase awake
+on:
+  schedule:
+    - cron: '23 15 */3 * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ping Supabase
+        run: |
+          URL=$(grep -o 'supabaseUrl: *"[^"]*"' config.js | sed 's/.*"\(.*\)"/\1/' | sed 's#/*$##')
+          KEY=$(grep -o 'supabaseAnonKey: *"[^"]*"' config.js | sed 's/.*"\(.*\)"/\1/')
+          for T in gym_public gym_state; do
+            CODE=$(curl -s -o /dev/null -w "%{http_code}" "$URL/rest/v1/$T?select=user_id&limit=1" -H "apikey: $KEY" -H "Authorization: Bearer $KEY")
+            echo "$T → $CODE"
+          done
+      - name: Monthly heartbeat (keeps the schedule enabled)
+        run: |
+          F=.github/last-ping.txt
+          if [ ! -f "$F" ] || [ $(( $(date +%s) - $(git log -1 --format=%ct -- "$F" 2>/dev/null || echo 0) )) -gt 2419200 ]; then
+            date -u > "$F"
+            git config user.name "keepalive-bot"
+            git config user.email "keepalive-bot@users.noreply.github.com"
+            git add "$F" && git commit -m "Keep-alive heartbeat" && git push || true
+          fi
