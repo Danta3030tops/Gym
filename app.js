@@ -60,12 +60,14 @@ function save() { persist(); scheduleSync(); }
 function touchSettings() { S.settings.u = Date.now(); save(); }
 
 /* routine access */
-const slotKey = (di, si) => di + '-' + si;
-const exOf = (di, si) => {
-  const sl = DAYS[di].slots[si], v = S.settings.swaps[slotKey(di, si)] || 0;
+// swaps are keyed by the slot's place in the full routine (sl.k), so removing one doesn't shift the rest
+const slotKey = (di, si) => { const sl = DAYS[di] && DAYS[di].slots[si]; return di + '-' + (sl && sl.k != null ? sl.k : si); };
+function exOfSlot(sl, v) {
+  v = v || 0;
   if (typeof v === 'string' && v.startsWith('n:')) { const n = v.slice(2); return sl.opts.find(o => o.n === n) || (typeof libFind === 'function' && libFind(n)) || sl.opts[0]; }
   return sl.opts[Math.min(+v || 0, sl.opts.length - 1)];
-};
+}
+const exOf = (di, si) => exOfSlot(DAYS[di].slots[si], S.settings.swaps[slotKey(di, si)]);
 const entry = (wk, di, id) => (((S.logs[wk] || {})[di] || {})[id]) || null;
 const setsOf = (wk, di, id) => (entry(wk, di, id) || {}).sets || [];
 function ensureEntry(wk, di, ex) {

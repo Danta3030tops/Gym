@@ -67,33 +67,74 @@ function bonusSlots(day, need) {
   }
   return out;
 }
+/* removed exercises: slot keys (base index, or base length + j for bonus picks) dropped for a day */
+function exSkipFor(set, wk, di) {
+  const s = ((set || {}).exSkip || {})[wk + ':' + di] ?? ((set || {}).exSkipDef || {})[di];
+  return Array.isArray(s) ? s : [];
+}
 function buildDays(base, set, wk) {
   const dl = !!(((set || {}).deloads || {})[wk]);
   return base.map((d, di) => {
-    const n = exCountFor(set, wk, di, d.slots.length);
-    let slots = n <= d.slots.length ? d.slots.slice(0, n) : d.slots.concat(bonusSlots(d, n - d.slots.length));
+    const skip = new Set(exSkipFor(set, wk, di)), bl = d.slots.length;
+    let slots = d.slots.map((sl, i) => ({ ...sl, k: i })).filter(sl => !skip.has(sl.k));
+    const n = exCountFor(set, wk, di, slots.length);
+    if (n > slots.length) {
+      const extra = bonusSlots(d, n - slots.length + skip.size).map((sl, j) => ({ ...sl, k: bl + j })).filter(sl => !skip.has(sl.k));
+      slots = slots.concat(extra.slice(0, n - slots.length));
+    } else slots = slots.slice(0, n);
     if (dl) slots = slots.map(sl => ({ ...sl, sets: Math.max(1, Math.ceil(sl.sets / 2)) }));
-    return { ...d, slots, baseLen: d.slots.length };
+    return { ...d, slots, baseLen: bl, skipped: [...skip].filter(k => k < bl).sort((a, b) => a - b) };
   });
 }
-function setExCount(n) {
-  const base = baseRoutine()[cur].slots.length;
+function saveDayPlan(n, skip) {
   n = Math.max(EXC_MIN, Math.min(EXC_MAX, n));
-  S.settings.exCount = { ...(S.settings.exCount || {}), [curWeek + ':' + cur]: n };
+  const key = curWeek + ':' + cur, sk = [...new Set(skip)].sort((a, b) => a - b);
+  S.settings.exCount = { ...(S.settings.exCount || {}), [key]: n };
   S.settings.exCountDef = { ...(S.settings.exCountDef || {}), [cur]: n };
+  S.settings.exSkip = { ...(S.settings.exSkip || {}), [key]: sk };
+  S.settings.exSkipDef = { ...(S.settings.exSkipDef || {}), [cur]: sk };
   touchSettings(); applyRoutine(); renderWorkout();
-  const diff = n - base;
-  toast(diff > 0 ? `${n} exercises · ${diff} bonus added` : diff < 0 ? `${n} exercises · last ${-diff} skipped today` : `${n} exercises · your full routine`);
+}
+function setExCount(n) {
+  saveDayPlan(n, exSkipFor(S.settings, curWeek, cur));
+  const D = DAYS[cur], diff = D.slots.length - D.baseLen;
+  toast(diff > 0 ? `${D.slots.length} exercises · ${diff} bonus added` : `${D.slots.length} exercises`);
 }
 function excountHtml() {
-  const D = DAYS[cur], n = D.slots.length, base = D.baseLen ?? n;
-  const note = n > base ? `+${n - base} bonus` : n < base ? `${base - n} skipped` : 'full routine';
+  const D = DAYS[cur], n = D.slots.length, base = D.baseLen ?? n, sk = (D.skipped || []).length;
+  const note = n > base ? `+${n - base} bonus` : sk ? `${sk} removed` : n < base ? `${base - n} skipped` : 'full routine';
   return `<div class="excount"><div><b>Exercises today</b><span>${note} · 4 minimum</span></div>
-    <div class="exstep"><button data-exc="-1" ${n <= EXC_MIN ? 'disabled' : ''} aria-label="Fewer exercises">−</button><b>${n}</b><button data-exc="1" ${n >= EXC_MAX ? 'disabled' : ''} aria-label="More exercises">+</button></div></div>`;
+    <div class="exstep"><button data-exc="-1" ${n <= EXC_MIN ? 'disabled' : ''} aria-label="Remove an exercise">−</button><b>${n}</b><button data-exc="1" ${n >= EXC_MAX ? 'disabled' : ''} aria-label="Add an exercise">+</button></div></div>`;
+}
+const doneToday = ex => setsOf(curWeek, cur, exId(ex)).some(x => x && x.t);
+function removeSheet() {
+  const D = DAYS[cur];
+  openSheet(`<h3>Remove which one?</h3><div class="sub">Tap an exercise to take it off ${esc(D.title)}. It stays off this day each week until you add it back with +.</div>
+    ${D.slots.map((sl, si) => { const ex = exOf(cur, si); return `<button class="opt" data-exrm="${sl.k}"><div class="thumb"><div data-anim="${ex.pat}"></div></div><div class="ot">${sl.bonus ? '<div class="cur">BONUS</div>' : doneToday(ex) ? '<div class="cur">ALREADY LOGGED</div>' : ''}<b>${esc(ex.n)}</b><span>${sl.sets} × ${esc(String(sl.reps))}</span></div><span class="exrmx">✕</span></button>`; }).join('')}`);
+}
+function addSheet() {
+  const D = DAYS[cur], R = baseRoutine()[cur];
+  openSheet(`<h3>Add an exercise</h3><div class="sub">Bring back one you removed, or let the app pick a bonus for ${esc(D.title)}.</div>
+    ${D.skipped.map(k => { const sl = R.slots[k], ex = exOfSlot(sl, S.settings.swaps[cur + '-' + k]); return `<button class="opt" data-exadd="${k}"><div class="thumb"><div data-anim="${ex.pat}"></div></div><div class="ot"><div class="cur">REMOVED</div><b>${esc(ex.n)}</b><span>${sl.sets} × ${esc(String(sl.reps))}</span></div><span class="exrmx add">+</span></button>`; }).join('')}
+    <button class="opt" data-exadd="bonus"><div class="thumb exbonus">🎲</div><div class="ot"><b>Bonus exercise</b><span>Picked for the muscles you train today</span></div><span class="exrmx add">+</span></button>`);
 }
 document.addEventListener('click', e => {
-  const b = e.target.closest('[data-exc]'); if (!b || b.disabled) return;
-  setExCount(DAYS[cur].slots.length + +b.dataset.exc);
+  const b = e.target.closest('[data-exc],[data-exrm],[data-exadd]'); if (!b || b.disabled) return;
+  const D = DAYS[cur], sk = exSkipFor(S.settings, curWeek, cur), n = D.slots.length;
+  if (b.dataset.exc) {
+    if (+b.dataset.exc < 0) return removeSheet();
+    return D.skipped.length ? addSheet() : setExCount(n + 1);
+  }
+  if (b.dataset.exrm != null) {
+    if (n <= EXC_MIN) { closeSheet(); return toast('4 exercises minimum'); }
+    const k = +b.dataset.exrm, nm = b.querySelector('b').textContent;
+    closeSheet(); saveDayPlan(n - 1, [...sk, k]); return toast(`Removed ${nm}`);
+  }
+  if (b.dataset.exadd != null) {
+    closeSheet();
+    if (b.dataset.exadd === 'bonus') return setExCount(n + 1);
+    const k = +b.dataset.exadd; saveDayPlan(n + 1, sk.filter(x => x !== k)); return toast('Added back');
+  }
 });
 function consecutiveTrainingWeeks() {
   let n = 0, wk = dk(addDays(parseDk(curWeek), -7));
@@ -283,7 +324,7 @@ function summaryOf(st, prof) {
   let lastSet = null;
   if (last) {
     const D = days[last.di]; let of = (last.e.sets || []).filter(Boolean).length;
-    if (D) D.slots.forEach((sl, si) => { const v = sw[last.di + '-' + si]; const nm = typeof v === 'string' && v.startsWith('n:') ? v.slice(2) : (sl.opts[+v || 0] || sl.opts[0]).n; if (nm === last.e.n || sl.opts.some(o => o.n === last.e.n)) of = slotSets(sl); });
+    if (D) D.slots.forEach((sl, si) => { const v = sw[last.di + '-' + (sl.k ?? si)]; const nm = typeof v === 'string' && v.startsWith('n:') ? v.slice(2) : (sl.opts[+v || 0] || sl.opts[0]).n; if (nm === last.e.n || sl.opts.some(o => o.n === last.e.n)) of = slotSets(sl); });
     lastSet = { n: last.e.n, w: last.s.w, r: last.s.r, i: last.i + 1, of, t: last.s.t, timed: !!last.e.timed, ...(last.s.r2 != null ? { w2: last.s.w2, r2: last.s.r2 } : {}) };
   }
   let weekDays = 0; for (let i = 0; i < 7; i++) if (dates.has(dk(addDays(parseDk(wk), i)))) weekDays++;
@@ -636,7 +677,9 @@ function mutRoutine(fn) {
 function remapSwaps(di, mapFn) { // mapFn(oldIndex) → newIndex | null
   const sw = S.settings.swaps, nw = {};
   for (const k in sw) { const [d, s] = k.split('-').map(Number); if (d !== di) { nw[k] = sw[k]; continue; } const n = mapFn(s); if (n != null) nw[d + '-' + n] = sw[k]; }
-  S.settings.swaps = nw; S.settings.u = Date.now();
+  S.settings.swaps = nw;
+  for (const f of ['exSkip', 'exSkipDef']) { const M = { ...(S.settings[f] || {}) }; for (const key in M) { if (+String(key).split(':').pop() !== di) continue; M[key] = (M[key] || []).map(mapFn).filter(x => x != null); } S.settings[f] = M; }
+  S.settings.u = Date.now();
 }
 function editSlot(si) {
   const isNew = si === 'new', sl = isNew ? { sets: 3, reps: '10–12', rest: 60, opts: [{ n: '', pat: 'squat', cues: [] }] } : baseRoutine()[edDay].slots[si], o = sl.opts[0];
@@ -802,7 +845,7 @@ $('rminus').addEventListener('click', restPrefSave); $('rplus').addEventListener
 function prefSheet() {
   const on = S.settings.remember !== false, P2 = S.settings.prefs || {}, ids = Object.keys(P2).sort((a, b) => (P2[a].n || a).localeCompare(P2[b].n || b));
   const fv = Object.keys(favs()).length, R = baseRoutine();
-  const swaps = Object.keys(S.settings.swaps || {}).map(k => { const [di, si] = k.split('-').map(Number), sl = R[di] && R[di].slots[si]; if (!sl) return null; const now2 = exOf(di, si); return now2.n === sl.opts[0].n ? null : { k, day: R[di].d, from: sl.opts[0].n, to: now2.n }; }).filter(Boolean).sort((a, b) => a.k.localeCompare(b.k));
+  const swaps = Object.keys(S.settings.swaps || {}).map(k => { const [di, si] = k.split('-').map(Number), sl = R[di] && R[di].slots[si]; if (!sl) return null; const now2 = exOfSlot(sl, S.settings.swaps[k]); return now2.n === sl.opts[0].n ? null : { k, day: R[di].d, from: sl.opts[0].n, to: now2.n }; }).filter(Boolean).sort((a, b) => a.k.localeCompare(b.k));
   const use = S.settings.swapUse || {}, top = Object.keys(use).sort((a, b) => use[b].c - use[a].c).slice(0, 5);
   openSheet(`<h3>Remembered preferences</h3><div class="sub">The app learns how you train: the swaps you prefer, plus your rest time and rep pace for each exercise.</div>
     <div class="hrow"><span>Remember my rest & pace changes</span><button class="chip ${on ? 'on' : ''}" data-preftoggle>${on ? 'On' : 'Off'}</button></div>
