@@ -61,48 +61,44 @@ const DAYS_KING=[
   X('Single-Leg DB Calf Raise','calf',['Hold a DB on the same side','Balance with your other hand','Slow and controlled'])]}
 ]},
 {d:'Tue',title:'Upper Body',slots:[
- {sets:4,reps:'8–10',rest:150,opts:[
+ {sets:4,reps:'8–10',rest:135,opts:[
   X('Flat Barbell Bench Press','bench',['Shoulder blades pinned back and down','Bar touches lower chest, elbows ~45°','Feet planted, drive the bar up and slightly back']),
   X('Flat Dumbbell Bench Press','bench',['DBs start over the shoulders','Lower until you feel a deep chest stretch','Press up and slightly together']),
   X('Machine Chest Press','bench',['Seat height: handles at mid-chest','Great for pushing near failure safely']),
   X('Smith Machine Bench','bench',['Bar lines up with lower chest','Same setup as barbell, just more stable'])]},
- {sets:3,reps:'8–10',rest:90,opts:[
-  X('Dumbbell Row','row',['Hand and knee on the bench, back flat','Pull the DB to your hip, not your chest','Squeeze 1 sec, lower under control']),
-  X('Chest-Supported Row','row',['Chest on an incline bench','No cheating with the lower back','Pull elbows back past the torso']),
-  X('Barbell Bent-Over Row','row',['Hinge to ~45°, bar hangs at the knees','Pull to the belly button']),
-  X('Seated Cable Row','seatedrow',['Sit tall, slight lean back at most','Pull to the stomach, squeeze shoulder blades'])]},
- {sets:3,reps:'8–10',rest:90,opts:[
-  X('Standing Overhead DB Press','ohp',['Brace abs and squeeze glutes, no leaning back','Press straight up, biceps by the ears','Lower to shoulder level']),
-  X('Seated Dumbbell Press','ohp',['Back on a near-upright bench','Lets you go a bit heavier']),
-  X('Barbell Overhead Press','ohp',['Bar starts on the front delts','Move your head back, then push it through once the bar passes']),
-  X('Arnold Press','ohp',['Start palms facing you','Rotate out as you press','Extra front delt work'])]},
- {sets:3,reps:'12',rest:60,opts:[
-  X('Bicep Curls + Tricep Pushdowns','curl',['SUPERSET: curls, then straight into pushdowns','Elbows pinned at your sides on both','Rest only after both are done']),
+ {sets:3,reps:'8–10',rest:75,opts:[
+  X('Dumbbell Row + Overhead DB Press','row',['SUPERSET: row, then straight into the press. Pull and push muscles rest while the other works, so you save time','Row the DB to your hip, squeeze 1 sec','Press straight up, brace abs, no leaning back']),
+  X('Chest-Supported Row + Seated Dumbbell Press','row',['Superset','Chest on an incline bench for the row','Back on a near-upright bench for the press']),
+  X('Seated Cable Row + Arnold Press','seatedrow',['Superset','Squeeze the shoulder blades on the row','Rotate out as you press'])]},
+ {sets:3,reps:'10–12',rest:45,opts:[
+  X('EZ-Bar Curl + Skull Crushers','curl',['SUPERSET: your heavy arm pair. Curls, then straight into skull crushers','Elbows pinned on the curls, no swinging','Lower the skull crushers to just behind your head, elbows pointing up']),
   X('Barbell Curl + Rope Pushdown','curl',['Superset','Spread the rope at the bottom of the pushdown']),
-  X('Cable Curl + Overhead Tricep Extension','curl',['Superset','Overhead extension hits the long head of the tricep']),
-  X('EZ-Bar Curl + Skull Crushers','curl',['Superset','Lower the skull crushers to just behind your head'])]}
+  X('Bicep Curls + Tricep Pushdowns','curl',['Superset','Elbows pinned at your sides on both'])]},
+ {sets:3,reps:'12',rest:45,opts:[
+  X('Incline DB Curl + Overhead Cable Extension','curl',['SUPERSET: stretch pair. Both moves hit the long heads that build arm size','Incline curl: let the arms hang behind you, curl without moving the elbows','Overhead extension: face away from the cable, full stretch behind your head']),
+  X('Cable Curl + Overhead Tricep Extension','curl',['Superset','Constant tension on both']),
+  X('Hammer Curls + Tricep Pushdown (rope)','curl',['Superset','Palms facing each other on the curls'])]}
 ]},
 {d:'Wed',title:'Chest & Legs',slots:[
- {sets:4,reps:'8–10',rest:150,opts:[
-  X('Flat Bench Press','bench',['Controlled descent, explosive press','Shoulder blades pinned','Bar touches lower chest']),
-  X('Incline Dumbbell Press','bench',['TIP: you bench flat on Tuesday too, so this hits upper chest and gives the flat bench a break','Bench at 30°','Lower to the upper chest']),
-  X('Incline Barbell Press','bench',['Bench at 30°, bar touches just under the collarbone']),
-  X('Machine Chest Press','bench',['Push to near failure safely'])]},
- {sets:3,reps:'8–10 per arm',rest:90,opts:[
-  X('Landmine Press','landmine',['Hold the bar end at shoulder height','Press up and forward, follow the arc','Or use both hands on the bar end']),
-  X('Half-Kneeling Landmine Press','landmine',['Kneel on the same side as the working arm','Squeeze the glute of the down knee for stability']),
-  X('Single-Arm DB Incline Press','bench',['Other hand on your stomach to stay braced']),
-  X('Low-to-High Cable Fly','fly',['Cables at the bottom','Sweep up to chin height, squeeze the upper chest'])]},
+ {sets:4,reps:'8–10',rest:120,opts:[
+  X('Incline Dumbbell Press','inclinepress',['You bench flat on Tuesday, so today hits the upper chest','Bench at 30°, lower to the upper chest','Press up and slightly together']),
+  X('Incline Barbell Press','inclinepress',['Bench at 30°, bar touches just under the collarbone']),
+  X('Incline Machine Press','inclinepress',['Push near failure safely']),
+  X('Flat Bench Press','bench',['Controlled descent, explosive press'])]},
+ {sets:3,reps:'8–10',rest:105,opts:[
+  X('Close-Grip Bench Press','bench',['Hands just inside shoulder width, not touching','Elbows tucked close to your sides','Your heaviest tricep builder, it hits chest too']),
+  X('Chest Dips','dip',['Stay more upright to bias the triceps','Lower until the shoulders are just below the elbows']),
+  X('Diamond Push-Ups','pushup',['Hands together under your chest','Elbows brush your sides']),
+  X('Landmine Press','landmine',['Press up and forward, follow the arc'])]},
  {sets:3,reps:'8–10',rest:120,opts:[
   X('Leg Press','legpress',['Feet shoulder-width in the middle of the platform','Lower until the knees are ~90°, lower back stays on the pad','Press through the whole foot, don\'t lock the knees']),
   X('Hack Squat','squat',['Feet mid-platform','Go deep, control the descent']),
   X('Goblet Squat','squat',['Upright torso, elbows inside the knees']),
   X('Smith Machine Squat','squat',['Feet slightly forward','Full depth'])]},
- {sets:3,reps:'failure',rest:75,opts:[
-  X('Cable Flyes','fly',['Slight bend in the elbows, keep it locked','Open wide for a deep stretch','Hug a tree, squeeze hands together']),
-  X('Chest Dips','dip',['Lean forward to target chest','Lower until the shoulders are just below the elbows','Press up without fully locking']),
-  X('Pec Deck','fly',['Handles at chest height','Slow on the way back']),
-  X('Dumbbell Flyes','fly',['Lying flat, soft elbows','Stop at a comfortable stretch, don\'t go too deep'])]}
+ {sets:3,reps:'12',rest:60,opts:[
+  X('Cable Flyes + Tricep Pushdown (rope)','fly',['SUPERSET: flyes, then pushdowns at the next cable','Flyes: soft elbows, hug a tree, squeeze','Pushdowns: elbows pinned, spread the rope at the bottom']),
+  X('Pec Deck + Straight-Bar Pushdown','seatedfly',['Superset','Slow on the way back on the pec deck']),
+  X('Dumbbell Flyes + Tricep Dips','fly',['Superset','Stop the flyes at a comfortable stretch'])]}
 ]},
 {d:'Thu',title:'Abs & Core',slots:[
  {sets:3,reps:'failure',rest:75,opts:[
@@ -143,20 +139,13 @@ const DAYS_KING=[
   X('Single-Arm Cable Row','seatedrow',['Rotate slightly into the pull']),
   X('Inverted Row','row',['Bar at waist height, body straight','Pull chest to the bar'])]},
  {sets:3,reps:'12–15',rest:60,opts:[
-  X('Straight-Arm Pulldown','straightarm',['Arms locked, slight forward lean','Sweep the bar to your thighs with your lats','Great for width']),
-  X('Rope Pullover','straightarm',['Same movement with a rope','Flare the rope out at the bottom']),
-  X('Dumbbell Pullover','straightarm',['Lying across a bench','Big stretch overhead']),
-  X('Single-Arm Lat Pulldown','pullup',['Kneel, pull down to the side'])]},
- {sets:3,reps:'15',rest:60,opts:[
-  X('Face Pulls','facepull',['Rope at upper chest to face height','Pull to your eyes, elbows high','Rotate your hands back at the end, like a double bicep pose']),
-  X('Reverse Pec Deck','fly',['Arms slightly bent','Lead with the elbows']),
-  X('Rear Delt DB Fly','row',['Bent over, light DBs','Raise out to the sides']),
-  X('Band Pull-Apart','facepull',['Arms straight, pull the band to your chest'])]},
+  X('Straight-Arm Pulldown + Face Pulls','straightarm',['SUPERSET: lats, then rear delts. Both on cables, side by side','Pulldown: arms locked, sweep the bar to your thighs','Face pulls: pull to your eyes, elbows high']),
+  X('Rope Pullover + Band Pull-Apart','straightarm',['Superset','Flare the rope out at the bottom']),
+  X('Dumbbell Pullover + Reverse Pec Deck','straightarm',['Superset','Big stretch overhead on the pullover'])]},
  {sets:3,reps:'10–12',rest:60,opts:[
-  X('Hammer Curls','curl',['Palms face each other','Elbows pinned','Slow on the way down for forearm and arm thickness']),
-  X('Cross-Body Hammer Curl','curl',['Curl the DB across toward the opposite shoulder']),
-  X('Rope Hammer Curl','curl',['On a low cable, constant tension']),
-  X('Preacher Curl','curl',['Armpit snug on the pad','Don\'t fully lock out at the bottom'])]}
+  X('Hammer Curls + Preacher Curl','curl',['SUPERSET: two curl angles back to back for full biceps and forearms','Hammers: palms facing, slow on the way down','Preacher: armpit snug on the pad, don\'t lock out at the bottom']),
+  X('Rope Hammer Curl + Cable Curl','curl',['Superset','Constant tension from the cable']),
+  X('Cross-Body Hammer Curl + Spider Curl','curl',['Superset','Spider curls: chest on an incline bench, arms hanging'])]}
 ]}
 ];
 

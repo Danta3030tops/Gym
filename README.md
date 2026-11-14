@@ -59,7 +59,7 @@ Optionally, open `config.js` and paste both values in, so every phone connects a
 | Goal | Strength & size | Fat loss, toning, glutes |
 | Mon | Legs & Glutes | Glutes & Hams |
 | Tue | Upper Body | Upper & Core |
-| Wed | Chest & Legs | Cardio & Core |
+| Wed | Chest & Legs | Core & Cardio |
 | Thu | Abs / Core | Legs & Glutes |
 | Fri | Back & Biceps | Full Body Burn |
 
@@ -99,6 +99,18 @@ Each profile has its own data, photos and login. Nothing is shared between them.
 | **Live mode** 📡 | Run `supabase-update-live.sql` once. When one of you ticks a set, the other's app updates in about 1–2 seconds: a live card shows their day, sets done, last set and rest countdown, plus a toast for each set, PR or finished day. The 🔥 Hype / 👊 Nudge button sends a burst to the other phone. Without the SQL it still updates every 20 seconds. Turn off "Share live activity" in More to share only counts. |
 | **Caffeine** ☕ | The cup at the top keeps the screen from sleeping the whole time the app is open (glows and steams when on). It uses the browser's wake lock, with a silent looping video as a backup on phones that don't support it. Remembered per phone. |
 | **Session timer** ⏱ | Tap "Set a session time limit" on the Workout tab and pick 30 min to 2 hr (or custom). It counts down on both phones. Either of you can pause, add 10 min or end it, and the other phone updates live. Heads-ups at 10, 5 and 1 minute left, then an alarm when time's up, and it counts overtime in red. |
+| **Supersets** 🔁 | Exercises like "Bicep Curls + Tricep Pushdowns" get two lines per set, **A** and **B**, each with its own weight and reps. The form figure alternates between the two moves. History, volume and the CSV export track both halves. |
+| **Figures** 🧍 | 140+ movement figures, so nearly every exercise has its own (front squat, hack squat, cable flyes from low/high, preacher curl, Nordic curl…). Limbs move in natural arcs and planted feet and hands stay put. |
+| **Muscle map** 🫀 | History → Muscles: a front and back body map that fills in as you train, plus sets per muscle against a ~10-sets-a-week target. Tap a muscle to see which exercises hit it. Supersets count both halves, and helper muscles count half (triceps on bench, biceps on rows). |
+| **Workout summary** 📊 | Finish a day and a summary pops up: time, weight lifted, sets, PRs, volume vs the same day last week, your best set per exercise (▲ if it beat last time), muscles hit and average effort. Share it as an image. Finished early? Tap "Finish early & see summary" under the last exercise. |
+| **Effort rating** 💪 | After each set a small bubble asks "Reps left in the tank? 0 / 1 / 2 / 3+". Ignore it and it disappears. Auto progression uses it: top of the range with 3+ left → two weight jumps; a grind → a small jump; easy sets in the middle of the range → go up anyway. Turn it off in More. |
+| **Voice coach** 🔊 | Pacer only. Tap "Voice off/on" on the pacer screen: it counts you in, calls the first phase, counts each rep out loud, warns on the last rep and calls time on holds. Remembered per phone. |
+| **Weekly challenge** 🎯 | History → Score: a team goal (both hit X days) or a head-to-head (most days, most sets, most PRs), with optional stakes like "loser buys the smoothies". Both phones see it, last week's result shows every Monday, and wins are tallied. |
+| **Strength trend** 📈 | History → PRs and each exercise's 📈 Progress: estimated 1-rep max over time (from your best set each session), with the change over the last 8 weeks. |
+| **Warm-up** 🔥 | "5-min warm-up for today" under the exercise picker: 6 moves picked for that day's muscles (leg swings and world's greatest stretch on leg days, arm circles and inchworms on upper days…), with a guided timer, figures and beeps. |
+| **Keep-alive** ⏰ | `.github/workflows/keepalive.yml` pings Supabase every 3 days so the free project never pauses, and refreshes a tiny file once a month so GitHub doesn't switch the schedule off. |
+| **Chat** 💬 | Run `supabase-update-chat.sql` once. A Chat tab for texts and photos between you two, delivered live. On the Workout tab a bubble shows unread messages and pops up a preview when one comes in. Tap your own message to delete it; tap a photo to see it full size or save it. Photos are private to your two logins. |
+| **Exercises per day** 🔢 | The − / + picker on the Workout tab sets how many exercises you do that day (4 minimum, 10 max). Going above your routine adds bonus exercises for the same muscles; going below skips the last ones. It remembers your pick for that weekday. |
 | **Notes** 📝 | A notes box on every exercise. Last session's note shows up next time. |
 | **Edit routine** ✏️ | More → Edit my routine: add, remove, reorder or edit exercises, sets, reps, rest, the form figure and tips. Each profile is separate. |
 | **Streaks** | Day streak (weekends never break it) and week streak (hit your days-per-week goal). |

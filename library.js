@@ -252,6 +252,8 @@ const FIG_RULES = [[/\+/, null], [/plank-to-push|plank jack|plank row|plank shou
   [/glute bridge|frog pump/i, 'bridge'], [/lying leg raise|reverse crunch|toe touches/i, 'lyingraise'], [/sit-up|v-ups/i, 'situp'], [/back extension|reverse hyper/i, 'backext'],
   [/upright row/i, 'uprow'], [/front raise/i, 'frontraise'], [/jumping jack/i, 'jack'], [/jump rope/i, 'jumprope'], [/bike/i, 'bike'], [/rowing machine/i, 'rower'],
   [/burpee/i, 'burpee'], [/sled/i, 'sled'], [/battle rope/i, 'ropes'], [/lateral lunge/i, 'latlunge'], [/step-up/i, 'stepup'], [/ab wheel/i, 'rollout'], [/dumbbell pullover/i, 'pullover']];
-function figFor(n, pat) { for (const [re, p] of FIG_RULES) if (re.test(n)) return p || pat; return pat; }
+function figFor(n, pat) { const nm = (window.FIG_NAMES || {})[String(n).toLowerCase()]; if (nm && P[nm]) return nm; for (const [re, p] of FIG_RULES) if (re.test(n)) return p || pat; return pat; }
 for (const o of LIB_ALL) o.pat = figFor(o.n, o.pat);
 for (const days of [DAYS_KING, DAYS_QXEEN]) for (const d of days) for (const sl of d.slots) for (const o of sl.opts) o.pat = figFor(o.n, o.pat);
+/* categories for the specific figures (used by swaps and bonus picks) */
+for (const k in P) if (P[k].cats && !PAT_CATS[k]) PAT_CATS[k] = P[k].cats;

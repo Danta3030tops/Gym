@@ -32,14 +32,9 @@ const DAYS_QXEEN=[
   X('Donkey Kicks (ankle weight)','kickback',['On hands and knees','Kick your heel up toward the ceiling']),
   X('Banded Kickback','kickback',['Band around both ankles or feet','Slow and controlled'])]},
  {sets:3,reps:'15–20',rest:45,opts:[
-  X('Hip Abduction Machine','abduct',['Lean slightly forward to hit more glute','Push out, pause, return slowly','Don\'t let the weights slam']),
-  X('Banded Lateral Walk','abduct',['Band above the knees, quarter squat','Small steps, keep the tension the whole time']),
-  X('Cable Hip Abduction','abduct',['Ankle strap on the outside leg','Lift out to the side, no leaning']),
-  X('Side-Lying Leg Raise','abduct',['Lie on your side, top leg straight','Lift with your heel leading'])]},
- {sets:2,reps:'25',rest:45,opts:[
-  X('Frog Pumps (finisher)','thrust',['On your back, soles of your feet together, knees out','Fast pumps, squeeze at every rep','Burnout: chase the burn']),
-  X('Glute Bridge Pulses','thrust',['Hold at the top, small pulses']),
-  X('Banded Glute Bridge','thrust',['Band above the knees, push the knees out'])]}
+  X('Hip Abduction Machine + Frog Pumps','abduct',['SUPERSET: abductions, then hop off and straight into frog pumps','Lean slightly forward on the machine for more glute','Frog pumps: soles of the feet together, squeeze hard at the top']),
+  X('Cable Hip Abduction + Glute Bridge Pulses','abduct',['Superset','Small pulses at the top of the bridge']),
+  X('Banded Lateral Walk + Frog Pumps','abduct',['Superset','Stay low on the walks, band above the knees'])]}
 ]},
 {d:'Tue',title:'Upper & Core',slots:[
  {sets:3,reps:'10–12',rest:60,opts:[
@@ -73,17 +68,22 @@ const DAYS_QXEEN=[
   X('Plank Shoulder Taps','plank',['High plank, tap the opposite shoulder','Keep your hips still']),
   X('Dead Bug Hold','deadbug',['Lower back glued to the floor'])]}
 ]},
-{d:'Wed',title:'Cardio & Core',slots:[
- {sets:1,reps:'20 min',time:1200,rest:60,opts:[
+{d:'Wed',title:'Core & Cardio',slots:[
+ {sets:1,reps:'12 min',time:720,rest:60,opts:[
   X('Incline Treadmill Walk','walk',['Incline 10–12, speed 3.0–3.5 mph','Don\'t hold the rails, pump your arms','Fat-burning zone: you can talk but not sing']),
   X('Stairmaster','walk',['Steady pace, upright posture','Light touch on the rails only']),
   X('Elliptical','walk',['Resistance moderate, push and pull the handles']),
   X('Outdoor Brisk Walk / Hill Walk','walk',['Find a hill if you can','Brisk pace'])]},
- {sets:4,reps:'15',rest:45,opts:[
-  X('Kettlebell Swings','swing',['Hinge, don\'t squat. Hike the bell back between your legs','Snap your hips forward, the bell floats to chest height','Glutes and heart rate both go up']),
-  X('Dumbbell Swings','swing',['Hold one DB by the end with both hands']),
-  X('Cable Pull-Through','hinge',['Same hip snap, no impact']),
-  X('Glute Bridge (fast tempo)','thrust',['Quick reps, squeeze at the top'])]},
+ {sets:3,reps:'12',rest:45,opts:[
+  X('Hanging Knee Raise','legraise',['Hang from the bar, no swinging','Knees to chest, curl the hips up','Lower slowly']),
+  X('Captain\'s Chair Knee Raise','legraise',['Back against the pad','Knees to chest, curl the hips']),
+  X('Reverse Crunch','legraise',['On your back, roll your hips off the floor']),
+  X('Lying Leg Raise','legraise',['Lower back pressed to the floor'])]},
+ {sets:3,reps:'12 per side',rest:45,opts:[
+  X('Cable Woodchopper','twist',['Cable high, chop down across your body','Arms long, turn through the torso','Pivot the back foot']),
+  X('Pallof Press','twist',['Stand side-on to the cable','Press straight out and resist the twist']),
+  X('Russian Twists','twist',['Lean back, feet up for harder','Rotate through the torso']),
+  X('Standing Oblique Crunch','twist',['DB in one hand, bend to that side','Squeeze the other side to come up'])]},
  {sets:3,reps:'30 sec',time:30,rest:30,opts:[
   X('Mountain Climbers','plank',['High plank, drive your knees to your chest','Fast but controlled, hips low']),
   X('Plank Jacks','plank',['Jump your feet in and out']),
@@ -94,11 +94,11 @@ const DAYS_QXEEN=[
   X('Bicycle Crunches','deadbug',['Elbow to opposite knee, slow','Fully extend the other leg']),
   X('Reverse Crunch','legraise',['Roll your hips up toward your chest','Lower slowly']),
   X('Hollow Body Hold','deadbug',['Arms and legs extended, low back flat'])]},
- {sets:3,reps:'20 total',rest:45,opts:[
-  X('Russian Twists','twist',['Lean back, chest up','Rotate your shoulders, not just your arms','Hold a light DB or plate']),
-  X('Cable Woodchopper','twist',['High to low across your body']),
-  X('Seated Twist (feet up)','twist',['Harder: feet off the floor']),
-  X('Standing Oblique Crunch','twist',['Elbow to knee, alternate sides'])]}
+ {sets:3,reps:'30 sec each side',time:30,rest:30,opts:[
+  X('Side Plank','plank',['Elbow under the shoulder','Hips high, body in a straight line','Switch sides each set']),
+  X('Plank','plank',['Squeeze glutes and quads','Straight line from head to heels']),
+  X('Hollow Body Hold','deadbug',['Lower back pressed down','Arms and legs long, shoulders off the floor']),
+  X('Bird Dog','deadbug',['Opposite arm and leg out','Keep the hips level'])]}
 ]},
 {d:'Thu',title:'Legs & Glutes',slots:[
  {sets:4,reps:'12',rest:75,opts:[
@@ -133,7 +133,7 @@ const DAYS_QXEEN=[
   X('Leg Press Calf Press','calf',['Toes on the edge of the platform'])]}
 ]},
 {d:'Fri',title:'Full Body Burn',slots:[
- {sets:3,reps:'12',rest:60,opts:[
+ {sets:3,reps:'12',rest:45,opts:[
   X('Dumbbell Thrusters','thruster',['DBs at your shoulders, squeeze down','Drive up and press overhead in one smooth move','Full-body fat burner, so keep the pace up']),
   X('Goblet Squat to Press','thruster',['One DB at your chest, squeeze, stand and press']),
   X('Squat + Shoulder Press','thruster',['Do the squat, then the press, as separate moves']),
@@ -148,17 +148,16 @@ const DAYS_QXEEN=[
   X('Reverse Lunge','lunge',['Hold DBs to make it harder']),
   X('Step-Up to Knee Drive','lunge',['Drive the knee up at the top']),
   X('Curtsy Lunge','lunge',['Alternate sides'])]},
- {sets:3,reps:'15',rest:45,opts:[
+ {sets:3,reps:'15',rest:30,opts:[
   X('Kettlebell Swings','swing',['Hips snap, arms just guide','Heart rate up, glutes on fire']),
   X('Dumbbell Swings','swing',['Both hands on one DB']),
   X('Jump Squats','squat',['Land soft, straight into the next rep']),
   X('Glute Bridge (fast)','thrust',['Quick tempo'])]},
- {sets:3,reps:'15 per leg',rest:30,opts:[
-  X('Cable Glute Kickback','kickback',['Squeeze at the top, slow return']),
-  X('Donkey Kicks','kickback',['On all fours']),
-  X('Banded Kickback','kickback',['Band around the feet']),
-  X('Hip Abduction Machine','abduct',['Lean forward a little'])]},
- {sets:1,reps:'10 min',time:600,rest:60,opts:[
+ {sets:3,reps:'12',rest:45,opts:[
+  X('Bench Dips + DB Curl','dip',['SUPERSET: arm toning pair','Dips: hands on the bench behind you, elbows point back','Curls: elbows pinned, slow on the way down']),
+  X('Tricep Pushdown + Bicep Curl','curl',['Superset','Elbows pinned at your sides on both']),
+  X('Overhead Tricep Ext + Hammer Curl','curl',['Superset','Full stretch behind the head'])]},
+ {sets:1,reps:'8 min',time:480,rest:60,opts:[
   X('Incline Walk (finisher)','walk',['Incline 10–12, steady pace','Cool down and burn a little extra']),
   X('Stairmaster','walk',['Steady pace']),
   X('Bike (easy pace)','walk',['Easy spin to cool down']),

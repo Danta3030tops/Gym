@@ -30,10 +30,71 @@ document.body.insertAdjacentHTML('beforeend', `
    ===================================================================== */
 function baseRoutine() { return S.routine || PROFILES[PROF].days; }
 function refreshFigures() { if (S.routine) for (const d of S.routine) for (const sl of d.slots) for (const o of sl.opts) { const l = libFind(o.n); o.pat = l ? l.pat : figFor(o.n, o.pat); } }
-function applyRoutine() {
-  refreshFigures(); const base = baseRoutine();
-  DAYS = isDeload(curWeek) ? base.map(d => ({ ...d, slots: d.slots.map(sl => ({ ...sl, sets: Math.max(1, Math.ceil(sl.sets / 2)) })) })) : base;
+/* routine v2 (more arm work, Desrica's core day): drop old swaps on slots whose exercise changed */
+const ROUTINE_V = 2, ROUTINE_CHG = { king: ['1-1', '1-2', '1-3', '2-0', '2-1', '2-3', '4-3', '4-4', '4-5'], qxeen: ['0-4', '0-5', '2-1', '2-2', '2-3', '2-4', '2-5', '4-4'] };
+function migrateRoutine() {
+  if ((S.settings.rv || 0) >= ROUTINE_V) return;
+  if (!S.routine) for (const k of ROUTINE_CHG[PROF] || []) delete S.settings.swaps[k];
+  S.settings.rv = ROUTINE_V; touchSettings();
 }
+function applyRoutine() {
+  migrateRoutine(); refreshFigures();
+  DAYS = buildDays(baseRoutine(), S.settings, curWeek);
+}
+
+/* ---- pick how many exercises you do each day (4 minimum) ---- */
+const EXC_MIN = 4, EXC_MAX = 10;
+function exCountFor(set, wk, di, baseLen) {
+  const c = ((set || {}).exCount || {})[wk + ':' + di] ?? ((set || {}).exCountDef || {})[di];
+  return Math.max(EXC_MIN, Math.min(EXC_MAX, c ?? baseLen));
+}
+const TIMED_RE = /plank|hold|dead hang|wall sit|hollow/i;
+function bonusSlots(day, need) {
+  const used = new Set(day.slots.flatMap(sl => sl.opts.map(o => o.n.toLowerCase())));
+  const tally = {};
+  for (const sl of day.slots) (PAT_CATS[sl.opts[0].pat] || []).forEach((c, j) => tally[c] = (tally[c] || 0) + (j ? 1 : 2));
+  let cats = Object.keys(tally).sort((a, b) => tally[b] - tally[a]);
+  const lifts = cats.filter(c => c !== 'cardio'); if (lifts.length) cats = lifts; if (!cats.length) cats = ['core'];
+  const pools = cats.map(c => (LIB[c] || []).filter(o => !used.has(o.n.toLowerCase())));
+  const out = []; let k = 0, guard = 0;
+  while (out.length < need && guard++ < 300) {
+    const ci = k++ % cats.length, pool = pools[ci]; if (!pool.length) continue;
+    const o = pool.shift(); if (used.has(o.n.toLowerCase())) continue; used.add(o.n.toLowerCase());
+    const alts = pool.filter(a => !used.has(a.n.toLowerCase())).slice(0, 3);
+    const opts = [o, ...alts].map(x => ({ n: x.n, pat: x.pat, cues: x.cues || [] }));
+    out.push(TIMED_RE.test(o.n) ? { sets: 3, reps: '40 sec', time: 40, rest: 45, bonus: true, opts }
+      : { sets: 3, reps: cats[ci] === 'core' ? '12–15' : '10–12', rest: 60, bonus: true, opts });
+  }
+  return out;
+}
+function buildDays(base, set, wk) {
+  const dl = !!(((set || {}).deloads || {})[wk]);
+  return base.map((d, di) => {
+    const n = exCountFor(set, wk, di, d.slots.length);
+    let slots = n <= d.slots.length ? d.slots.slice(0, n) : d.slots.concat(bonusSlots(d, n - d.slots.length));
+    if (dl) slots = slots.map(sl => ({ ...sl, sets: Math.max(1, Math.ceil(sl.sets / 2)) }));
+    return { ...d, slots, baseLen: d.slots.length };
+  });
+}
+function setExCount(n) {
+  const base = baseRoutine()[cur].slots.length;
+  n = Math.max(EXC_MIN, Math.min(EXC_MAX, n));
+  S.settings.exCount = { ...(S.settings.exCount || {}), [curWeek + ':' + cur]: n };
+  S.settings.exCountDef = { ...(S.settings.exCountDef || {}), [cur]: n };
+  touchSettings(); applyRoutine(); renderWorkout();
+  const diff = n - base;
+  toast(diff > 0 ? `${n} exercises · ${diff} bonus added` : diff < 0 ? `${n} exercises · last ${-diff} skipped today` : `${n} exercises · your full routine`);
+}
+function excountHtml() {
+  const D = DAYS[cur], n = D.slots.length, base = D.baseLen ?? n;
+  const note = n > base ? `+${n - base} bonus` : n < base ? `${base - n} skipped` : 'full routine';
+  return `<div class="excount"><div><b>Exercises today</b><span>${note} · 4 minimum</span></div>
+    <div class="exstep"><button data-exc="-1" ${n <= EXC_MIN ? 'disabled' : ''} aria-label="Fewer exercises">−</button><b>${n}</b><button data-exc="1" ${n >= EXC_MAX ? 'disabled' : ''} aria-label="More exercises">+</button></div></div>`;
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-exc]'); if (!b || b.disabled) return;
+  setExCount(DAYS[cur].slots.length + +b.dataset.exc);
+});
 function consecutiveTrainingWeeks() {
   let n = 0, wk = dk(addDays(parseDk(curWeek), -7));
   for (let i = 0; i < 52; i++) {
@@ -61,7 +122,13 @@ function autoSuggest(sl, last, id) {
   const base = baseRoutine()[cur] && baseRoutine()[cur].slots.find(x => x.reps === sl.reps) || sl;
   let w = maxW, html;
   const prev = sessions(id).filter(x => !(x.wk === curWeek && x.di === cur));
-  if (top && last.sets.length >= base.sets && last.sets.every(s => +s.r >= top)) { w = maxW + inc(); html = `<div class="sug up">Hit the top of the range last time<br>→ ${w} ${unit()} today</div>`; }
+  const rirs = last.sets.map(s => s.rir).filter(x => x != null), avgR = rirs.length ? rirs.reduce((a, b) => a + b, 0) / rirs.length : null;
+  if (top && last.sets.length >= base.sets && last.sets.every(s => +s.r >= top)) {
+    if (avgR != null && avgR >= 2.5) { w = maxW + inc() * 2; html = `<div class="sug up">Topped the range with reps to spare<br>→ ${w} ${unit()} today (+2 jumps)</div>`; }
+    else if (avgR != null && avgR < .75) { w = maxW + inc(); html = `<div class="sug up">Hit the top, but it was a grind<br>→ ${w} ${unit()}, small jump</div>`; }
+    else { w = maxW + inc(); html = `<div class="sug up">Hit the top of the range last time<br>→ ${w} ${unit()} today</div>`; }
+  }
+  else if (avgR != null && avgR >= 2.5 && !(low && last.sets.some(s => +s.r < low))) { w = maxW + inc(); html = `<div class="sug up">Felt easy last time (${Math.round(avgR)}+ reps left)<br>→ ${w} ${unit()} today</div>`; }
   else if (low && last.sets.some(s => +s.r < low)) {
     const p2 = prev[prev.length - 2];
     const missedTwice = p2 && p2.sets.some(s => +s.r < low) && Math.max(...p2.sets.map(s => +s.w || 0)) >= maxW;
@@ -201,7 +268,7 @@ function weekStreak(dates, goal) {
 function summaryOf(st, prof) {
   const dates = trainedDates(st), now2 = new Date(), wk = weekKeyOf(now2), mk = monthKey(now2), td = dk(now2);
   let lastT = 0, todayTitle = '', todayDi = null, todaySets = 0, last = null;
-  const days = st.routine || PROFILES[prof].days;
+  const days = buildDays(st.routine || PROFILES[prof].days, st.settings || {}, wk);
   for (const w in st.logs) for (const di in st.logs[w]) for (const id in st.logs[w][di]) {
     const e2 = st.logs[w][di][id];
     (e2.sets || []).forEach((s, i) => {
@@ -217,17 +284,25 @@ function summaryOf(st, prof) {
   if (last) {
     const D = days[last.di]; let of = (last.e.sets || []).filter(Boolean).length;
     if (D) D.slots.forEach((sl, si) => { const v = sw[last.di + '-' + si]; const nm = typeof v === 'string' && v.startsWith('n:') ? v.slice(2) : (sl.opts[+v || 0] || sl.opts[0]).n; if (nm === last.e.n || sl.opts.some(o => o.n === last.e.n)) of = slotSets(sl); });
-    lastSet = { n: last.e.n, w: last.s.w, r: last.s.r, i: last.i + 1, of, t: last.s.t, timed: !!last.e.timed };
+    lastSet = { n: last.e.n, w: last.s.w, r: last.s.r, i: last.i + 1, of, t: last.s.t, timed: !!last.e.timed, ...(last.s.r2 != null ? { w2: last.s.w2, r2: last.s.r2 } : {}) };
   }
   let weekDays = 0; for (let i = 0; i < 7; i++) if (dates.has(dk(addDays(parseDk(wk), i)))) weekDays++;
   const monthDays = [...dates].filter(d => d.startsWith(mk)).length;
   const g = { ...GOAL_DEFAULTS[prof], ...(set2.goals || {}) };
   const sc = prScan(st), prsMonth = sc.prs.filter(p => monthKey(new Date(p.t)) === mk).length, p0 = sc.prs[0];
-  return { prof, name: PROFILES[prof].name, lastT, todayTitle, todaySets, todayTotal, lastSet, lastPR: p0 ? { n: p0.n, w: p0.w, r: p0.r, t: p0.t } : null, weekDays, monthDays, dayStreak: dayStreak(dates), weekStreak: weekStreak(dates, g.weekDays), prsMonth, workouts: dates.size, at: Date.now(), wk, mk, td };
+  const wkStart = parseDk(wk).getTime(), lwStart = addDays(parseDk(wk), -7).getTime(); let weekSets = 0, lwSets = 0, lwDays = 0;
+  for (const w in st.logs) for (const di in st.logs[w]) for (const id in st.logs[w][di]) for (const s of (st.logs[w][di][id].sets || [])) if (s && s.t) { if (s.t >= wkStart) weekSets++; else if (s.t >= lwStart) lwSets++; }
+  for (let i = 0; i < 7; i++) if (dates.has(dk(addDays(parseDk(wk), i - 7)))) lwDays++;
+  const weekPRs = sc.prs.filter(p => p.t >= wkStart).length, lwPRs = sc.prs.filter(p => p.t >= lwStart && p.t < wkStart).length;
+  return { prof, name: PROFILES[prof].name, weekSets, weekPRs, lw: { wk: dk(addDays(parseDk(wk), -7)), days: lwDays, sets: lwSets, prs: lwPRs }, ch: set2.challenge || null, lastT, todayTitle, todaySets, todayTotal, lastSet, lastPR: p0 ? { n: p0.n, w: p0.w, r: p0.r, t: p0.t } : null, weekDays, monthDays, dayStreak: dayStreak(dates), weekStreak: weekStreak(dates, g.weekDays), prsMonth, workouts: dates.size, at: Date.now(), wk, mk, td };
 }
 function freshen(sm) { // a summary computed earlier: zero out counters from a past week/month/day
   if (!sm) return null; const now2 = new Date(), x = { ...sm };
-  if (x.wk !== weekKeyOf(now2)) x.weekDays = 0;
+  if (x.wk !== weekKeyOf(now2)) {
+    const lastWk = dk(addDays(parseDk(weekKeyOf(now2)), -7));
+    x.lw = x.wk === lastWk ? { wk: lastWk, days: x.weekDays || 0, sets: x.weekSets || 0, prs: x.weekPRs || 0 } : (x.lw && x.lw.wk === lastWk ? x.lw : { wk: lastWk, days: 0, sets: 0, prs: 0 });
+    x.weekDays = 0; x.weekSets = 0; x.weekPRs = 0;
+  }
   if (x.mk !== monthKey(now2)) { x.monthDays = 0; x.prsMonth = 0; }
   if (x.td !== dk(now2)) { x.todayTitle = ''; x.todaySets = 0; x.todayTotal = 0; x.restEnd = 0; }
   const lastD = x.lastT ? new Date(x.lastT) : null;
@@ -297,8 +372,8 @@ function renderPRs() {
 }
 let histSeg = 'weeks';
 function renderHistory() {
-  $('hist').innerHTML = `<div class="seg">${[['weeks', 'Weeks'], ['prs', 'PRs 🏆'], ['score', 'Scoreboard']].map(([k, l]) => `<button class="${histSeg === k ? 'on' : ''}" data-hseg="${k}">${l}</button>`).join('')}</div><div id="histBody"></div>`;
-  if (histSeg === 'prs') renderPRs(); else if (histSeg === 'score') renderScore(); else renderWeeks();
+  $('hist').innerHTML = `<div class="seg">${[['weeks', 'Weeks'], ['muscles', 'Muscles'], ['prs', 'PRs'], ['score', 'Score']].map(([k, l]) => `<button class="${histSeg === k ? 'on' : ''}" data-hseg="${k}">${l}</button>`).join('')}</div><div id="histBody"></div>`;
+  if (histSeg === 'prs') renderPRs(); else if (histSeg === 'score') renderScore(); else if (histSeg === 'muscles' && typeof renderMuscles === 'function') renderMuscles(); else renderWeeks();
 }
 
 /* =====================================================================
@@ -415,7 +490,7 @@ function snapCam() {
 function monthStats(mk) {
   const dates = [...trainedDates(S)].filter(d => d.startsWith(mk));
   let sets = 0, vol = 0;
-  for (const wk in S.logs) for (const di in S.logs[wk]) for (const id in S.logs[wk][di]) for (const s of (S.logs[wk][di][id].sets || [])) if (s && s.t && monthKey(new Date(s.t)) === mk) { sets++; vol += num(s.w) * num(s.r); }
+  for (const wk in S.logs) for (const di in S.logs[wk]) for (const id in S.logs[wk][di]) for (const s of (S.logs[wk][di][id].sets || [])) if (s && s.t && monthKey(new Date(s.t)) === mk) { sets++; vol += num(s.w) * num(s.r) + num(s.w2) * num(s.r2); }
   const prs = prScan(S).prs.filter(p => monthKey(new Date(p.t)) === mk);
   const topPR = {}; for (const p of prs) if (!topPR[p.id] || p.w > topPR[p.id].w) topPR[p.id] = p;
   const bw = bodyList().filter(d => d.startsWith(mk)).map(d => num(S.body[d].w));
@@ -637,6 +712,7 @@ function moreExtras() {
     <div class="hrow"><span>🏋️ Plate calculator</span><button class="chip" data-plates="">Open</button></div>
     <div class="hrow"><span>📅 Gym & photo reminders</span><button class="chip" data-icsopen>Set up</button></div>
     <div class="hrow"><span>📤 Monthly recap card</span><button class="chip" data-recap>Make</button></div>
+    <div class="hrow"><span>💪 Ask how hard each set felt (smarter weight jumps)</span><button class="chip ${S.settings.askEffort !== false ? 'on' : ''}" data-askeffort>${S.settings.askEffort !== false ? 'On' : 'Off'}</button></div>
     <div class="hrow"><span>Auto-fill suggested weights</span><button class="chip ${af ? 'on' : ''}" data-autofill>${af ? 'On' : 'Off'}</button></div>
     <div class="hrow"><span>Deload this week (half sets, ~60%)</span><button class="chip ${isDeload(curWeek) ? 'on' : ''}" data-deload="${isDeload(curWeek) ? 'off' : 'on'}">${isDeload(curWeek) ? 'On' : 'Off'}</button></div>
     <div class="hrow"><span>📡 Share live activity (your latest set, PRs & rest timer show on ${PROFILES[other()].name}'s app)</span><button class="chip ${S.settings.shareLive !== false ? 'on' : ''}" data-sharelive>${S.settings.shareLive !== false ? 'On' : 'Off'}</button></div>
@@ -751,7 +827,7 @@ const LIVE = (() => { try { return JSON.parse(localStorage.getItem('gym.pub') ||
 let rtCh = null, rtCl = null, rtStatus = 'off', flashNext = false, pulseT = null, lastHype = 0, pollTick = 0;
 const isFresh = t => !!t && Date.now() - t < 10 * 60e3;
 const fmtSec = r => r >= 120 ? Math.round(r / 60) + ' min' : r + 's';
-const setTxt = L => L.timed ? fmtSec(L.r) : `${L.w || 'BW'}×${L.r}`;
+const setTxt = L => L.timed ? fmtSec(L.r) : `${L.w || 'BW'}×${L.r}` + (L.r2 != null ? ` + ${L.w2 || 'BW'}×${L.r2}` : '');
 const ago = t => { const s = (Date.now() - t) / 1000; return s < 45 ? 'just now' : s < 3600 ? Math.round(s / 60) + 'm ago' : Math.round(s / 3600) + 'h ago'; };
 const signedHere = p => !!(clients[p] && clients[p].session);
 function shareable(sm, prof, st) {

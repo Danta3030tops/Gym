@@ -49,7 +49,11 @@ const todayIdx = () => { const g = new Date().getDay(); return g >= 1 && g <= 5 
 let now = new Date(), curWeek = weekKeyOf(now);
 let cur = todayIdx();
 let tab = 'workout';
-const fmtSet = (timed, s) => timed ? (s.r >= 120 ? Math.round(s.r / 60) + ' min' : s.r + 's') + (s.w ? ' @' + s.w : '') : `${s.w || 'BW'}×${s.r}`;
+const fmtSet = (timed, s) => timed ? (s.r >= 120 ? Math.round(s.r / 60) + ' min' : s.r + 's') + (s.w ? ' @' + s.w : '') : `${s.w || 'BW'}×${s.r}` + (s.r2 != null ? ` + ${s.w2 || 'BW'}×${s.r2}` : '');
+/* supersets: "Bicep Curls + Tricep Pushdowns" → two halves, each with its own weight and reps */
+const ssParts = n => { const a = String(n || '').split(' + '); return a.length === 2 ? a.map(x => x.trim()) : null; };
+const SS_GUESS = [[/pushdown/i, 'pushdown'], [/skull/i, 'skull'], [/overhead.*ext|tricep ext/i, 'ohext'], [/kickback/i, 'cablekick'], [/curl/i, 'curl'], [/dip/i, 'dip'], [/overhead (db )?press|standing.*press/i, 'ohp'], [/shoulder press|db press/i, 'seatedpress'], [/frog pump|bridge/i, 'bridge'], [/lateral raise/i, 'latraise'], [/row/i, 'row']];
+function ssPat(n, fb) { const l = typeof libFind === 'function' && libFind(n); if (l) return l.pat; const m = (window.FIG_NAMES || {})[n.toLowerCase()]; if (m && P[m]) return m; for (const [re, k] of SS_GUESS) if (re.test(n) && P[k]) return k; return fb; }
 
 function persist() { S.updated = Date.now(); try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { toast('Phone storage is full. Export a backup!'); } }
 function save() { persist(); scheduleSync(); }
@@ -87,7 +91,41 @@ const inc = () => unit() === 'kg' ? 2.5 : 5;
 
 /* ================= figure drawing ================= */
 const ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-function poseAt(pat, t) { const A = P[pat].A, B = P[pat].B, o = {}; for (const k in A) o[k] = [A[k][0] + (B[k][0] - A[k][0]) * t, A[k][1] + (B[k][1] - A[k][1]) * t]; return o; }
+/* joints move in arcs (angle interpolation) from whatever stays planted, so limbs keep their length and feet/hands don't slide */
+const BONES = [['s', 'p'], ['h', 's'], ['e', 's'], ['w', 'e'], ['e2', 's'], ['w2', 'e2'], ['k', 'p'], ['f', 'k'], ['t', 'f'], ['k2', 'p'], ['f2', 'k2']];
+function rig(pat) {
+  const X = P[pat]; if (X._rig) return X._rig;
+  const A = X.A, B = X.B, same = j => A[j] && B[j] && Math.hypot(A[j][0] - B[j][0], A[j][1] - B[j][1]) < .6;
+  const adj = {}; for (const [a, b] of BONES) if (A[a] && A[b]) { (adj[a] = adj[a] || []).push(b); (adj[b] = adj[b] || []).push(a); }
+  const fixed = ['f', 'f2', 'w', 'w2', 'p', 't'].filter(same);
+  const root = X.lin ? null : (fixed.find(j => j === 'f' || j === 'f2') || fixed[0] || 'p');
+  const par = {}, order = [];
+  if (root) { const q = [root]; par[root] = null; while (q.length) { const j = q.shift(); order.push(j); for (const n of adj[j] || []) if (!(n in par)) { par[n] = j; q.push(n); } } }
+  const pathTo = j => { const out = []; while (j != null) { out.unshift(j); j = par[j]; } return out; };
+  const pins = fixed.filter(j => j !== root && j in par).map(j => ({ j, path: pathTo(j) }));
+  return X._rig = { root, par, order, pins };
+}
+const angLerp = (a0, a1, t) => { let d = a1 - a0; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return a0 + d * t; };
+function poseAt(pat, t) {
+  const A = P[pat].A, B = P[pat].B, o = {}, lin = k => [A[k][0] + (B[k][0] - A[k][0]) * t, A[k][1] + (B[k][1] - A[k][1]) * t];
+  const R = rig(pat);
+  if (!R.root) { for (const k in A) o[k] = lin(k); return o; }
+  o[R.root] = lin(R.root);
+  for (const j of R.order) {
+    const pa = R.par[j]; if (!pa) continue;
+    const a0 = Math.atan2(A[j][1] - A[pa][1], A[j][0] - A[pa][0]), a1 = Math.atan2(B[j][1] - B[pa][1], B[j][0] - B[pa][0]);
+    const l0 = Math.hypot(A[j][1] - A[pa][1], A[j][0] - A[pa][0]), l1 = Math.hypot(B[j][1] - B[pa][1], B[j][0] - B[pa][0]);
+    const a = angLerp(a0, a1, t), l = l0 + (l1 - l0) * t; o[j] = [o[pa][0] + l * Math.cos(a), o[pa][1] + l * Math.sin(a)];
+  }
+  /* pull other planted joints (hands on the floor, second foot) back onto their spot */
+  for (const { j, path } of R.pins) {
+    const want = lin(j), dx = want[0] - o[j][0], dy = want[1] - o[j][1]; if (Math.abs(dx) + Math.abs(dy) < .05) continue;
+    const n = path.length - 1, idx = {}; path.forEach((nd, i) => idx[nd] = i);
+    for (const m of R.order) { let a = m; while (a != null && !(a in idx)) a = R.par[a]; const i = a == null ? 0 : idx[a]; if (i) o[m] = [o[m][0] + dx * i / n, o[m][1] + dy * i / n]; }
+  }
+  for (const k in A) if (!o[k]) o[k] = lin(k);
+  return o;
+}
 const ln = (a, b, w, c) => `<line x1="${a[0].toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${b[1].toFixed(1)}" stroke="${c}" stroke-width="${w}" stroke-linecap="round"/>`;
 function figure(pat, t) {
   const p = poseAt(pat, ease(t)), B = TH.txt, D = TH.dim, A = TH.acc; let g = '';
@@ -112,6 +150,30 @@ function figure(pat, t) {
       case 'dipbars': g += ln([44, 64], [78, 64], 4, D) + ln([48, 64], [48, 112], 2, D) + ln([2, 112], [118, 112], 2, D); break;
       case 'cable': { const f = p[a[1]]; g += `<line x1="${f[0]}" y1="${f[1]}" x2="${a[2]}" y2="${a[3]}" stroke="${A}" stroke-width="1.2" stroke-dasharray="3 2"/><circle cx="${a[2]}" cy="${a[3]}" r="3" fill="${D}"/>`; break; }
       case 'landmine': { const f = p[a[1]]; g += ln([6, 110], f, 3, D); break; }
+      case 'lm2': { const f = p[a[1]]; g += ln([60, 112], f, 3, D); break; }
+      case 'wedge': g += `<path d="M48 112 L72 112 L48 104 Z" fill="${D}"/>`; break;
+      case 'padback': { const off = (j) => [p[j][0] - 5, p[j][1] + 2]; g += ln(off('s'), off('p'), 6, D) + ln([p.p[0] - 6, p.p[1] + 4], [p.p[0] - 10, 112], 3, D); break; }
+      case 'smith': g += ln([+a[1], -12], [+a[1], 112], 2, D) + ln([+a[1] + 4, -12], [+a[1] + 4, 112], 1, D); break;
+      case 'belt': { const f = p[a[1]]; g += `<line x1="${f[0]}" y1="${f[1]}" x2="${f[0] + 2}" y2="${f[1] + 22}" stroke="${D}" stroke-width="1.5" stroke-dasharray="2 2"/><circle cx="${f[0] + 2}" cy="${f[1] + 28}" r="6" fill="none" stroke="${A}" stroke-width="3"/>` + `<rect x="34" y="108" width="52" height="4" fill="${D}"/>`; break; }
+      case 'rbox': g += `<rect x="${a[1]}" y="${a[3]}" width="${a[2] - a[1]}" height="${112 - a[3]}" rx="2" fill="${D}"/>`; break;
+      case 'rack': g += ln([88, 40], [88, 112], 3, D) + ln([78, +a[1]], [92, +a[1]], 3, D); break;
+      case 'lowbar': g += ln([12, 50], [62, 50], 4, D) + ln([16, 50], [16, 112], 2, D) + ln([2, 112], [118, 112], 2, D); break;
+      case 'cpad': g += ln([44, 104], [86, 60], 6, D) + ln([60, 88], [60, 112], 3, D) + ln([2, 112], [118, 112], 2, D); break;
+      case 'sealbench': g += `<rect x="20" y="61" width="62" height="6" rx="2" fill="${D}"/>` + ln([26, 67], [26, 112], 3, D) + ln([76, 67], [76, 112], 3, D) + ln([2, 112], [118, 112], 2, D); break;
+      case 'preacher': g += ln([p.s[0] - 3, p.s[1] + 7], [p.e[0] - 3, p.e[1] + 7], 6, D) + ln([p.e[0] - 6, p.e[1] + 8], [p.e[0] - 6, 112], 3, D); break;
+      case 'dbench': g += ln([12, 94], [80, 79], 5, D) + ln([24, 92], [24, 112], 3, D) + ln([72, 81], [72, 112], 3, D) + `<circle cx="98" cy="86" r="4" fill="${D}"/>` + ln([2, 112], [118, 112], 2, D); break;
+      case 'post': g += ln([+a[1], 30], [+a[1], 112], 3, D); break;
+      case 'cpost': g += ln([+a[1], 40], [+a[1], 72], 6, D) + ln([+a[1], 72], [+a[1], 112], 3, D); break;
+      case 'fbench': g += `<rect x="42" y="86" width="36" height="5" rx="2" fill="${D}"/>` + ln([60, 91], [60, 112], 3, D); break;
+      case 'captain': g += ln([50, 30], [50, 80], 5, D) + ln([50, 50], [80, 50], 4, D) + ln([50, 80], [50, 112], 3, D) + ln([2, 112], [118, 112], 2, D); break;
+      case 'legpad': { const f = p[a[1]]; g += `<circle cx="${f[0].toFixed(1)}" cy="${(f[1] - 4).toFixed(1)}" r="4" fill="${D}"/>`; break; }
+      case 'anchor': { const f = p[a[1]]; g += `<rect x="${(f[0] - 6).toFixed(1)}" y="${(f[1] - 6).toFixed(1)}" width="10" height="6" rx="2" fill="${D}"/>`; break; }
+      case 'ball': { const f = p[a[1]]; g += `<circle cx="${(f[0] + 2).toFixed(1)}" cy="${(f[1] + 11).toFixed(1)}" r="11" fill="none" stroke="${D}" stroke-width="2.5"/>`; break; }
+      case 'kneepad': { const f = p[a[1]]; g += `<rect x="${(f[0] - 10).toFixed(1)}" y="${(f[1] - 9).toFixed(1)}" width="16" height="5" rx="2" fill="${D}"/>` + ln([96, 72], [96, 112], 3, D); break; }
+      case 'wall': g += ln([+a[1], 0], [+a[1], 112], 4, D); break;
+      case 'tread': g += `<rect x="8" y="108" width="100" height="5" rx="2.5" fill="${D}"/>` + ln([100, 108], [104, 46], 3, D) + ln([92, 50], [106, 46], 3, D); break;
+      case 'stairs': g += `<path d="M2 112 H66 V100 H118" fill="none" stroke="${D}" stroke-width="3"/>`; break;
+      case 'ellip': g += ln([10, 106], [104, 106], 4, D) + ln([84, 106], [86, 28], 3, D); break;
     }
   }
   if (p.k2) g += ln(p.p, p.k2, 4.5, TH.limb) + ln(p.k2, p.f2, 4.5, TH.limb);
@@ -125,6 +187,11 @@ function figure(pat, t) {
     if (a[0] === 'barbell') g += `<circle cx="${f[0]}" cy="${f[1]}" r="10" fill="none" stroke="${A}" stroke-width="3"/><circle cx="${f[0]}" cy="${f[1]}" r="2.5" fill="${A}"/>`;
     if (a[0] === 'db') g += `<rect x="${f[0] - 7}" y="${f[1] - 3}" width="14" height="6" rx="2" fill="${A}"/>`;
     if (a[0] === 'plate') g += `<circle cx="${f[0]}" cy="${f[1]}" r="7" fill="none" stroke="${A}" stroke-width="3"/>`;
+    if (a[0] === 'kb') g += `<circle cx="${f[0].toFixed(1)}" cy="${(f[1] + 7).toFixed(1)}" r="6.5" fill="${A}"/><circle cx="${f[0].toFixed(1)}" cy="${(f[1] + 1).toFixed(1)}" r="3.5" fill="none" stroke="${A}" stroke-width="2"/>`;
+    if (a[0] === 'handle') g += ln([f[0], f[1] - 6], [f[0], f[1] + 6], 4, A);
+    if (a[0] === 'hexbar') g += ln([f[0] - 16, f[1]], [f[0] + 16, f[1]], 3, A) + `<circle cx="${(f[0] - 16).toFixed(1)}" cy="${f[1].toFixed(1)}" r="9" fill="none" stroke="${A}" stroke-width="3"/><circle cx="${(f[0] + 16).toFixed(1)}" cy="${f[1].toFixed(1)}" r="9" fill="none" stroke="${A}" stroke-width="3"/>`;
+    if (a[0] === 'hbar') { const f2 = p[a[2]]; g += ln([f[0] - 22, f[1]], [f2[0] + 22, f2[1]], 3, A) + `<rect x="${(f[0] - 30).toFixed(1)}" y="${(f[1] - 13).toFixed(1)}" width="7" height="26" rx="2" fill="${A}"/><rect x="${(f2[0] + 23).toFixed(1)}" y="${(f2[1] - 13).toFixed(1)}" width="7" height="26" rx="2" fill="${A}"/>`; }
+    if (a[0] === 'band') { const f2 = p[a[2]]; g += ln(f, f2, 2.5, A); }
   }
   return g;
 }
@@ -134,7 +201,12 @@ let lastFrame = 0;
 function anim(ms) {
   if (ms - lastFrame > 40 && !document.hidden) {
     lastFrame = ms;
-    document.querySelectorAll('[data-anim]').forEach(el => { const r = el.getBoundingClientRect(); if (r.width && r.bottom > 0 && r.top < innerHeight) el.innerHTML = svgWrap(figure(el.dataset.anim, loopT(el.dataset.anim, ms))); });
+    document.querySelectorAll('[data-anim]').forEach(el => {
+      const r = el.getBoundingClientRect(); if (!(r.width && r.bottom > 0 && r.top < innerHeight)) return;
+      let pat = el.dataset.anim;
+      if (pat.includes('|')) { const [a, b] = pat.split('|'), cyc = P[a].tempo.reduce((x, y) => x + y * .8, 0) + .5, n = Math.floor(ms / 1000 / cyc / 2); pat = n % 2 ? b : a; el.dataset.half = n % 2 ? 'B' : 'A'; }
+      if (P[pat]) el.innerHTML = svgWrap(figure(pat, loopT(pat, ms)));
+    });
   }
   requestAnimationFrame(anim);
 }
@@ -174,6 +246,7 @@ function renderWorkout() {
   const D = DAYS[cur], date = addDays(parseDk(curWeek), cur);
   $('dtitle').textContent = D.title;
   $('ddate').textContent = fmtD(date, { weekday: 'long', month: 'short', day: 'numeric' });
+  if ($('excount')) $('excount').innerHTML = typeof excountHtml === 'function' ? excountHtml() : '';
   let tot = 0, dn = 0;
   $('list').innerHTML = D.slots.map((sl, si) => {
     const ex = exOf(cur, si), id = exId(ex), tl = setsOf(curWeek, cur, id), done = tl.filter(Boolean).length;
@@ -182,42 +255,58 @@ function renderWorkout() {
     const tgt = S.settings.targets[id] ?? '';
     const AS = autoSuggest(sl, last, id), sug = AS.html;
     const ph = sl.time ? 'sec' : (repTop(sl.reps) || 'max');
+    const ss = !sl.time && ssParts(ex.n);
+    const jl = window.__justLogged && window.__justLogged.split(':').map(Number);
     const rows = Array.from({ length: sl.sets }, (_, i) => {
       const s = tl[i]; const lw = last && last.sets[i] ? last.sets[i].w : '';
-      return `<div class="set ${s ? 'ok' : ''}"><div class="n">${i + 1}</div>
+      if (ss) {
+        const lw2 = last && last.sets[i] && last.sets[i].w2 != null ? last.sets[i].w2 : '', rp = repTop(sl.reps) || 'max';
+        return `<div class="set ss ${s ? 'ok' : ''} ${jl && jl[0] === si && jl[1] === i && s ? 'pop' : ''}"><div class="n">${i + 1}</div><div class="ssin">
+        <div class="ssl"><span class="sstag">A</span><input inputmode="decimal" data-w="${si}:${i}" value="${esc(s ? s.w : (AS.deload ? AS.w : (tgt !== '' ? tgt : (AS.w !== '' ? AS.w : lw))))}" placeholder="${unit()}"><input inputmode="numeric" data-r="${si}:${i}" value="${esc(s ? s.r : '')}" placeholder="${rp}"></div>
+        <div class="ssl"><span class="sstag b">B</span><input inputmode="decimal" data-w2="${si}:${i}" value="${esc(s ? (s.w2 ?? '') : lw2)}" placeholder="${unit()}"><input inputmode="numeric" data-r2="${si}:${i}" value="${esc(s ? (s.r2 ?? '') : '')}" placeholder="${rp}"></div>
+        </div><button class="chk" data-chk="${si}:${i}" aria-label="Log set">✓</button></div>`;
+      }
+      return `<div class="set ${s ? 'ok' : ''} ${jl && jl[0] === si && jl[1] === i && s ? 'pop' : ''}"><div class="n">${i + 1}</div>
       <input inputmode="decimal" data-w="${si}:${i}" value="${esc(s ? s.w : (AS.deload ? AS.w : (tgt !== '' ? tgt : (AS.w !== '' ? AS.w : lw))))}" placeholder="${unit()}">
       <input inputmode="numeric" data-r="${si}:${i}" value="${esc(s ? s.r : '')}" placeholder="${ph}">
       <button class="chk" data-chk="${si}:${i}" aria-label="Log set">✓</button></div>`;
     }).join('');
-    return `<div class="card ${done >= sl.sets ? 'done' : ''}">
-      <div class="top"><div class="info"><div class="num">EXERCISE ${si + 1}${S.settings.swaps[slotKey(cur, si)] ? ' · SWAPPED' : ''}</div>
+    const jdone = jl && jl[0] === si && done >= sl.sets;
+    return `<div class="card ${done >= sl.sets ? 'done' : ''} ${jdone ? 'justdone' : ''}" style="--i:${si}">
+      <div class="top"><div class="info"><div class="num">EXERCISE ${si + 1}${sl.bonus ? ' · BONUS' : ''}${S.settings.swaps[slotKey(cur, si)] ? ' · SWAPPED' : ''}</div>
        <div class="name">${esc(ex.n)}</div>
        <div class="meta"><span><b>${sl.sets} × ${sl.reps}</b></span><span>Rest ${fmtT(prefOf(id).rest || sl.rest)}${prefOf(id).rest ? ' ★' : ''}</span><span>Tempo ${P[ex.pat].tempo.join('-')}</span></div></div>
-       <button class="thumb" data-form="${si}"><div data-anim="${ex.pat}"></div><div class="lbl">FORM</div></button></div>
+       <button class="thumb" data-form="${si}"><div data-anim="${ss ? ssPat(ss[0], ex.pat) + '|' + ssPat(ss[1], ex.pat) : ex.pat}"></div><div class="lbl">FORM</div></button></div>
       <div class="chips"><button class="chip acc" data-pace="${si}">▶ ${sl.time ? 'Start timer' : 'Pace set'}</button><button class="chip" data-swap="${si}">↻ Swap</button><button class="chip" data-exhist="${si}">📈 Progress</button>${extraChips(sl, ex, si)}</div>
       <div class="target">🎯 Target <input inputmode="decimal" data-tgt="${si}" value="${esc(tgt)}" placeholder="—"> ${unit()}${sug}</div>
-      <div class="sets"><div class="sethdr"><span>Set</span><span>Weight</span><span>${sl.time ? 'Secs' : 'Reps'}</span><span></span></div>${rows}</div>
+      <div class="sets">${ss ? `<div class="sslegend"><span><b class="sstag">A</b>${esc(ss[0])}</span><span><b class="sstag b">B</b>${esc(ss[1])}</span></div>` : ''}<div class="sethdr ${ss ? 'ss' : ''}"><span>Set</span><span>Weight</span><span>${sl.time ? 'Secs' : 'Reps'}</span><span></span></div>${rows}</div>
       ${last ? `<div class="last">Last time (${fmtD(new Date(last.t), { weekday: 'short', month: 'short', day: 'numeric' })}): ${last.sets.map(s => fmtSet(last.timed, s)).join(', ')}</div>` : ''}
       ${noteHtml(si, id, last)}
     </div>`;
   }).join('');
+  window.__justLogged = null;
+  if (window.__stagger) { window.__stagger = false; const L = $('list'); L.classList.add('stagger'); clearTimeout(window.__stT); window.__stT = setTimeout(() => L.classList.remove('stagger'), 1200); }
   $('dprog').textContent = `${dn} / ${tot} sets`;
   $('dbar').style.width = (tot ? dn / tot * 100 : 0) + '%';
   renderNudges(); renderPBar();
   document.querySelectorAll('textarea.note').forEach(t => { if (t.value) { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; } });
 }
 
-function logSet(si, i, w, r) {
+function logSet(si, i, w, r, w2, r2) {
   const ex = exOf(cur, si), timed = !!DAYS[cur].slots[si].time, before = bestOf(exId(ex)), e = ensureEntry(curWeek, cur, ex), fresh = !e.sets[i];
-  e.n = ex.n; if (timed) e.timed = true; e.sets[i] = { w: w === '' ? '' : +w, r: +r, t: (e.sets[i] && e.sets[i].t) || Date.now() }; e.u = Date.now(); save();
+  e.n = ex.n; if (timed) e.timed = true; e.sets[i] = { w: w === '' ? '' : +w, r: +r, t: (e.sets[i] && e.sets[i].t) || Date.now(), ...(e.sets[i] && e.sets[i].rir != null ? { rir: e.sets[i].rir } : {}) }; if (r2 != null) { e.sets[i].w2 = w2 === '' || w2 == null ? '' : +w2; e.sets[i].r2 = +r2; } e.u = Date.now(); save();
   if (fresh) checkPR(ex.n, before, e.sets[i], timed);
 }
 function unlogSet(si, i) { const e = entry(curWeek, cur, exId(exOf(cur, si))); if (e) { e.sets[i] = null; e.u = Date.now(); save(); } }
 function readRow(si, i) {
   const w = document.querySelector(`[data-w="${si}:${i}"]`).value.trim();
   const sl = DAYS[cur].slots[si]; let r = document.querySelector(`[data-r="${si}:${i}"]`).value.trim();
-  if (r === '') r = sl.time || repTop(sl.reps) || 0; return { w, r };
+  if (r === '') r = sl.time || repTop(sl.reps) || 0;
+  const w2el = document.querySelector(`[data-w2="${si}:${i}"]`); if (!w2el) return { w, r };
+  let r2 = document.querySelector(`[data-r2="${si}:${i}"]`).value.trim(); if (r2 === '') r2 = repTop(sl.reps) || r;
+  return { w, r, w2: w2el.value.trim(), r2 };
 }
+
 function nextSetIdx(si) { const sl = DAYS[cur].slots[si], tl = setsOf(curWeek, cur, exId(exOf(cur, si))); for (let i = 0; i < sl.sets; i++) if (!tl[i]) return i; return -1; }
 function afterLog(si) {
   const sl = DAYS[cur].slots[si], ex = exOf(cur, si), more = nextSetIdx(si);
@@ -306,6 +395,7 @@ function exHistSheet(si) {
     const best = Math.max(...pts.map(p => p.y)), first = pts[0].y;
     body = `<div class="stats"><div class="stat"><b>${best}</b><span>Best ${timed ? 'secs' : unit()}</span></div><div class="stat"><b class="${best > first ? 'up' : ''}">${best - first >= 0 ? '+' : ''}${best - first}</b><span>Since start</span></div><div class="stat"><b>${h.length}</b><span>Sessions</span></div></div>` +
       lineChart(pts, { title: timed ? 'Longest set each session (sec)' : 'Heaviest set each session' }) +
+      (!timed && pts.some(p => p.y) ? (() => { const ep = h.map(x => ({ x: x.t, y: Math.round(Math.max(...x.sets.map(s => e1rm(+s.w || 0, +s.r || 0)))) })).filter(p => p.y); return ep.length ? `<div class="e1note">Estimated 1-rep max <b>${ep[ep.length - 1].y} ${unit()}</b> <span>best ${Math.max(...ep.map(p => p.y))}</span></div>` + lineChart(ep, { title: 'Estimated 1-rep max (from your best set each session)' }) : ''; })() : '') +
       `<div style="margin-top:8px">` + h.slice().reverse().slice(0, 15).map(x => `<div class="hrow"><span>${fmtD(new Date(x.t), { weekday: 'short', month: 'short', day: 'numeric', year: '2-digit' })}</span><b>${x.sets.map(s => fmtSet(x.timed, s)).join(' · ')}</b></div>`).join('') + `</div>`;
   }
   openSheet(`<h3>${esc(ex.n)}</h3><div class="sub">Weight progress over time</div>${body}`);
@@ -334,13 +424,15 @@ function pace(nowMs) {
   if (e < 0) {
     const c = Math.ceil(-e); el.className = 'phase'; el.textContent = 'Get ready · ' + c; pb.style.width = ((3 + e) / 3 * 100) + '%';
     fig.innerHTML = svgWrap(figure(PC.pat, 0)); rp.innerHTML = (PC.time || 0) + tgtTxt;
-    if (PC.last !== 'c' + c) { PC.last = 'c' + c; beep(520, .08, .2); }
+    if (PC.last !== 'c' + c) { PC.last = 'c' + c; beep(520, .08, .2); pvSay(String(c), true); }
     requestAnimationFrame(pace); return;
   }
   if (PC.time) {
     const left = PC.time - e; fig.innerHTML = svgWrap(figure(PC.pat, loopT(PC.pat, e * 1000)));
     el.className = 'phase hold'; el.textContent = 'HOLD STRONG'; pb.style.width = (e / PC.time * 100) + '%'; rp.innerHTML = Math.ceil(Math.max(0, left)) + tgtTxt;
-    if (left <= 3 && left > 0 && PC.last !== 't' + Math.ceil(left)) { PC.last = 't' + Math.ceil(left); beep(660, .08, .2); }
+    if (PC.lastSay !== 'go') { PC.lastSay = 'go'; pvSay('Hold', true); }
+    const lc = Math.ceil(left); if ([30, 20, 10].includes(lc) && PC.lastSay !== 'v' + lc && PC.time > lc) { PC.lastSay = 'v' + lc; pvSay(lc + ' seconds'); }
+    if (left <= 3 && left > 0 && PC.last !== 't' + Math.ceil(left)) { PC.last = 't' + Math.ceil(left); beep(660, .08, .2); pvSay(String(Math.ceil(left)), true); }
     if (left <= 0) { PC.reps = PC.time; finishPace(); return; }
     requestAnimationFrame(pace); return;
   }
@@ -350,22 +442,54 @@ function pace(nowMs) {
   if (s < a) { t = s / a; ph = P[PC.pat].ph[0]; cls = 'phase'; frac = s / a; }
   else if (s < a + h) { t = 1; ph = P[PC.pat].ph[1]; cls = 'phase hold'; frac = (s - a) / h; }
   else { t = 1 - (s - a - h) / b; ph = P[PC.pat].ph[2]; cls = 'phase up'; frac = (s - a - h) / b; }
-  const key = rep + ph; if (PC.last !== key) { PC.last = key; if (ph === P[PC.pat].ph[0]) beep(880, .1, .25); else beep(cls === 'phase hold' ? 600 : 740, .07, .18); }
+  const key = rep + ph; if (PC.last !== key) { PC.last = key; if (ph === P[PC.pat].ph[0]) beep(880, .1, .25); else beep(cls === 'phase hold' ? 600 : 740, .07, .18); pvRep(rep, ph, cls); }
   el.className = cls; el.textContent = ph.toUpperCase(); pb.style.width = (frac * 100) + '%';
   fig.innerHTML = svgWrap(figure(PC.pat, t)); rp.innerHTML = rep + tgtTxt;
   requestAnimationFrame(pace);
 }
+
+/* ================= voice coach (rep pacer only) ================= */
+const pvOn = () => localStorage.getItem('gym.pacerVoice') === '1';
+let pvVoice = null;
+function pvPick() {
+  if (!('speechSynthesis' in window)) return null;
+  const vs = speechSynthesis.getVoices().filter(v => /^en/i.test(v.lang)); if (!vs.length) return null;
+  return vs.find(v => /Samantha|Daniel|Karen|Moira|Google US English|Google UK English Female/i.test(v.name)) || vs.find(v => v.localService) || vs[0];
+}
+if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = () => { pvVoice = pvPick(); };
+function pvSay(text, cut) {
+  if (!pvOn() || !('speechSynthesis' in window) || !text) return;
+  try {
+    if (cut) speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text); pvVoice = pvVoice || pvPick(); if (pvVoice) u.voice = pvVoice;
+    u.rate = 1.08; u.pitch = 1; u.volume = 1; speechSynthesis.speak(u);
+  } catch (e) { }
+}
+function pvStop() { try { if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch (e) { } }
+function pvRep(rep, ph, cls) {
+  if (!pvOn() || !PC) return;
+  const P0 = P[PC.pat].ph;
+  if (ph === P0[0]) {
+    if (rep === 0) return pvSay(ph, true);
+    const left = PC.target ? PC.target - rep : null;
+    pvSay(left === 1 ? `${rep}. Last one` : String(rep), true);
+  } else if (cls === 'phase up' && P0[2] && rep === 0) pvSay(P0[2]);
+}
+function pvPaint() { const b = $('pvoice'); if (!b) return; const on = pvOn(); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); b.innerHTML = on ? '🔊 Voice on' : '🔈 Voice off'; }
+$('pvoice').onclick = () => { localStorage.setItem('gym.pacerVoice', pvOn() ? '0' : '1'); pvPaint(); if (pvOn()) { pvVoice = pvPick(); pvSay("Voice coach on. I'll count your reps.", true); } else pvStop(); };
+pvPaint();
 function finishPace() {
   if (!PC) return; PC.done = true; const { si, i } = PC; let reps = PC.reps;
   if (PC.time && !reps) reps = Math.max(0, Math.round((performance.now() - PC.start) / 1000));
-  $('pacer').classList.remove('show'); beep(990, .25, .3); buzz(150);
+  $('pacer').classList.remove('show'); beep(990, .25, .3); buzz(150); if (reps > 0) pvSay(PC.time ? 'Done. Nice hold.' : 'Done. ' + reps + ' reps.', true);
   const w = (document.querySelector(`[data-w="${si}:${i}"]`) || {}).value || '';
-  if (reps > 0) { logSet(si, i, w.trim(), reps); renderWorkout(); afterLog(si); }
+  const w2el = document.querySelector(`[data-w2="${si}:${i}"]`), r2el = document.querySelector(`[data-r2="${si}:${i}"]`);
+  if (reps > 0) { window.__justLogged = si + ':' + i; logSet(si, i, w.trim(), reps, w2el ? w2el.value.trim() : undefined, w2el ? (r2el.value.trim() || reps) : undefined); renderWorkout(); afterLog(si); }
   PC = null;
 }
 $('pdone').onclick = finishPace;
-$('pcancel').onclick = () => { if (PC) { PC.done = true; PC = null; } $('pacer').classList.remove('show'); };
-$('ppause').onclick = e => { if (!PC) return; if (!PC.paused) { PC.paused = true; PC.pauseAt = performance.now(); e.target.textContent = 'Resume'; } else { PC.start += performance.now() - PC.pauseAt; PC.paused = false; e.target.textContent = 'Pause'; } };
+$('pcancel').onclick = () => { if (PC) { PC.done = true; PC = null; } $('pacer').classList.remove('show'); pvStop(); };
+$('ppause').onclick = e => { if (!PC) return; if (!PC.paused) { PC.paused = true; PC.pauseAt = performance.now(); e.target.textContent = 'Resume'; pvStop(); } else { PC.start += performance.now() - PC.pauseAt; PC.paused = false; e.target.textContent = 'Pause'; } };
 function scaleTempo(f) { if (!PC) return; const n = performance.now(), el = n - PC.start, ns = Math.max(.5, Math.min(2, S.settings.tempoScale * f)); if (el > 0) PC.start = n - el * (ns / S.settings.tempoScale); S.settings.tempoScale = ns; setPref(exId(PC.ex), PC.ex.n, 'tempo', ns); touchSettings(); updTempo(); }
 $('tslow').onclick = () => scaleTempo(1.25);
 $('tfast').onclick = () => scaleTempo(.8);
@@ -373,7 +497,7 @@ $('tfast').onclick = () => scaleTempo(.8);
 /* ================= HISTORY ================= */
 function weekStats(wk) {
   let sets = 0, vol = 0, days = 0; const W = S.logs[wk] || {};
-  for (const di in W) { let any = false; for (const id in W[di]) for (const s of (W[di][id].sets || [])) if (s) { sets++; vol += (+s.w || 0) * (+s.r || 0); any = true; } if (any) days++; }
+  for (const di in W) { let any = false; for (const id in W[di]) for (const s of (W[di][id].sets || [])) if (s) { sets++; vol += (+s.w || 0) * (+s.r || 0) + (+s.w2 || 0) * (+s.r2 || 0); any = true; } if (any) days++; }
   return { sets, vol: Math.round(vol), days };
 }
 function renderWeeks() {
@@ -581,9 +705,9 @@ const loadJSZip = () => JSZipP = JSZipP || new Promise((res, rej) => { if (windo
 async function doExport(kind) {
   if (kind === 'json') { download(`gym-${PROF}-backup-${stamp()}.json`, new Blob([JSON.stringify({ exported: new Date().toISOString(), app: 'gym-routine', profile: PROF, ...S }, null, 1)], { type: 'application/json' })); }
   if (kind === 'sets') {
-    const rows = [['week_start', 'routine_day', 'date', 'time', 'exercise', 'set', 'weight', 'unit', 'reps_or_secs']];
+    const rows = [['week_start', 'routine_day', 'date', 'time', 'exercise', 'set', 'weight', 'unit', 'reps_or_secs', 'weight_b', 'reps_b']];
     for (const wk of Object.keys(S.logs).sort()) for (const di of Object.keys(S.logs[wk]).sort()) for (const id in S.logs[wk][di]) {
-      const e = S.logs[wk][di][id]; (e.sets || []).forEach((s, i) => { if (!s) return; const d = new Date(s.t || parseDk(wk)); rows.push([wk, DAYS[di] ? DAYS[di].d + ' ' + DAYS[di].title : di, dk(d), d.toTimeString().slice(0, 5), e.n, i + 1, s.w, unit(), s.r]); });
+      const e = S.logs[wk][di][id]; (e.sets || []).forEach((s, i) => { if (!s) return; const d = new Date(s.t || parseDk(wk)); rows.push([wk, DAYS[di] ? DAYS[di].d + ' ' + DAYS[di].title : di, dk(d), d.toTimeString().slice(0, 5), e.n, i + 1, s.w, unit(), s.r, s.w2 ?? '', s.r2 ?? '']); });
     }
     download(`gym-${PROF}-workouts-${stamp()}.csv`, new Blob([csv(rows)], { type: 'text/csv' }));
   }
@@ -722,18 +846,23 @@ function renderAll(quiet) {
   renderPBar();
   if (tab === 'body' && !(quiet && document.activeElement && document.activeElement.matches('input,select'))) renderBody();
   if (tab === 'more' && !quiet) renderMore();
+  if (tab === 'chat' && typeof renderChat === 'function') { if (!(quiet && document.activeElement && document.activeElement.id === 'chatIn')) { renderChat(); markRead(); } loadChat(); }
+  if (typeof chatBubble === 'function') chatBubble();
 }
 function showTab(t) {
+  const ORD = ['workout', 'history', 'body', 'fuel', 'chat', 'more'], from = ORD.indexOf(tab), to = ORD.indexOf(t);
+  if (t === 'workout' && tab !== 'workout') window.__stagger = true;
+  setTimeout(() => { const sec = $('t-' + t); if (!sec) return; sec.classList.remove('enter-l', 'enter-r', 'enter-f'); void sec.offsetWidth; sec.classList.add(from < 0 || from === to ? 'enter-f' : to > from ? 'enter-r' : 'enter-l'); if (typeof movePill === 'function') movePill(); }, 0);
   tab = t; document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
   document.querySelectorAll('.tab').forEach(s => s.classList.toggle('on', s.id === 't-' + t));
-  $('htitle').innerHTML = PROFILES[PROF].label + ' <span>' + { workout: 'Split', history: 'Log', body: 'Body', fuel: 'Fuel', more: 'App' }[t] + '</span>';
+  $('htitle').innerHTML = PROFILES[PROF].label + ' <span>' + { workout: 'Split', history: 'Log', body: 'Body', fuel: 'Fuel', chat: 'Chat', more: 'App' }[t] + '</span>';
   renderAll(); window.scrollTo(0, 0);
 }
 
 document.addEventListener('click', async e => {
   const t = e.target.closest('button'); if (!t) return; const d = t.dataset;
   if (d.tab) return showTab(d.tab);
-  if (d.day !== undefined) { cur = +d.day; renderWorkout(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+  if (d.day !== undefined) { cur = +d.day; window.__stagger = true; renderWorkout(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
   if (d.dismiss !== undefined) { localStorage.setItem(LWS(), curWeek); renderWorkout(); return; }
   if (d.swap !== undefined) return swapSheet(+d.swap);
   if (d.form !== undefined) return formSheet(+d.form);
@@ -743,7 +872,7 @@ document.addEventListener('click', async e => {
   if (d.chk) {
     const [si, i] = d.chk.split(':').map(Number);
     if (setsOf(curWeek, cur, exId(exOf(cur, si)))[i]) { unlogSet(si, i); renderWorkout(); }
-    else { const { w, r } = readRow(si, i); beep(1, .01, .001); logSet(si, i, w, r); renderWorkout(); afterLog(si); }
+    else { const { w, r, w2, r2 } = readRow(si, i); beep(1, .01, .001); window.__justLogged = si + ':' + i; logSet(si, i, w, r, w2, r2); renderWorkout(); afterLog(si); }
     return;
   }
   if (d.wk !== undefined) { t.parentElement.classList.toggle('open'); return; }
@@ -805,7 +934,7 @@ document.addEventListener('click', async e => {
 document.addEventListener('change', e => {
   const d = e.target.dataset;
   if (d.tgt !== undefined) { const id = exId(exOf(cur, +d.tgt)); const v = e.target.value.trim(); if (v === '') delete S.settings.targets[id]; else S.settings.targets[id] = +v; touchSettings(); renderWorkout(); return; }
-  if (d.w || d.r) { const [si, i] = (d.w || d.r).split(':').map(Number); if (setsOf(curWeek, cur, exId(exOf(cur, si)))[i]) { const { w, r } = readRow(si, i); logSet(si, i, w, r); } return; }
+  if (d.w || d.r || d.w2 || d.r2) { const [si, i] = (d.w || d.r || d.w2 || d.r2).split(':').map(Number); if (setsOf(curWeek, cur, exId(exOf(cur, si)))[i]) { const { w, r, w2, r2 } = readRow(si, i); logSet(si, i, w, r, w2, r2); } return; }
   if (e.target.id === 'cA' || e.target.id === 'cB') renderCompare();
   if (e.target.id === 'bDate') { const b = S.body[e.target.value]; const v = b && !b.del ? b : {}; $('bW').value = v.w ?? ''; $('bWaist').value = v.waist ?? ''; $('bBf').value = v.bf ?? ''; $('bChest').value = v.chest ?? ''; $('bArms').value = v.arms ?? ''; $('bThighs').value = v.thighs ?? ''; $('bHips').value = v.hips ?? ''; $('bNote').value = v.note ?? ''; }
 });
