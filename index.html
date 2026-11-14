@@ -579,6 +579,26 @@ button:active{transform:scale(.96)}button{transition:transform .35s var(--pop),o
 .msg{animation:msgIn .35s var(--spring) both}@keyframes msgIn{from{opacity:0;transform:translateY(8px) scale(.98)}}
 .excount b{transition:transform .3s var(--pop)}
 .exrmx{flex:none;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:rgba(255,69,58,.14);color:#ff6b61;font-weight:800;font-size:14px}.exrmx.add{background:rgba(48,209,88,.14);color:#30d158;font-size:20px}.exbonus{display:grid;place-items:center;font-size:30px}
+/* ================= polish v19 ================= */
+html{-webkit-text-size-adjust:100%}
+/* iOS zooms the page when a focused field is under 16px */
+.fld input,.fld select,.fld textarea,textarea.note,.swsearch{font-size:16px}
+button{touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+input,select,textarea{touch-action:manipulation}
+button:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+/* full-width rows dim on press like iOS list cells instead of shrinking */
+.opt:active,.wu:active,.chtype:active{transform:scale(.985);opacity:.75}
+.wk>button:active,.mrow:active,.strow:active,.mmrow:active,.wurow:active,.finrow:active,.sess-idle:active,#picker .half:active{transform:none;opacity:.6}
+.days{scrollbar-width:none}.days::-webkit-scrollbar{display:none}
+/* off-screen glass still costs a blur pass every frame, so take it out of rendering until it is shown */
+.ov{visibility:hidden;transition:opacity .3s ease,visibility 0s .3s}.ov.show{visibility:visible;transition:opacity .3s ease}.ov.drag{transition:none}
+.sheet{max-height:90dvh;overscroll-behavior:contain;visibility:hidden;transition:transform .5s var(--spring),visibility 0s .5s!important}
+.sheet.show{visibility:visible;transition:transform .5s var(--spring)!important}
+#rest{visibility:hidden;transition:transform .5s var(--spring),visibility 0s .5s!important}
+#rest.show{visibility:visible;transition:transform .5s var(--spring)!important}
+#pacer.show{animation:pacerIn .4s var(--spring) both}
+@keyframes pacerIn{from{opacity:0;transform:translateY(24px) scale(.985)}}
+.chatlist{min-height:calc(100dvh - 330px)}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-delay:0s!important;transition-duration:.01ms!important}}
 /* ================= coach features ================= */
 .excount{flex-wrap:wrap}

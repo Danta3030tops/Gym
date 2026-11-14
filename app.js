@@ -40,7 +40,7 @@ function loadState() {
   try {
     if (PROF === 'king' && !localStorage.getItem(KEY) && localStorage.getItem('gym.v2')) { // migrate pre-profile data to King
       localStorage.setItem(KEY, localStorage.getItem('gym.v2')); localStorage.removeItem('gym.v2');
-      if (localStorage.getItem(LWS())) { localStorage.setItem(LWS(), localStorage.getItem(LWS())); localStorage.removeItem('gym.lastWeekSeen'); }
+      if (localStorage.getItem('gym.lastWeekSeen')) { localStorage.setItem(LWS(), localStorage.getItem('gym.lastWeekSeen')); localStorage.removeItem('gym.lastWeekSeen'); }
     }
     const r = localStorage.getItem(KEY); if (r) { const d = JSON.parse(r); S = { ...blank(), ...d, settings: { ...blank().settings, ...(d.settings || {}) } }; }
   } catch (e) { }
@@ -201,14 +201,16 @@ const svgWrap = inner => `<svg viewBox="0 -14 120 132" xmlns="http://www.w3.org/
 function loopT(pat, ms) { const [a, h, b] = P[pat].tempo.map(x => x * .8); const tot = a + h + b + .5, s = (ms / 1000) % tot; if (s < a) return s / a; if (s < a + h) return 1; if (s < a + h + b) return 1 - (s - a - h) / b; return 0; }
 let lastFrame = 0;
 function anim(ms) {
-  if (ms - lastFrame > 40 && !document.hidden) {
+  if (ms - lastFrame > 40 && !document.hidden && !$('pacer').classList.contains('show')) { // the pacer covers the list and draws its own figure
     lastFrame = ms;
-    document.querySelectorAll('[data-anim]').forEach(el => {
-      const r = el.getBoundingClientRect(); if (!(r.width && r.bottom > 0 && r.top < innerHeight)) return;
+    // measure every figure first, then draw: mixing the two forced a full layout per figure, per frame
+    const vis = [];
+    for (const el of document.querySelectorAll('[data-anim]')) { const r = el.getBoundingClientRect(); if (r.width && r.bottom > 0 && r.top < innerHeight) vis.push(el); }
+    for (const el of vis) {
       let pat = el.dataset.anim;
       if (pat.includes('|')) { const [a, b] = pat.split('|'), cyc = P[a].tempo.reduce((x, y) => x + y * .8, 0) + .5, n = Math.floor(ms / 1000 / cyc / 2); pat = n % 2 ? b : a; el.dataset.half = n % 2 ? 'B' : 'A'; }
       if (P[pat]) el.innerHTML = svgWrap(figure(pat, loopT(pat, ms)));
-    });
+    }
   }
   requestAnimationFrame(anim);
 }
@@ -365,7 +367,7 @@ $('rskip').onclick = () => { if (RT[PROF]) RT[PROF].done = true; $('rest').class
 
 /* ================= sheets ================= */
 function openSheet(html) { $('sheetin').innerHTML = html; $('ov').classList.add('show'); $('sheet').classList.add('show'); $('sheet').scrollTop = 0; }
-function closeSheet() { $('ov').classList.remove('show'); $('sheet').classList.remove('show'); setTimeout(() => { if (!$('sheet').classList.contains('show')) $('sheetin').innerHTML = ''; }, 300); }
+function closeSheet() { $('ov').classList.remove('show'); $('sheet').classList.remove('show'); setTimeout(() => { if (!$('sheet').classList.contains('show')) $('sheetin').innerHTML = ''; }, 520); } // wait out the .5s slide, or the sheet empties while still on screen
 $('ov').onclick = closeSheet; $('sx').onclick = closeSheet;
 
 function formSheet(si) {
@@ -630,16 +632,7 @@ async function compressImage(file) {
 let pendingPhoto = null;
 $('photoInput').addEventListener('change', async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f || !pendingPhoto) return;
-  const [m, p] = pendingPhoto; pendingPhoto = null; toast('Saving photo…');
-  try {
-    const blob = await compressImage(f); const u = Date.now();
-    const old = photoMeta(m, p);
-    if (old) await idbDel(`${m}-${p}-${old.u}`);
-    await idbPut(`${m}-${p}-${u}`, blob);
-    S.photos[m] = S.photos[m] || {}; S.photos[m][p] = { u, up: false, path: null };
-    if (old && old.path) S.photos[m][p].oldPath = old.path;
-    save(); closeSheet(); renderBody(); toast('📸 Photo saved' + (session ? ', uploading…' : ''));
-  } catch (err) { toast('Could not read that photo'); }
+  const [m, p] = pendingPhoto; pendingPhoto = null; savePhotoBlob(m, p, f); // shared with the ghost camera (extras.js)
 });
 async function deletePhoto(m, p) {
   const meta = photoMeta(m, p); if (!meta) return;
@@ -942,7 +935,7 @@ document.addEventListener('change', e => {
 });
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) return;
-  const nw = weekKeyOf(new Date()); if (nw !== curWeek) { curWeek = nw; applyRoutine(); cur = (() => { const g = new Date().getDay(); return g >= 1 && g <= 5 ? g - 1 : 0; })(); renderAll(); }
+  const nw = weekKeyOf(new Date()); if (nw !== curWeek) { curWeek = nw; applyRoutine(); cur = todayIdx(); renderAll(); }
   keepAwake(); syncAll();
 });
 window.addEventListener('online', () => syncAll());
