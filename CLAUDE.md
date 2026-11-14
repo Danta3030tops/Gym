@@ -2,8 +2,8 @@
 
 A self-hosted PWA gym tracker for two people. Plain HTML/CSS/JS, no build step, no framework, no package.json.
 
-- **Live:** https://danta3030tops-prog.github.io/Gym/ (capital G matters)
-- **Repo:** `danta3030tops-prog/Gym`, branch `main`, served by GitHub Pages from the repo root
+- **Live:** https://danta3030tops.github.io/Gym/ (capital G matters)
+- **Repo:** `Danta3030tops/Gym`, branch `main`, served by GitHub Pages from the repo root
 - **Backend:** Supabase project `xszyjrrrqpcciofrrfiu` (URL and publishable key are in `config.js`; the key is meant to be public, Row Level Security protects the data)
 - **Current version:** `gym-v19` (see `sw.js`)
 
@@ -13,7 +13,7 @@ Push to `main`. Pages redeploys in about a minute.
 
 **Always bump `VERSION` in `sw.js` when any app file changes**, otherwise phones keep the cached copy. If you add a new file, add it to `SHELL` in `sw.js` too. After a deploy, users close and reopen the app twice (first open downloads, second loads).
 
-Verify a deploy: `curl -s https://danta3030tops-prog.github.io/Gym/sw.js | grep VERSION`
+Verify a deploy: `curl -s https://danta3030tops.github.io/Gym/sw.js | grep VERSION`
 
 ## Profiles
 
