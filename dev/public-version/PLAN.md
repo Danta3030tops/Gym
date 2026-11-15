@@ -5,7 +5,7 @@ A second app built from the couple app, for anyone to sign up. The couple app (r
 ## Decisions made by the owner
 
 - **One app, two roles.** People sign up as a regular user or a trainer. Trainers see extra tabs.
-- **Sign-up:** users choose their own username and password. No profile picker.
+- **Sign-up:** users choose their own username and password, and give a real email (decided 14 Nov 2026) so a forgotten password can be reset. No profile picker.
 - **Friends** (added by username, request must be accepted):
   - leaderboard
   - 1-on-1 chats
@@ -21,7 +21,7 @@ A second app built from the couple app, for anyone to sign up. The couple app (r
 ## Proposed, not yet confirmed by the owner
 
 - Trainer can see client progress photos only if the client allows it.
-- Username + password with no email: the schema assumes a generated email per username (`username@<some-domain>`), which means no password reset by email. Ask the owner whether to collect a real email for resets.
+- Sign-in is by email + password. Signing in by username would need a server-side lookup (an edge function), because a public username-to-email lookup would leak emails.
 
 ## Backend
 

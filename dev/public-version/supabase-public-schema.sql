@@ -1,6 +1,7 @@
 -- Gym app (public version): run ONCE in a fresh Supabase project → SQL Editor → New query → Run.
--- Safe to run again. Also set: Authentication → Sign In / Providers → Email → turn OFF "Confirm email"
--- (accounts use username + password; the email behind each account is generated from the username).
+-- Safe to run again. Accounts are a username + a real email + a password (the email is used to sign in and for password resets).
+-- Authentication → Sign In / Providers → Email: "Confirm email" can stay ON (people confirm by link, then sign in) or be turned OFF
+-- (they are signed in straight away). The app handles both. Also add the app's address under Authentication → URL Configuration.
 
 create extension if not exists pgcrypto;
 
