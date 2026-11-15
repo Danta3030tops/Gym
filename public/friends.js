@@ -1,8 +1,9 @@
-/* Public Gym app: friends. Add by username, accept / decline, friends list (table app_friends).
+/* Public Gym app: friends. Add by username, accept / decline, friends list (table app_friends),
+   leaderboard (friends' app_public summaries), nudges and other notifications (table app_notes).
    A request is one row { requester, addressee, status: 'pending' | 'accepted' }; declining, cancelling and removing all delete it.
-   Later milestones (leaderboard, chats, nudges) read friends through friendList() / friendIds() / isFriend(). */
+   Other files read friends through friendList() / friendIds() / isFriend(). */
 'use strict';
-const FR = { rows: [], profs: {}, loaded: false, busy: false, ch: null, err: false, at: 0 };
+const FR = { rows: [], profs: {}, loaded: false, busy: false, ch: null, err: false, at: 0, seg: null };
 const frKey = () => 'gymp.friends.' + uid();
 const frOther = r => r.requester === uid() ? r.addressee : r.requester;
 const frName = p => p ? (p.display_name || p.username) : 'Someone';
@@ -32,22 +33,91 @@ async function loadFriends() {
   frPaint();
 }
 function frPaint() {
-  const b = $('frBadge'), n = session && ME ? frIncoming().length : 0;
+  const b = $('frBadge'), n = session && ME ? frIncoming().length + NT.rows.length : 0;
   if (b) { b.hidden = !n; b.textContent = n > 9 ? '9+' : n; }
   if (!appOff() && tab === 'friends') renderFriends();
 }
 function renderFriends() {
   const inc = frIncoming(), out = frOutgoing(), acc = frAccepted(), off = !navigator.onLine;
-  let h = `<div class="dayhead"><div><h2>Friends</h2><div class="sub">${acc.length ? acc.length + (acc.length === 1 ? ' friend' : ' friends') : 'Add people by their username'}</div></div></div>`;
-  if (inc.length) h += `<div class="card" id="frReqs"><h3>Requests</h3>${inc.map(({ r, p }) => `<div class="edrow frow">${frAv(p)}${frWho(p)}<button class="chip acc" data-frok="${r.id}">Accept</button><button class="chip" data-frno="${r.id}">Decline</button></div>`).join('')}</div>`;
-  h += `<div class="card" id="frList"><h3>Your friends</h3>${acc.length ? acc.map(({ r, p }) => `<div class="edrow frow" data-frview="${r.id}">${frAv(p)}${frWho(p)}<span class="frchev">›</span></div>`).join('')
-    : `<div class="muted">${!FR.loaded && off ? 'You’re offline. Your friends show up here once you’re connected.' : 'No friends yet. Add someone by their username and they’ll get a request to accept.'}</div>`}
-    <button class="btn acc" data-frnew>＋ Add a friend</button></div>`;
-  if (out.length) h += `<div class="card" id="frSent"><h3>Sent</h3>${out.map(({ r, p }) => `<div class="edrow frow">${frAv(p)}${frWho(p)}<button class="chip" data-frcancel="${r.id}">Cancel</button></div>`).join('')}<div class="muted" style="margin-top:8px">Waiting for them to accept.</div></div>`;
-  h += `<div class="foot">Your username is <b>@${esc(ME.username)}</b>. Share it so friends can add you.</div>`;
+  if (!FR.seg) FR.seg = acc.length ? 'board' : 'people';
+  let h = `<div class="dayhead"><div><h2>Friends</h2><div class="sub">${acc.length ? acc.length + (acc.length === 1 ? ' friend' : ' friends') : 'Add people by their username'}</div></div></div>
+    <div class="seg" style="margin-top:0">${[['board', 'Leaderboard'], ['people', 'People' + (inc.length ? ' · ' + inc.length : '')]].map(([k, t]) => `<button class="${FR.seg === k ? 'on' : ''}" data-frseg="${k}">${t}</button>`).join('')}</div>`;
+  if (NT.rows.length) h += `<div class="card" id="frNotes"><h3>New for you</h3>${NT.rows.slice(0, 8).map(n => `<div class="hrow"><b style="flex:1;font-weight:500">${esc(noteText(n))}</b><span>${esc(frAgo(n.created_at))}</span></div>`).join('')}
+    ${NT.rows.length > 8 ? `<div class="muted">and ${NT.rows.length - 8} more</div>` : ''}<button class="btn ghost" data-ntclear>Clear</button></div>`;
+  if (FR.seg === 'board') h += boardHtml();
+  else {
+    if (inc.length) h += `<div class="card" id="frReqs"><h3>Requests</h3>${inc.map(({ r, p }) => `<div class="edrow frow">${frAv(p)}${frWho(p)}<button class="chip acc" data-frok="${r.id}">Accept</button><button class="chip" data-frno="${r.id}">Decline</button></div>`).join('')}</div>`;
+    h += `<div class="card" id="frList"><h3>Your friends</h3>${acc.length ? acc.map(({ r, p }) => `<div class="edrow frow" data-frview="${r.id}">${frAv(p)}${frWho(p)}<span class="frchev">›</span></div>`).join('')
+      : `<div class="muted">${!FR.loaded && off ? 'You’re offline. Your friends show up here once you’re connected.' : 'No friends yet. Add someone by their username and they’ll get a request to accept.'}</div>`}
+      <button class="btn acc" data-frnew>＋ Add a friend</button></div>`;
+    if (out.length) h += `<div class="card" id="frSent"><h3>Sent</h3>${out.map(({ r, p }) => `<div class="edrow frow">${frAv(p)}${frWho(p)}<button class="chip" data-frcancel="${r.id}">Cancel</button></div>`).join('')}<div class="muted" style="margin-top:8px">Waiting for them to accept.</div></div>`;
+    h += `<div class="foot">Your username is <b>@${esc(ME.username)}</b>. Share it so friends can add you.</div>`;
+  }
   $('friends').innerHTML = h;
   if (Date.now() - FR.at > 5000) loadFriends(); // opening the tab refreshes it
+  if (FR.seg === 'board' && Date.now() - LB.at > 5000) loadBoard();
 }
+
+/* ---------- leaderboard: me (from my own state) against friends' published summaries (app_public) ---------- */
+const LB = { sums: {}, metric: 'week', at: 0 };
+const LB_METRICS = [['week', 'This week', 'days trained this week'], ['month', 'This month', 'days trained this month'], ['streak', 'Streak', 'training days in a row'], ['prs', 'PRs', 'personal records this month']];
+const frAgo = t => { const s = (Date.now() - new Date(t).getTime()) / 1000; return s < 90 ? 'just now' : s < 3600 ? Math.round(s / 60) + 'm ago' : s < 86400 ? Math.round(s / 3600) + 'h ago' : Math.round(s / 86400) + 'd ago'; };
+/* a published summary goes stale (it was written on the day of the last sync), so read it against today's week and month */
+function lbStats(sm) {
+  const s = sm || {}, now = new Date(), wk = s.wk === weekKeyOf(now), mk = s.mk === monthKey(now);
+  return { week: wk ? s.weekDays || 0 : 0, sets: wk ? s.weekSets || 0 : 0, month: mk ? s.monthDays || 0 : 0, prs: mk ? s.prsMonth || 0 : 0,
+    streak: Date.now() - (s.at || 0) < 8 * 864e5 ? s.dayStreak || 0 : 0, today: s.td === dk(now) && s.todaySets > 0, lastT: s.lastT || 0 };
+}
+async function loadBoard() {
+  const ids = friendIds(); if (appOff() || !sb || !navigator.onLine || !ids.length) return;
+  const id = uid(); LB.at = Date.now();
+  const r = await sb.from('app_public').select('*').in('user_id', ids).then(r => r, e => ({ error: e }));
+  if (r.error || !session || uid() !== id) return;
+  LB.sums = {}; r.data.forEach(x => { LB.sums[x.user_id] = x.data || {}; }); cacheSet('gymp.board.' + id, LB.sums);
+  if (!appOff() && tab === 'friends' && FR.seg === 'board') renderFriends();
+}
+function boardHtml() {
+  const acc = friendList();
+  if (!acc.length) return `<div class="card" id="lb"><h3>Leaderboard</h3><div class="muted">Add a friend and you’ll both show up here, ranked by how much you’ve trained.</div><button class="btn acc" data-frnew>＋ Add a friend</button></div>`;
+  const m = LB_METRICS.find(x => x[0] === LB.metric) || LB_METRICS[0], k = m[0];
+  const rows = [{ p: ME, st: lbStats(summaryOf(S, PROF)), me: true, has: true }, ...acc.map(p => ({ p, st: lbStats(LB.sums[p.id]), has: !!LB.sums[p.id] }))];
+  rows.sort((a, b) => b.st[k] - a.st[k] || b.st.sets - a.st.sets || frName(a.p).localeCompare(frName(b.p)));
+  let rank = 0, prev = null;
+  return `<div class="lbm">${LB_METRICS.map(([key, t]) => `<button class="chip ${key === k ? 'acc' : ''}" data-lbm="${key}">${t}</button>`).join('')}</div>
+    <div class="card" id="lb">${rows.map((x, i) => {
+      if (x.st[k] !== prev) { rank = i + 1; prev = x.st[k]; }
+      const sub = !x.has ? 'Nothing shared yet' : x.st.today ? '🔥 Trained today' : x.st.lastT ? 'Last trained ' + frAgo(x.st.lastT) : 'No workouts yet';
+      return `<div class="edrow frow lbrow${x.me ? ' me' : ''}"><i class="lbrank">${rank === 1 && x.st[k] > 0 ? '🥇' : rank}</i>${frAv(x.p)}<div class="edn"><b>${x.me ? 'You' : esc(frName(x.p))}</b><span>${sub}</span></div>
+        ${x.me ? '' : `<button class="chip" data-nudge="${esc(x.p.id)}" aria-label="${x.st.today ? 'Send hype' : 'Nudge'}">${x.st.today ? '🔥' : '👊'}</button>`}<b class="lbval">${x.st[k]}</b></div>`;
+    }).join('')}<div class="muted" style="margin-top:10px;font-size:12px">Ranked by ${m[2]}. Tap 👊 to nudge a friend, or 🔥 to cheer one who trained today.</div></div>`;
+}
+
+/* ---------- notifications (app_notes): nudges and hype now, trainer updates later ---------- */
+const NT = { rows: [], max: 0 };
+const NOTE_TEXT = { nudge: n => `👊 ${n} nudged you. Time to train!`, hype: n => `🔥 ${n} sent you some hype` };
+const noteText = n => (NOTE_TEXT[n.kind] ? NOTE_TEXT[n.kind](frName(FR.profs[n.from_id])) : n.body || 'Something new');
+async function loadNotes() {
+  if (appOff() || !sb || !navigator.onLine) return; const id = uid();
+  const r = await sb.from('app_notes').select('*').eq('user_id', id).eq('read', false).order('created_at', { ascending: false }).limit(30).then(r => r, e => ({ error: e }));
+  if (r.error || !session || uid() !== id) return;
+  const fresh = r.data.filter(n => n.id > NT.max); NT.rows = r.data;
+  if (fresh.length) { NT.max = Math.max(...fresh.map(n => n.id)); cacheSet('gymp.noteMax.' + id, NT.max); toast(fresh.length === 1 ? noteText(fresh[0]) : `${fresh.length} new notifications`, 3500); buzz(20); }
+  frPaint();
+}
+async function clearNotes() {
+  NT.rows = []; frPaint(); if (!sb || !navigator.onLine) return;
+  await sb.from('app_notes').update({ read: true }).eq('user_id', uid()).eq('read', false).then(r => r, e => ({ error: e }));
+}
+async function sendNudge(fid) {
+  const p = FR.profs[fid]; if (!p || !isFriend(fid)) return;
+  if (!sb || !navigator.onLine) return toast('You’re offline. Try again when you’re connected.');
+  const k = 'gymp.nudged.' + uid(), sent = cacheGet(k) || {}, hype = lbStats(LB.sums[fid]).today;
+  if (Date.now() - (sent[fid] || 0) < 30 * 60000) return toast(`${frName(p)} already heard from you. Give it a bit.`);
+  const { error } = await sb.from('app_notes').insert({ user_id: fid, from_id: uid(), kind: hype ? 'hype' : 'nudge', body: '', data: {}, read: false }).then(r => r, e => ({ error: e }));
+  if (error) return toast('Couldn’t send that. Check your connection and try again.', 3500);
+  sent[fid] = Date.now(); cacheSet(k, sent); toast(hype ? `🔥 Sent ${frName(p)} some hype` : `👊 Nudged ${frName(p)}`); buzz(20);
+}
+
 function frAddSheet() {
   openSheet(`<h3>Add a friend</h3><div class="sub">Type their username. They get a request and you’re friends once they accept.</div>
     <label class="fld">Username<input id="frUser" autocapitalize="none" autocorrect="off" autocomplete="off" spellcheck="false" maxlength="21" placeholder="their_username" enterkeyhint="send"></label>
@@ -104,7 +174,11 @@ function frRemoveSheet(rid) {
     <button class="btn acc" data-frrmyes="${row.id}">Yes, remove</button><button class="btn ghost" data-frview="${row.id}">Keep</button>`);
 }
 document.addEventListener('click', e => {
-  if (appOff()) return; const t = e.target.closest('[data-frnew],[data-fradd],[data-frok],[data-frno],[data-frcancel],[data-frview],[data-frrm],[data-frrmyes]'); if (!t) return; const d = t.dataset;
+  if (appOff()) return; const t = e.target.closest('[data-frnew],[data-fradd],[data-frok],[data-frno],[data-frcancel],[data-frview],[data-frrm],[data-frrmyes],[data-frseg],[data-lbm],[data-nudge],[data-ntclear]'); if (!t) return; const d = t.dataset;
+  if (d.frseg) { FR.seg = d.frseg; return renderFriends(); }
+  if (d.lbm) { LB.metric = d.lbm; return renderFriends(); }
+  if (d.nudge) return sendNudge(d.nudge);
+  if (d.ntclear !== undefined) return clearNotes();
   if (d.frnew !== undefined) return frAddSheet();
   if (d.fradd !== undefined) return frAdd();
   if (d.frok) return frAnswer(d.frok, true);
@@ -115,17 +189,28 @@ document.addEventListener('click', e => {
   if (d.frview) return frViewSheet(d.frview);
 });
 document.addEventListener('keydown', e => { if (!appOff() && e.key === 'Enter' && e.target.id === 'frUser') { e.preventDefault(); frAdd(); } });
-document.addEventListener('visibilitychange', () => { if (!appOff() && !document.hidden) loadFriends(); });
-addEventListener('online', () => { if (!appOff()) loadFriends(); });
+const frRefresh = () => loadFriends().then(() => { loadNotes(); if (tab === 'friends' && FR.seg === 'board') loadBoard(); });
+document.addEventListener('visibilitychange', () => { if (!appOff() && !document.hidden) frRefresh(); });
+addEventListener('online', () => { if (!appOff()) frRefresh(); });
 
 /* called by startApp / stopApp in app.js */
 function startFriends() {
-  const c = cacheGet(frKey()) || {}; Object.assign(FR, { rows: c.rows || [], profs: c.profs || {}, loaded: !!c.rows, busy: false, err: false, at: 0 });
-  frPaint(); loadFriends();
-  if (sb && !FR.ch) { try { FR.ch = sb.channel('friends-' + uid()).on('postgres_changes', { event: '*', schema: 'public', table: 'app_friends' }, () => loadFriends()).subscribe(); } catch (e) { FR.ch = null; } }
+  const c = cacheGet(frKey()) || {}; Object.assign(FR, { rows: c.rows || [], profs: c.profs || {}, loaded: !!c.rows, busy: false, err: false, at: 0, seg: null });
+  Object.assign(LB, { sums: cacheGet('gymp.board.' + uid()) || {}, metric: 'week', at: 0 }); Object.assign(NT, { rows: [], max: cacheGet('gymp.noteMax.' + uid()) || 0 });
+  frPaint(); loadFriends().then(loadNotes); // notes name the sender, so load friends first
+  if (sb && !FR.ch) {
+    try {
+      FR.ch = sb.channel('friends-' + uid())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'app_friends' }, () => loadFriends())
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'app_notes', filter: 'user_id=eq.' + uid() }, () => loadNotes())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'app_public' }, () => { if (!appOff() && tab === 'friends' && FR.seg === 'board') loadBoard(); })
+        .subscribe();
+    } catch (e) { FR.ch = null; }
+  }
 }
 function stopFriends() {
   if (FR.ch && sb) { try { sb.removeChannel(FR.ch); } catch (e) { } }
-  Object.assign(FR, { rows: [], profs: {}, loaded: false, busy: false, ch: null, err: false, at: 0 });
+  Object.assign(FR, { rows: [], profs: {}, loaded: false, busy: false, ch: null, err: false, at: 0, seg: null });
+  Object.assign(LB, { sums: {}, at: 0 }); Object.assign(NT, { rows: [], max: 0 });
   const b = $('frBadge'); if (b) b.hidden = true; const el = $('friends'); if (el) el.innerHTML = '';
 }

@@ -34,13 +34,27 @@ Status values: `todo`, `in progress`, `done`.
 | 1 | Sign-in / sign-up screen, first-time setup (role, goal, days), routine built from templates, mock backend + smoke test | done |
 | 2 | Single-user core in `public/`: port workout, history, body, fuel, more tabs to one signed-in user on `app_state` / `app_routines` | done |
 | 3 | Friends: add by username, accept / decline, friends list | done |
-| 4 | Friends features: leaderboard, 1-on-1 chats, group chats, nudges, challenges | todo |
+| 4 | Friends features: leaderboard, 1-on-1 chats, group chats, nudges, challenges | in progress |
 | 5 | Trainer portal: add trainer, Clients tab, Inbox tab, routine edits with client notification, remove trainer | todo |
 | 6 | Multi-user tests on the mock, service worker + manifest for `public/`, final review of the schema | todo |
 
 ## Session log
 
 (newest first)
+
+### 15 Nov 2026 — milestone 4, part 1: leaderboard, nudges, notifications (WIP)
+
+Done, in `public/friends.js`:
+- The Friends tab has two segments, **Leaderboard** and **People** (`FR.seg`; opens on the leaderboard when you have friends).
+- **Leaderboard** (`boardHtml`, `loadBoard`, `LB`): me (from `summaryOf(S, PROF)`) against friends' `app_public` rows, ranked by This week / This month / Streak / PRs. `lbStats(summary)` reads a stored summary against today's week and month, because a friend's summary is only as fresh as their last sync.
+- **Nudges**: the 👊 / 🔥 button on a leaderboard row inserts an `app_notes` row (`kind` `nudge`, or `hype` if they trained today). One per friend per 30 minutes (kept on the phone in `gymp.nudged.<uid>`).
+- **Notifications** (`NT`, `loadNotes`, `clearNotes`, `noteText`): unread `app_notes` rows show in a "New for you" card at the top of the Friends tab, count towards the tab badge, and toast once when they first arrive (`gymp.noteMax.<uid>` remembers the newest id already announced). "Clear" marks them read. **Milestone 5 should add its kinds (trainer request, routine edited) to `NOTE_TEXT`**; a note with an unknown kind shows its `body`.
+- Realtime subscriptions for `app_notes` and `app_public` are on the same channel as `app_friends`.
+- Tests: `smoke-public.py` covers the board order, the metric chips, hype vs nudge, the rate limit, the badge, clearing. The test's pauses are now multiplied by `GYM_TEST_SLOW` (default 2, about 110 s a run) and reloads wait for the app to settle, because the fixed pauses failed at random when the Mac was busy.
+
+**Still to do for milestone 4, in this order:**
+1. Chats: new `public/chat.js`, a third segment "Chats" in the Friends tab. Conversation list from `app_members` + `app_convs`, thread view from `app_messages`, 1-on-1 via rpc `app_open_chat(other)`, groups via `app_new_group(title, people)`, `app_group_add`, `app_group_rename`, leave a group (delete own `app_members` row), unread counts from `app_members.last_read`. The mock needs those rpcs and the `app_bump_conv` trigger behaviour (update `last_at` / `last_text`, and the sender's `last_read`). Photo messages can wait (bucket `app-chat`).
+2. Challenges: the couple app's version is in root `coach.js` (search "challenge"); `summaryOf` already publishes `ch: settings.challenge`. Make it "challenge a friend".
 
 ### 15 Nov 2026 — milestone 3 done (friends)
 

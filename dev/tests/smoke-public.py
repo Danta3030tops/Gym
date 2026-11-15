@@ -12,9 +12,12 @@ with sync_playwright() as p:
     ctx = b.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=2, service_workers='block', color_scheme='dark')
     ctx.add_init_script(mock); ctx.route('**/@supabase/**', lambda r: r.abort())
     errs = []; A = ctx.new_page(); A.on('pageerror', lambda e: errs.append(str(e)))
+    _wait = A.wait_for_timeout; A.wait_for_timeout = lambda ms: _wait(ms * float(os.environ.get('GYM_TEST_SLOW', '2')))  # pauses are stretched; set GYM_TEST_SLOW=1 on a fast, idle machine
     shot = lambda n: A.screenshot(path=os.path.join(here, f'last-run-public-{n}.png'))
     db = lambda: A.evaluate("JSON.parse(localStorage.getItem('mockp.db'))")
-    A.goto(URL); A.evaluate("localStorage.clear()"); A.reload(); A.wait_for_timeout(500)
+    def reload():  # wait until the page has settled on the sign-in screen, setup, or the app (a fixed pause was flaky)
+        A.reload(); A.wait_for_function("document.querySelector('#auth.show,#onb.show') || !document.body.classList.contains('out')", timeout=15000); A.wait_for_timeout(500)
+    A.goto(URL); A.evaluate("localStorage.clear()"); reload()
     assert A.is_visible('#auth.show'), 'sign-in screen should show when signed out'
     assert not A.is_visible('.wrap'), 'app must be hidden while signed out'
     shot('1-signin')
@@ -102,7 +105,7 @@ with sync_playwright() as p:
             assert A.locator('[data-hseg]').count() == 3, 'no scoreboard yet'
         if t == 'more': assert '@test_user' in A.inner_text('#more'); shot('7-more')
     shot('6-workout')
-    A.reload(); A.wait_for_timeout(800); assert A.is_visible('.wrap') and A.locator('#list .card').count() == 6 and A.locator('.set.ok').count() == 1, 'session and log survive a reload'
+    reload(); assert A.is_visible('.wrap') and A.locator('#list .card').count() == 6 and A.locator('.set.ok').count() == 1, 'session and log survive a reload'
     A.click('nav button[data-tab="more"]'); A.wait_for_timeout(300)
     A.click('#signOut'); A.wait_for_timeout(300); assert A.is_visible('#auth.show') and not A.is_visible('.wrap') and not A.is_visible('nav')
     A.click('[data-aumode="up"]'); A.fill('#auUser', 'test_user'); A.wait_for_timeout(600); assert 'Taken' in A.inner_text('#auUserSt')
@@ -147,7 +150,7 @@ with sync_playwright() as p:
         assert A.is_visible('.wrap'), 'signed in as ' + email
     def add(u):
         A.click('[data-frnew]'); A.wait_for_timeout(450); A.fill('#frUser', u); A.click('[data-fradd]'); A.wait_for_timeout(450)
-    tabF = lambda: (A.click('nav button[data-tab="friends"]'), A.wait_for_timeout(400))
+    tabF = lambda: (A.click('nav button[data-tab="friends"]'), A.wait_for_timeout(400), A.click('[data-frseg="people"]'), A.wait_for_timeout(200))
     tabF(); assert 'No friends yet' in A.inner_text('#friends') and '@coach.kay' in A.inner_text('#friends') and not A.is_visible('#frBadge')
     add('zz'); assert '3 to 20' in A.inner_text('#frMsg')
     A.fill('#frUser', 'nobody_here'); A.click('[data-fradd]'); A.wait_for_timeout(400); assert 'No one here' in A.inner_text('#frMsg')
@@ -171,13 +174,30 @@ with sync_playwright() as p:
     shot('10-friends-list')
     # both sides see the friendship; it survives a reload; either can remove it
     signin('test@example.com'); tabF(); assert 'Coach Kay' in A.inner_text('#frList') and '1 friend' in A.inner_text('#friends')
-    A.reload(); A.wait_for_timeout(800); tabF(); assert A.locator('#frList .frow').count() == 1
+    reload(); tabF(); assert A.locator('#frList .frow').count() == 1
     A.click('#frList .frow'); A.wait_for_timeout(450); assert 'Friends since' in A.inner_text('#sheetin')
     A.click('[data-frrm]'); A.wait_for_timeout(450); A.click('[data-frrmyes]'); A.wait_for_timeout(600)
     assert fr() == [] and 'No friends yet' in A.inner_text('#friends'), 'remove deletes the friendship'
     # accept with the button
     add('coach.kay'); signin('coach@example.com'); tabF(); A.click('[data-frok]'); A.wait_for_timeout(500)
     assert fr()[0]['status'] == 'accepted' and A.locator('#frList .frow').count() == 1
+    # leaderboard and nudges (milestone 4). coach.kay has logged nothing; test_user logged a set today.
+    notes = lambda: db()['t'].get('app_notes', [])
+    A.click('[data-frseg="board"]'); A.wait_for_timeout(600)
+    assert A.locator('#lb .lbrow').count() == 2 and 'Test Person' in A.locator('#lb .lbrow').nth(0).inner_text() and A.locator('#lb .lbrow .lbval').nth(0).inner_text() == '1', 'friend who trained leads the week'
+    assert 'You' in A.locator('#lb .lbrow.me').inner_text() and 'Trained today' in A.locator('#lb .lbrow').nth(0).inner_text()
+    for m in ['month', 'streak', 'prs', 'week']: A.click(f'[data-lbm="{m}"]'); A.wait_for_timeout(150); assert A.locator('#lb .lbrow').count() == 2
+    shot('11-leaderboard')
+    A.click('[data-nudge]'); A.wait_for_timeout(400); assert len(notes()) == 1 and notes()[0]['kind'] == 'hype', 'someone who trained today gets hype, not a nudge'
+    A.click('[data-nudge]'); A.wait_for_timeout(400); assert len(notes()) == 1, 'no spamming'
+    signin('test@example.com'); assert A.inner_text('#frBadge') == '1', 'unread note shows on the badge'
+    A.click('nav button[data-tab="friends"]'); A.wait_for_timeout(400)
+    assert 'Coach Kay sent you some hype' in A.inner_text('#frNotes') and A.is_visible('#lb'), 'with friends, the tab opens on the leaderboard'; shot('12-notes')
+    assert 'You' in A.locator('#lb .lbrow').nth(0).inner_text(), 'I lead my own board'
+    A.click('[data-ntclear]'); A.wait_for_timeout(400); assert notes()[0]['read'] is True and not A.is_visible('#frNotes') and not A.is_visible('#frBadge')
+    A.click('[data-nudge]'); A.wait_for_timeout(400); assert len(notes()) == 2 and notes()[1]['kind'] == 'nudge' and notes()[1]['read'] is False
+    reload(); assert not A.is_visible('#frBadge'), 'cleared notes stay cleared'
+    signin('coach@example.com'); assert A.inner_text('#frBadge') == '1'; tabF(); assert 'Test Person nudged you' in A.inner_text('#frNotes')
     # signing out clears the list from the screen
     A.click('nav button[data-tab="more"]'); A.wait_for_timeout(300); A.click('#signOut'); A.wait_for_timeout(300)
     assert A.evaluate("FR.rows.length === 0 && document.getElementById('friends').innerHTML === ''")
