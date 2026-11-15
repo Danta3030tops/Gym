@@ -10,6 +10,7 @@ Read `PLAN.md` first. This file is the hand-over between work sessions: update i
 - Never touch the live Supabase project (`xszyjrrrqpcciofrrfiu`) and never run SQL anywhere. The public app needs a new Supabase project that only the owner can create; until then everything is built and tested against `dev/tests/mock-public.js`.
 - After every round run both tests from the repo root with a local server on port 8765:
   `python3 dev/tests/smoke.py` (couple app) and `python3 dev/tests/smoke-public.py` (public app).
+- **Use subagents for the heavy lifting** (owner request, to get more done on less allowance): the main session plans, delegates self-contained pieces (porting a file, writing a feature, extending a test) to subagents with a precise brief, then reviews their diff and runs the tests itself. Keep small edits in the main session.
 - Same conventions as `CLAUDE.md`: no build step, no frameworks, compact style, `esc()` for user text, iOS glass look.
 
 ## Decisions (owner, 14 Nov 2026)
@@ -40,6 +41,11 @@ Status values: `todo`, `in progress`, `done`.
 ## Session log
 
 (newest first)
+
+### 14 Nov 2026 — weekends and six-day weeks (owner request)
+
+Training days can now be any 3 to 6 of the seven days: `wd` runs 1 (Mon) to 7 (Sun), and `SPLITS[6]` is push / pull / legs twice.
+**For milestone 2:** the couple app hard-codes a Mon–Fri week in several places (`todayIdx`, the day strip, `isWeekday`, streaks that "count weekdays", `DAYS.length` of 5, "x/5 days"). In `public/` all of these must come from the routine's `wd` values instead: today's day is the one whose `wd` matches today, the strip shows the routine's days, and streaks should count the person's own training days.
 
 ### 14 Nov 2026 — setup asks more, plan uses the answers (owner request)
 

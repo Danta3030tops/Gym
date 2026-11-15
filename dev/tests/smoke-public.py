@@ -48,14 +48,19 @@ with sync_playwright() as p:
     for f in ['glutes', 'arms', 'core']: A.click(f'[data-focus="{f}"]')
     assert A.evaluate("OB.focus.join()") == 'arms,core', 'only the last two focus picks are kept'
     A.click('[data-focus="core"]'); A.click('[data-focus="glutes"]'); shot('4a-setup-focus'); A.click('[data-obnext]'); A.wait_for_timeout(300)
-    # schedule: default Mon Tue Thu Fri; drop to Mon Thu Fri, can't go below 3
+    # schedule: default Mon Tue Thu Fri; drop to Mon Thu Fri (can't go below 3), then swap Thu for Sunday; all 7 can't be picked
+    assert A.locator('[data-wd]').count() == 7, 'weekends are offered'
     A.click('[data-wd="2"]'); A.click('[data-wd="1"]'); A.wait_for_timeout(100)
     assert A.evaluate("OB.wds.join()") == '1,4,5', 'at least three days stay selected'
+    for d in [2, 3, 6, 7]: A.click(f'[data-wd="{d}"]')
+    assert A.evaluate("OB.wds.join()") == '1,2,3,4,5,6', 'six days at most'
+    for d in [2, 3, 6, 7, 4]: A.click(f'[data-wd="{d}"]')
+    assert A.evaluate("OB.wds.join()") == '1,5,7'
     A.click('[data-mins="45"]'); shot('4b-setup-schedule'); A.click('[data-obnext]'); A.wait_for_timeout(300)
     A.click('[data-equip="home"]'); A.click('[data-level="some"]'); A.click('[data-unit="kg"]'); shot('4c-setup-equipment')
     A.click('[data-obnext]'); A.wait_for_timeout(300)
     assert A.locator('.pv').count() == 3, '3-day plan'
-    assert A.evaluate("OB.routine.map(d => d.d).join()") == 'Mon,Thu,Fri', 'plan lands on the chosen weekdays'
+    assert A.evaluate("OB.routine.map(d => d.d).join()") == 'Mon,Fri,Sun', 'plan lands on the chosen weekdays'
     plan = A.evaluate("OB.routine.map(d => d.slots.map(s => s.opts[0].n))")
     lifts = [n for d in plan for n in d[:-1]]; assert len(lifts) == len(set(lifts)), 'no exercise repeats across the week'
     assert all(len(d) == 6 for d in plan), '45 min: 5 exercises + cardio finisher per day'
@@ -63,10 +68,10 @@ with sync_playwright() as p:
     assert A.evaluate("OB.routine.every(d => d.slots.some(s => LIB.glutes.concat(LIB.arms).some(o => o.n === s.opts[0].n)))"), 'focus areas show up every day'
     # the builder holds up for every combination of answers
     bad = A.evaluate("""(() => { const out = [];
-      for (const goal of ['muscle','strength','lean','general']) for (const equip of ['gym','home','body']) for (const mins of [30,45,60]) for (const level of ['new','seasoned']) for (const wds of [[1,3,5],[1,2,4,5],[1,2,3,4,5]]) for (const focus of [[],['glutes','arms'],['back','shoulders']]) {
+      for (const goal of ['muscle','strength','lean','general']) for (const equip of ['gym','home','body']) for (const mins of [30,45,60]) for (const level of ['new','seasoned']) for (const wds of [[1,3,5],[2,4,6,7],[1,2,3,4,5],[1,2,3,5,6,7]]) for (const focus of [[],['glutes','arms'],['back','shoulders']]) {
         const r = buildRoutine({ goal, equip, mins, level, wds, focus }), names = r.flatMap(d => d.slots.filter(s => !s.time || s.sets > 1).map(s => s.opts[0].n));
         const want = Math.min({30:4,45:5,60:6}[mins], level === 'new' ? 5 : 6) + (goal === 'lean' ? 1 : 0);
-        if (r.length !== wds.length || r.some(d => d.slots.length !== want) || r.some(d => d.slots.some(s => !s.opts.length || s.opts.some(o => !o || !P[o.pat] || !fitsEquip(o.n, equip)))) || (equip !== 'body' && new Set(names).size !== names.length)) out.push([goal, equip, mins, level, wds.length, focus.join('+')].join(' '));
+        if (r.length !== wds.length || r.map(d => d.wd).join() !== wds.join() || r.some(d => d.slots.length !== want) || r.some(d => d.slots.some(s => !s.opts.length || s.opts.some(o => !o || !P[o.pat] || !fitsEquip(o.n, equip)))) || (equip !== 'body' && new Set(names).size !== names.length)) out.push([goal, equip, mins, level, wds.length, focus.join('+')].join(' '));
       } return out; })()""")
     assert not bad, bad[:8]
     shot('5-setup-plan')

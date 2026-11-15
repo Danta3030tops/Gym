@@ -1,6 +1,6 @@
 /* Public Gym app: builds a starter routine from the exercise library (../library.js) for a goal and days per week.
    Day shape matches the couple app ({ d, title, slots: [{ sets, reps, rest, time?, opts: [{ n, pat, cues }] }] }) plus
-   `wd`, the weekday the day falls on (1 = Monday … 5 = Friday), because not everyone trains five days. */
+   `wd`, the weekday the day falls on (1 = Monday … 7 = Sunday), because not everyone trains five days. */
 'use strict';
 const GOALS = [
   ['muscle', '💪', 'Build muscle', 'Moderate weights, 8–12 reps'],
@@ -9,7 +9,7 @@ const GOALS = [
   ['general', '⚡', 'General fitness', 'A balanced mix of everything']
 ];
 const LEVELS = [['new', 'New to the gym', 'Under 6 months of lifting'], ['some', 'Some experience', '6 months to 2 years'], ['seasoned', 'Experienced', '2+ years of steady training']];
-const WD_NAMES = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+const WD_NAMES = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 /* each slot: [category, preferred exercise]. The first two slots of a day are its main lifts. */
 const SPLITS = {
   3: [
@@ -29,6 +29,14 @@ const SPLITS = {
     [3, 'Pull', [['back', 'Pull-Ups'], ['back', 'Barbell Bent-Over Row'], ['back', 'Lat Pulldown'], ['back', 'Dumbbell Row'], ['arms', 'Barbell Curl'], ['arms', 'Hammer Curls']]],
     [4, 'Glutes & Hamstrings', [['glutes', 'Smith Machine Hip Thrust'], ['hamstrings', 'Dumbbell RDL'], ['quads', 'Hack Squat'], ['glutes', 'Cable Glute Kickback'], ['calves', 'Seated Calf Raise'], ['core', 'Hanging Knee Raise']]],
     [5, 'Upper & Core', [['chest', 'Flat Dumbbell Bench Press'], ['back', 'Close-Grip Pulldown'], ['shoulders', 'Arnold Press'], ['arms', 'EZ-Bar Curl'], ['core', 'Lying Leg Raise'], ['core', 'Ab Wheel Rollout']]]
+  ],
+  6: [
+    [1, 'Push A', [['chest', 'Flat Barbell Bench Press'], ['shoulders', 'Seated Dumbbell Press'], ['chest', 'Incline Dumbbell Press'], ['shoulders', 'DB Lateral Raise'], ['arms', 'Tricep Pushdown (rope)'], ['core', 'Weighted Cable Crunch']]],
+    [2, 'Pull A', [['back', 'Pull-Ups'], ['back', 'Barbell Bent-Over Row'], ['back', 'Lat Pulldown'], ['shoulders', 'Face Pulls'], ['arms', 'Barbell Curl'], ['arms', 'Hammer Curls']]],
+    [3, 'Legs A', [['quads', 'Barbell Back Squat'], ['hamstrings', 'Romanian Deadlift'], ['quads', 'Leg Press'], ['hamstrings', 'Lying Leg Curl'], ['calves', 'Standing Calf Raise'], ['core', 'Hanging Leg Raises']]],
+    [4, 'Push B', [['shoulders', 'Barbell Overhead Press'], ['chest', 'Flat Dumbbell Bench Press'], ['chest', 'Machine Chest Press'], ['shoulders', 'Cable Lateral Raise'], ['arms', 'Overhead DB Extension'], ['core', 'Lying Leg Raise']]],
+    [5, 'Pull B', [['back', 'Dumbbell Row'], ['back', 'Close-Grip Pulldown'], ['back', 'Seated Cable Row'], ['shoulders', 'Rear Delt DB Fly'], ['arms', 'EZ-Bar Curl'], ['arms', 'Incline DB Curl']]],
+    [6, 'Legs B', [['glutes', 'Barbell Hip Thrust'], ['quads', 'Hack Squat'], ['hamstrings', 'Dumbbell RDL'], ['quads', 'Bulgarian Split Squat'], ['calves', 'Seated Calf Raise'], ['core', 'Hanging Knee Raise']]]
   ]
 };
 /* sets × reps and rest per goal: [main lifts, accessories] */
@@ -42,7 +50,8 @@ const DOSE = {
 const FOCUS = [['glutes', '🍑', 'Glutes', ['glutes']], ['legs', '🦵', 'Legs', ['quads', 'hamstrings']], ['chest', '🫁', 'Chest', ['chest']], ['back', '🪽', 'Back', ['back']], ['shoulders', '🤸', 'Shoulders', ['shoulders']], ['arms', '💪', 'Arms', ['arms']], ['core', '🎯', 'Core', ['core']]];
 const EQUIP = [['gym', '🏟️', 'Full gym', 'Barbells, machines and cables'], ['home', '🏠', 'Dumbbells at home', 'Dumbbells and a bench'], ['body', '🤸', 'No equipment', 'Bodyweight only, anywhere']];
 const MINS = [[30, '30 min', 4], [45, '45 min', 5], [60, '60+ min', 6]]; // session length → exercises per day
-const DEFAULT_WDS = { 3: [1, 3, 5], 4: [1, 2, 4, 5], 5: [1, 2, 3, 4, 5] };
+const DEFAULT_WDS = { 3: [1, 3, 5], 4: [1, 2, 4, 5], 5: [1, 2, 3, 4, 5], 6: [1, 2, 3, 4, 5, 6] };
+const WD_MIN = 3, WD_MAX = 6;
 /* what each exercise needs, judged from its name */
 const GYM_RE = /barbell|leg press|hack squat|pendulum|smith|belt squat|box squat|front squat|leg extension|leg curl|single-leg curl|deadlift|good morning|cable|back extension|reverse hyper|glute-ham|nordic|stability ball|machine|bench press|decline|hammer strength|pec deck|landmine|svend|pulldown|pull-ups?|chin-ups?|pendlay|chest-supported|t-bar|seal row|meadows|inverted row|rope (hammer|pullover)|\(rope\)|rack pull|face pulls|ez-bar|preacher|spider|pushdown|skull|chest dips|tricep dips|seated calf|donkey calf|leg press calf|hanging|captain|ab wheel|treadmill|stairmaster|elliptical|bike|rowing machine|sled|battle|kettlebell/i;
 const DB_RE = /dumbbell|\bdb\b/i;
@@ -51,9 +60,9 @@ const needsGym = n => GYM_RE.test(n) && !DB_RE.test(n);
 const fitsEquip = (n, equip) => equip === 'gym' || (!needsGym(n) && (equip === 'home' || !LOAD_RE.test(n)));
 const CAT_FALLBACK = { hamstrings: 'glutes', back: 'core', shoulders: 'chest', arms: 'chest', calves: 'quads', chest: 'core', quads: 'glutes', glutes: 'quads' };
 
-/* answers: goal, level, equip, mins (30/45/60), focus (ids from FOCUS, up to 2), wds (weekdays 1–5, three to five of them) */
+/* answers: goal, level, equip, mins (30/45/60), focus (ids from FOCUS, up to 2), wds (weekdays 1–7, Monday = 1; three to six of them) */
 function buildRoutine({ goal = 'general', days, wds, level = 'some', equip = 'gym', mins = 60, focus = [] } = {}) {
-  wds = (wds && wds.length >= 3 ? [...wds] : DEFAULT_WDS[days] || DEFAULT_WDS[4]).filter(d => d >= 1 && d <= 5).sort((a, b) => a - b).slice(0, 5);
+  wds = (wds && wds.length >= 3 ? [...wds] : DEFAULT_WDS[days] || DEFAULT_WDS[4]).filter(d => d >= 1 && d <= 7).sort((a, b) => a - b).slice(0, WD_MAX);
   const split = SPLITS[wds.length] || SPLITS[4], used = new Set();
   let dose = DOSE[goal] || DOSE.general;
   if (equip === 'body') dose = [{ sets: dose[0].sets, reps: '10–15', rest: 60 }, { sets: 3, reps: '15–20', rest: 45 }]; // no load to add, so more reps

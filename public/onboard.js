@@ -26,8 +26,8 @@ function renderOb(dir) {
     <div class="pick">${FOCUS.map(([k, , t]) => `<button class="pk ${OB.focus.includes(k) ? 'on' : ''}" data-focus="${k}"><b>${t}</b></button>`).join('')}</div>
     <div class="ob-foot"><button class="au-go" data-obnext>${OB.focus.length ? 'Continue' : 'No preference'}</button></div>`;
   if (step === 'schedule') h = `<h1 class="ob-h">When will you train?</h1><p class="ob-p">Pick the days you can keep up every week. Consistency beats ambition.</p>
-    <div class="wdays">${[1, 2, 3, 4, 5].map(d => `<button class="wd ${OB.wds.includes(d) ? 'on' : ''}" data-wd="${d}" aria-pressed="${OB.wds.includes(d)}">${WD_NAMES[d]}</button>`).join('')}</div>
-    <div class="au-hint" id="obDays">${OB.wds.length} days a week · choose 3 to 5</div>
+    <div class="wdays">${[1, 2, 3, 4, 5, 6, 7].map(d => `<button class="wd ${OB.wds.includes(d) ? 'on' : ''}" data-wd="${d}" aria-pressed="${OB.wds.includes(d)}">${WD_NAMES[d]}</button>`).join('')}</div>
+    <div class="au-hint" id="obDays">${OB.wds.length} days a week · choose ${WD_MIN} to ${WD_MAX}</div>
     <div class="au-lbl">How long is a session?</div>
     <div class="dayn">${MINS.map(([m, t, n]) => `<button class="pk ${OB.mins === m ? 'on' : ''}" data-mins="${m}"><b>${t.replace(' min', '')}</b><span>minutes</span></button>`).join('')}</div>
     <div class="ob-foot"><button class="au-go" data-obnext>Continue</button></div>`;
@@ -73,7 +73,7 @@ $('onb').addEventListener('click', e => {
   if (d.color) { OB.color = d.color; OB.name = $('obName').value; applyTheme(d.color); return renderOb(''); }
   if (d.goal) { OB.goal = d.goal; return renderOb(''); }
   if (d.focus) { OB.focus = OB.focus.includes(d.focus) ? OB.focus.filter(x => x !== d.focus) : [...OB.focus, d.focus].slice(-2); return renderOb(''); }
-  if (d.wd) { const n = +d.wd, on = OB.wds.includes(n); if (on && OB.wds.length <= 3) return toast('Pick at least 3 days'); OB.wds = on ? OB.wds.filter(x => x !== n) : [...OB.wds, n].sort(); return renderOb(''); }
+  if (d.wd) { const n = +d.wd, on = OB.wds.includes(n); if (on && OB.wds.length <= WD_MIN) return toast(`Pick at least ${WD_MIN} days`); if (!on && OB.wds.length >= WD_MAX) return toast('Keep at least one rest day'); OB.wds = on ? OB.wds.filter(x => x !== n) : [...OB.wds, n].sort((a, b) => a - b); return renderOb(''); }
   if (d.mins) { OB.mins = +d.mins; return renderOb(''); }
   if (d.equip) { OB.equip = d.equip; return renderOb(''); }
   if (d.level) { OB.level = d.level; return renderOb(''); }
