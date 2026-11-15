@@ -24,6 +24,10 @@ Read `PLAN.md` first. This file is the hand-over between work sessions: update i
 - Sign-in is by **email** + password for now. Signing in by username needs a server-side lookup (an edge function), because a public "username to email" lookup would leak everyone's email.
 - A new Supabase project is needed before the public app can go live (then: run `supabase-public-schema.sql`, put its URL and publishable key in `public/config.js`).
 - Should trainers see client progress photos only when the client allows it? (proposed in PLAN.md, not confirmed)
+  For now a coach sees **no** client photos at all (the most private choice); adding an opt-in later is a small change.
+- The plan said coaches get a **Clients tab and an Inbox tab**. The bar already has six buttons, so coaches get **one extra tab, "Clients"**, with two segments inside it: Clients and Inbox. Say if you want two separate tabs instead.
+- A person can have **one coach at a time** in the app (the database would allow several). Say if clients should be able to have more.
+- Chats are **text only** so far. Photo messages (as in the couple app) are not built; say if you want them before launch.
 
 ## Milestones
 
@@ -35,12 +39,27 @@ Status values: `todo`, `in progress`, `done`.
 | 2 | Single-user core in `public/`: port workout, history, body, fuel, more tabs to one signed-in user on `app_state` / `app_routines` | done |
 | 3 | Friends: add by username, accept / decline, friends list | done |
 | 4 | Friends features: leaderboard, 1-on-1 chats, group chats, nudges, challenges | done |
-| 5 | Trainer portal: add trainer, Clients tab, Inbox tab, routine edits with client notification, remove trainer | todo |
+| 5 | Trainer portal: add trainer, Clients tab, Inbox tab, routine edits with client notification, remove trainer | done |
 | 6 | Multi-user tests on the mock, service worker + manifest for `public/`, final review of the schema | todo |
 
 ## Session log
 
 (newest first)
+
+### 15 Nov 2026 — milestone 5 done (trainer portal)
+
+- New `public/trainer.js` (loaded last of the feature files, before `auth.js`).
+- **Client side:** a "Your coach" card in Friends → People. Add a coach by username (must have signed up as a coach), cancel the request, message them, remove them (confirm sheet). Removing deletes the `app_trainers` row, so access ends at once.
+- **Coach side** (`ME.role === 'trainer'`): a seventh nav button, **Clients** (hidden for everyone else), with segments **Clients** and **Inbox**. Requests with Accept / Decline (badge on the tab), client list with "trained today / last trained", and a client page: this week / streak / PRs, their plan, their last six sessions (read from their `app_state`), Message, Edit their plan, Remove client.
+- **Editing a client's plan** reuses the routine editor in `extras.js`: `ED_FOR = { id, name, routine, noted }` points it at the client (`edBase()` instead of `baseRoutine()`, `mutRoutine` calls `trSaveRoutine()`). Each change upserts the client's `app_routines` row with `updated_by = coach`; the first change of an editing session inserts one `app_notes` row (`kind: 'routine'`). `ED_FOR` is reset to `null` when the coach opens their own editor and on sign-out.
+- **On the client:** a fresh `routine` note triggers `sync()`, which already pulls a changed `app_routines` row. When the row was written by someone else, `sync()` clears `settings.swaps`, `exSkip`, `exSkipDef`, because those are keyed by slot position and a coach may have moved slots. The coach accepting sends a `trainer_ok` note.
+- **Chats:** a coach / client pair gets a `coach` conversation from `app_open_chat` (mock updated). For the coach these are the Inbox (`chInbox()`); for the client they sit in Friends → Chats marked "· Coach" (`chFriendsSide()`). A thread opened from the Clients tab returns there on Back (`CH.back`). Coach chats disappear when the link is removed.
+- `smoke-public.py` covers the whole flow (request, cancel, accept, client page, plan edit landing in the client row with one notification, coach chat and Inbox, the client receiving the plan, removing the coach).
+
+**Next: milestone 6.** To do:
+1. Multi-user tests on the mock: at least a third account, to cover "add a friend to a group" and the leaderboard with three people; a non-coach username in "Add your coach" ("isn't signed up as a coach").
+2. Service worker + manifest for `public/` (copy the approach in root `sw.js`; cache the `../` files it loads too; own `VERSION`; register it at the end of `public/index.html`; keep `service_workers='block'` in the tests).
+3. Final review of `dev/public-version/supabase-public-schema.sql` against what the app now does. Collected notes: add `app_members` to the realtime publication; `ms_send` should also require the pair to still be linked for `dm` / `coach` chats; `nt_send` allows any `kind` between linked people (fine, the app uses `nudge`, `hype`, `challenge`, `routine`, `trainer_ok`); check `rt_ins` / `rt_upd` let a coach upsert a client's row; check a coach can read `app_public` for clients (`pb_read` uses `app_linked`); `app_friends` / `app_trainers` realtime DELETE events are not filtered by RLS (ids only). **Edit the file, never run it.**
 
 ### 15 Nov 2026 — milestone 4 done (challenges were the last part)
 

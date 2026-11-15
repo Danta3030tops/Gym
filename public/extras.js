@@ -593,20 +593,24 @@ function calcGo() {
    ROUTINE EDITOR
    ===================================================================== */
 let edDay = 0;
+let ED_FOR = null; // set while a coach edits a client's plan: { id, name, routine, noted } (see trainer.js); null = my own plan
+const edBase = () => (ED_FOR ? ED_FOR.routine : baseRoutine());
 function editRoutine() {
-  const R = baseRoutine(), D = R[edDay];
-  openSheet(`<h3>Edit routine</h3><div class="sub">Your history is kept per exercise name, so renaming or reordering never loses it.</div>
+  const R = edBase(), D = R[edDay];
+  openSheet(`<h3>${ED_FOR ? 'Edit ' + esc(ED_FOR.name) + '’s plan' : 'Edit routine'}</h3><div class="sub">${ED_FOR ? 'Every change is saved to their plan straight away.' : 'Your history is kept per exercise name, so renaming or reordering never loses it.'}</div>
     <div class="days" style="margin:0 0 10px">${R.map((d, i) => `<button class="${i === edDay ? 'on' : ''}" data-edday="${i}">${d.d}</button>`).join('')}</div>
     <label class="fld">Day name<input id="edTitle" value="${esc(D.title)}"></label>
     <div style="margin-top:10px">${D.slots.map((sl, si) => `<div class="edrow"><div class="edn"><b>${esc(sl.opts[0].n)}</b><span>${sl.sets} × ${esc(sl.reps)} · rest ${fmtT(sl.rest)}${sl.opts.length > 1 ? ` · ${sl.opts.length - 1} swaps` : ''}</span></div>
       <button class="cbtn" data-edmv="${si}:-1" ${si === 0 ? 'disabled' : ''}>↑</button><button class="cbtn" data-edmv="${si}:1" ${si === D.slots.length - 1 ? 'disabled' : ''}>↓</button><button class="cbtn" data-ededit="${si}">✎</button><button class="cbtn" data-eddel="${si}">✕</button></div>`).join('')}</div>
     <button class="btn acc" data-ededit="new">＋ Add exercise</button>
-    ${S.settings.plan ? '<button class="btn ghost" data-edreset>Rebuild from my setup answers</button>' : ''}`);
+    ${!ED_FOR && S.settings.plan ? '<button class="btn ghost" data-edreset>Rebuild from my setup answers</button>' : ''}`);
 }
 function mutRoutine(fn) {
+  if (ED_FOR) { const R = clone(ED_FOR.routine); fn(R); ED_FOR.routine = R; trSaveRoutine(); return; } // a coach editing a client: saved to the client's row
   const R = clone(baseRoutine()); fn(R); saveRoutine(R); // saved to app_routines, re-renders
 }
 function remapSwaps(di, mapFn) { // mapFn(oldIndex) → newIndex | null
+  if (ED_FOR) return; // a client's swaps live in their own state
   const sw = S.settings.swaps, nw = {};
   for (const k in sw) { const [d, s] = k.split('-').map(Number); if (d !== di) { nw[k] = sw[k]; continue; } const n = mapFn(s); if (n != null) nw[d + '-' + n] = sw[k]; }
   S.settings.swaps = nw;
@@ -614,8 +618,8 @@ function remapSwaps(di, mapFn) { // mapFn(oldIndex) → newIndex | null
   S.settings.u = Date.now();
 }
 function editSlot(si) {
-  const isNew = si === 'new', sl = isNew ? { sets: 3, reps: '10–12', rest: 60, opts: [{ n: '', pat: 'squat', cues: [] }] } : baseRoutine()[edDay].slots[si], o = sl.opts[0];
-  openSheet(`<h3>${isNew ? 'Add exercise' : 'Edit exercise'}</h3><div class="sub">${isNew ? baseRoutine()[edDay].title : 'Edits the main exercise. Its swaps stay as they are.'}</div>
+  const isNew = si === 'new', sl = isNew ? { sets: 3, reps: '10–12', rest: 60, opts: [{ n: '', pat: 'squat', cues: [] }] } : edBase()[edDay].slots[si], o = sl.opts[0];
+  openSheet(`<h3>${isNew ? 'Add exercise' : 'Edit exercise'}</h3><div class="sub">${isNew ? edBase()[edDay].title : 'Edits the main exercise. Its swaps stay as they are.'}</div>
     <label class="fld">Exercise name<input id="esN" list="libNames" value="${esc(o.n)}" placeholder="Start typing, e.g. Leg Press"></label><datalist id="libNames">${LIB_ALL.map(x => `<option value="${esc(x.n)}">`).join('')}</datalist>
     <div class="grid2" style="margin-top:8px"><label class="fld">Sets<input id="esS" inputmode="numeric" value="${sl.sets}"></label><label class="fld">Reps<input id="esR" value="${esc(sl.reps)}" placeholder="8–10, 15, failure"></label>
     <label class="fld">Rest (sec)<input id="esRest" inputmode="numeric" value="${sl.rest}"></label><label class="fld">Timed? (sec)<input id="esT" inputmode="numeric" value="${sl.time || ''}" placeholder="blank = reps"></label></div>
@@ -994,10 +998,10 @@ document.addEventListener('click', async e => { if (appOff()) return;
   if (d.calcgo !== undefined) return calcGo();
   if (d.calcuse) { const [c, p] = d.calcuse.split('|').map(Number); S.settings.goals = { ...(S.settings.goals || {}), cal: c, protein: p }; touchSettings(); closeSheet(); renderFuel(); toast('🎯 Goals set'); return; }
   // routine editor
-  if (d.edopen !== undefined) { edDay = cur; return editRoutine(); }
+  if (d.edopen !== undefined) { ED_FOR = null; edDay = cur; return editRoutine(); }
   if (d.edday) { saveTitle(); edDay = +d.edday; return editRoutine(); }
   if (d.edmv) { saveTitle(); const [si, dir] = d.edmv.split(':').map(Number), j = si + dir; mutRoutine(R => { const sl = R[edDay].slots; [sl[si], sl[j]] = [sl[j], sl[si]]; }); remapSwaps(edDay, s => s === si ? j : s === j ? si : s); save(); return editRoutine(); }
-  if (d.eddel) { saveTitle(); const si = +d.eddel; if (baseRoutine()[edDay].slots.length <= 1) return toast('A day needs at least one exercise'); mutRoutine(R => R[edDay].slots.splice(si, 1)); remapSwaps(edDay, s => s === si ? null : s > si ? s - 1 : s); save(); toast('Removed'); return editRoutine(); }
+  if (d.eddel) { saveTitle(); const si = +d.eddel; if (edBase()[edDay].slots.length <= 1) return toast('A day needs at least one exercise'); mutRoutine(R => R[edDay].slots.splice(si, 1)); remapSwaps(edDay, s => s === si ? null : s > si ? s - 1 : s); save(); toast('Removed'); return editRoutine(); }
   if (d.ededit) { saveTitle(); return editSlot(d.ededit === 'new' ? 'new' : +d.ededit); }
   if (d.edsave) return saveSlot(d.edsave === 'new' ? 'new' : +d.edsave);
   if (d.edback !== undefined) return editRoutine();
@@ -1008,7 +1012,7 @@ document.addEventListener('click', async e => { if (appOff()) return;
   if (d.rmphoto !== undefined) { const r = S.settings.rem = S.settings.rem || remDef(); r.photo = !r.photo; t.classList.toggle('on'); t.textContent = r.photo ? 'On' : 'Off'; return; }
   if (d.rmgo !== undefined) return addToCalendar();
 });
-function saveTitle() { const el = $('edTitle'); if (!el) return; const v = el.value.trim(); if (v && v !== baseRoutine()[edDay].title) mutRoutine(R => { R[edDay].title = v; }); }
+function saveTitle() { const el = $('edTitle'); if (!el) return; const v = el.value.trim(); if (v && v !== edBase()[edDay].title) mutRoutine(R => { R[edDay].title = v; }); }
 document.addEventListener('change', e => { if (appOff()) return;
   const d = e.target.dataset;
   if (d.note !== undefined) { const si = +d.note, ex = exOf(cur, si), en = ensureEntry(curWeek, cur, ex); en.note = e.target.value.trim(); en.u = Date.now(); save(); return; }

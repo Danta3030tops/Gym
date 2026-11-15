@@ -36,7 +36,7 @@ function frBadge() {
   const b = $('frBadge'), n = session && ME ? frIncoming().length + NT.rows.length + chUnreadCount() : 0;
   if (b) { b.hidden = !n; b.textContent = n > 9 ? '9+' : n; }
 }
-function frPaint() { frBadge(); if (!appOff() && tab === 'friends') renderFriends(); }
+function frPaint() { frBadge(); if (!appOff() && tab === 'friends') renderFriends(); trPaint(); }
 function renderFriends() {
   if (CH.open && chConv(CH.open)) return renderThread(); // an open conversation takes over the tab
   const inc = frIncoming(), out = frOutgoing(), acc = frAccepted(), off = !navigator.onLine, unread = chUnreadCount();
@@ -52,6 +52,7 @@ function renderFriends() {
     h += `<div class="card" id="frList"><h3>Your friends</h3>${acc.length ? acc.map(({ r, p }) => `<div class="edrow frow" data-frview="${r.id}">${frAv(p)}${frWho(p)}<span class="frchev">›</span></div>`).join('')
       : `<div class="muted">${!FR.loaded && off ? 'You’re offline. Your friends show up here once you’re connected.' : 'No friends yet. Add someone by their username and they’ll get a request to accept.'}</div>`}
       <button class="btn acc" data-frnew>＋ Add a friend</button></div>`;
+    h += coachCardHtml();
     if (out.length) h += `<div class="card" id="frSent"><h3>Sent</h3>${out.map(({ r, p }) => `<div class="edrow frow">${frAv(p)}${frWho(p)}<button class="chip" data-frcancel="${r.id}">Cancel</button></div>`).join('')}<div class="muted" style="margin-top:8px">Waiting for them to accept.</div></div>`;
     h += `<div class="foot">Your username is <b>@${esc(ME.username)}</b>. Share it so friends can add you.</div>`;
   }
@@ -99,13 +100,15 @@ function boardHtml() {
 const NT = { rows: [], max: 0 };
 const NOTE_TEXT = { nudge: n => `👊 ${n} nudged you. Time to train!`, hype: n => `🔥 ${n} sent you some hype`,
   challenge: (n, x) => (x.data && x.data.off ? `🎯 ${n} ended your weekly challenge` : `🎯 ${n} set a weekly challenge with you: ${(CL_TYPES[x.data && x.data.type] || CL_TYPES.days).t}`) };
-const noteText = n => (NOTE_TEXT[n.kind] ? NOTE_TEXT[n.kind](frName(FR.profs[n.from_id]), n) : n.body || 'Something new');
+NOTE_TEXT.routine = n => `✏️ ${n} updated your plan`; NOTE_TEXT.trainer_ok = n => `🤝 ${n} is now your coach`;
+const noteText = n => (NOTE_TEXT[n.kind] ? NOTE_TEXT[n.kind](frName(FR.profs[n.from_id] || TR.profs[n.from_id] || CH.profs[n.from_id]), n) : n.body || 'Something new');
 async function loadNotes() {
   if (appOff() || !sb || !navigator.onLine) return; const id = uid();
   const r = await sb.from('app_notes').select('*').eq('user_id', id).eq('read', false).order('created_at', { ascending: false }).limit(30).then(r => r, e => ({ error: e }));
   if (r.error || !session || uid() !== id) return;
   const fresh = r.data.filter(n => n.id > NT.max); NT.rows = r.data; clAdopt(r.data);
   if (fresh.length) { NT.max = Math.max(...fresh.map(n => n.id)); cacheSet('gymp.noteMax.' + id, NT.max); toast(fresh.length === 1 ? noteText(fresh[0]) : `${fresh.length} new notifications`, 3500); buzz(20); }
+  if (fresh.some(n => n.kind === 'routine')) sync(); // my coach changed my plan: fetch it now
   frPaint();
 }
 async function clearNotes() {
@@ -194,7 +197,7 @@ document.addEventListener('click', e => {
   if (d.frview) return frViewSheet(d.frview);
 });
 document.addEventListener('keydown', e => { if (!appOff() && e.key === 'Enter' && e.target.id === 'frUser') { e.preventDefault(); frAdd(); } });
-const frRefresh = () => loadFriends().then(() => { loadNotes(); loadChats(); if (CH.open) loadMsgs(); if (tab === 'friends' && FR.seg === 'board') loadBoard(); });
+const frRefresh = () => loadFriends().then(loadTrainers).then(() => { loadNotes(); loadChats(); if (CH.open) loadMsgs(); if (tab === 'friends' && FR.seg === 'board') loadBoard(); });
 document.addEventListener('visibilitychange', () => { if (!appOff() && !document.hidden) frRefresh(); });
 addEventListener('online', () => { if (!appOff()) frRefresh(); });
 
@@ -202,11 +205,13 @@ addEventListener('online', () => { if (!appOff()) frRefresh(); });
 function startFriends() {
   const c = cacheGet(frKey()) || {}; Object.assign(FR, { rows: c.rows || [], profs: c.profs || {}, loaded: !!c.rows, busy: false, err: false, at: 0, seg: null });
   Object.assign(LB, { sums: cacheGet('gymp.board.' + uid()) || {}, metric: 'week', at: 0 }); Object.assign(NT, { rows: [], max: cacheGet('gymp.noteMax.' + uid()) || 0 });
-  startChat(); frPaint(); loadFriends().then(() => { loadNotes(); loadChats(); }); // notes and chats name people, so load friends first
+  startChat(); startTrainer(); frPaint(); loadFriends().then(loadTrainers).then(() => { loadNotes(); loadChats(); }); // notes and chats name people, so load friends first
   if (sb && !FR.ch) {
     try {
       FR.ch = sb.channel('friends-' + uid())
         .on('postgres_changes', { event: '*', schema: 'public', table: 'app_friends' }, () => loadFriends())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'app_trainers' }, () => loadTrainers().then(loadChats))
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'app_routines', filter: 'user_id=eq.' + uid() }, () => scheduleSync())
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'app_notes', filter: 'user_id=eq.' + uid() }, () => loadNotes())
         .on('postgres_changes', { event: '*', schema: 'public', table: 'app_public' }, () => { if (!appOff() && tab === 'friends' && FR.seg === 'board') loadBoard(); })
         .subscribe();
@@ -214,7 +219,7 @@ function startFriends() {
   }
 }
 function stopFriends() {
-  stopChat();
+  stopChat(); stopTrainer();
   if (FR.ch && sb) { try { sb.removeChannel(FR.ch); } catch (e) { } }
   Object.assign(FR, { rows: [], profs: {}, loaded: false, busy: false, ch: null, err: false, at: 0, seg: null });
   Object.assign(LB, { sums: {}, at: 0 }); Object.assign(NT, { rows: [], max: 0 });

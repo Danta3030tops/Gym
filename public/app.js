@@ -740,8 +740,11 @@ async function sync() {
     if (e2) throw e2;
     if (localStorage.getItem(routineDirty(id))) { const r = await sb.from('app_routines').upsert(routineRow(id, ROUTINE)); if (!r.error) localStorage.removeItem(routineDirty(id)); }
     else { // pick up edits made elsewhere (another phone, or a trainer)
-      const r = await sb.from('app_routines').select('routine').eq('user_id', id).maybeSingle();
-      if (mine() && !r.error && r.data && JSON.stringify(r.data.routine) !== JSON.stringify(ROUTINE)) { ROUTINE = r.data.routine; cacheSet('gymp.routine.' + id, { routine: ROUTINE }); }
+      const r = await sb.from('app_routines').select('routine,updated_by').eq('user_id', id).maybeSingle();
+      if (mine() && !r.error && r.data && JSON.stringify(r.data.routine) !== JSON.stringify(ROUTINE)) {
+        ROUTINE = r.data.routine; cacheSet('gymp.routine.' + id, { routine: ROUTINE });
+        if (r.data.updated_by && r.data.updated_by !== id) { Object.assign(S.settings, { swaps: {}, exSkip: {}, exSkipDef: {}, u: Date.now() }); persist(); } // a coach moved things around: my per-slot swaps and removals no longer line up
+      }
     }
     if (!mine()) { syncing = false; return; }
     if (typeof publishSummary === 'function') await publishSummary(PROF, id, sb, S);
@@ -792,15 +795,16 @@ function renderAll(quiet) {
   if (tab === 'fuel' && !(quiet && document.activeElement && document.activeElement.matches('input'))) renderFuel();
   if (tab === 'body' && !(quiet && document.activeElement && document.activeElement.matches('input,select'))) renderBody();
   if (tab === 'friends' && !quiet && typeof renderFriends === 'function') renderFriends();
+  if (tab === 'clients' && !quiet && typeof renderClients === 'function') renderClients();
   if (tab === 'more' && !quiet) renderMore();
 }
 function showTab(t) {
-  const ORD = ['workout', 'history', 'body', 'fuel', 'friends', 'more'], from = ORD.indexOf(tab), to = ORD.indexOf(t);
+  const ORD = ['workout', 'history', 'body', 'fuel', 'friends', 'clients', 'more'], from = ORD.indexOf(tab), to = ORD.indexOf(t);
   if (t === 'workout' && tab !== 'workout') window.__stagger = true;
   setTimeout(() => { const sec = $('t-' + t); if (!sec) return; sec.classList.remove('enter-l', 'enter-r', 'enter-f'); void sec.offsetWidth; sec.classList.add(from < 0 || from === to ? 'enter-f' : to > from ? 'enter-r' : 'enter-l'); if (typeof movePill === 'function') movePill(); }, 0);
   tab = t; document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
   document.querySelectorAll('.tab').forEach(s => s.classList.toggle('on', s.id === 't-' + t));
-  $('htitle').innerHTML = esc(PROFILES[PROF].label) + ' <span>' + { workout: 'Split', history: 'Log', body: 'Body', fuel: 'Fuel', friends: 'Friends', more: 'App' }[t] + '</span>';
+  $('htitle').innerHTML = esc(PROFILES[PROF].label) + ' <span>' + { workout: 'Split', history: 'Log', body: 'Body', fuel: 'Fuel', friends: 'Friends', clients: 'Clients', more: 'App' }[t] + '</span>';
   renderAll(); window.scrollTo(0, 0);
 }
 

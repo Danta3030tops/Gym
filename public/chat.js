@@ -3,15 +3,17 @@
    Conversations are created by the database functions app_open_chat / app_new_group, never by inserting rows directly.
    Text only for now: photo messages (bucket app-chat) are not built yet. */
 'use strict';
-const CH = { convs: [], mem: {}, mine: {}, profs: {}, open: null, msgs: [], mloaded: false, loaded: false, at: 0, busy: false, ch: null, t: null };
-const chProf = id => (id === uid() ? ME : FR.profs[id] || CH.profs[id]);
+const CH = { convs: [], mem: {}, mine: {}, profs: {}, open: null, back: null, msgs: [], mloaded: false, loaded: false, at: 0, busy: false, ch: null, t: null };
+const chProf = id => (id === uid() ? ME : FR.profs[id] || TR.profs[id] || CH.profs[id]);
 const chConv = id => CH.convs.find(c => c.id === id);
 const chOthers = c => (CH.mem[c.id] || []).filter(id => id !== uid());
 const chTitle = c => (c.kind === 'group' ? c.title || chOthers(c).map(id => frName(chProf(id)).split(' ')[0]).join(', ') || 'Group' : frName(chProf(chOthers(c)[0])));
 const chUnread = c => !!(c.last_text && CH.mine[c.id] && new Date(c.last_at) > new Date(CH.mine[c.id]));
-/* groups, and 1-on-1 chats with people who are still friends. 'coach' chats belong to the trainer milestone. */
-const chVisible = () => CH.convs.filter(c => c.kind === 'group' || (c.kind === 'dm' && isFriend(chOthers(c)[0]))).sort((a, b) => new Date(b.last_at) - new Date(a.last_at));
-const chUnreadCount = () => chVisible().filter(chUnread).length;
+/* groups, 1-on-1 chats with people who are still friends, and 'coach' chats while the coach / client link stands */
+const chVisible = () => CH.convs.filter(c => { const o = chOthers(c)[0]; return c.kind === 'group' || (c.kind === 'dm' ? isFriend(o) : c.kind === 'coach' && trLinked(o)); }).sort((a, b) => new Date(b.last_at) - new Date(a.last_at));
+const chInbox = () => chVisible().filter(c => c.kind === 'coach' && trIsClient(chOthers(c)[0])); // a coach's chats with clients: shown in Clients → Inbox
+const chFriendsSide = () => chVisible().filter(c => !(c.kind === 'coach' && trIsClient(chOthers(c)[0]))); // everything else: Friends → Chats
+const chUnreadCount = () => chFriendsSide().filter(chUnread).length;
 const chTime = t => new Date(t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 const chDay = t => { const d = new Date(t); return dk(d) === dk(new Date()) ? 'Today' : dk(d) === dk(addDays(new Date(), -1)) ? 'Yesterday' : fmtD(d, { weekday: 'short', month: 'short', day: 'numeric' }); };
 const chOffline = () => { if (sb && navigator.onLine) return false; toast('You’re offline. Try again when you’re connected.'); return true; };
@@ -41,13 +43,14 @@ async function loadChats() {
 const loadChatsSoon = () => { clearTimeout(CH.t); CH.t = setTimeout(loadChats, 400); };
 
 /* ---------- conversation list ---------- */
+function chRowHtml(c) {
+  const grp = c.kind === 'group', un = chUnread(c);
+  return `<div class="edrow frow cvrow${un ? ' unread' : ''}" data-chopen="${esc(c.id)}">${grp ? '<div class="lv-av" style="--pc:#636366">👥</div>' : frAv(chProf(chOthers(c)[0]))}
+    <div class="edn"><b>${esc(chTitle(c))}${c.kind === 'coach' && !trIsClient(chOthers(c)[0]) ? ' · Coach' : ''}</b><span>${esc(c.last_text || 'No messages yet')}</span></div><span class="chwhen">${c.last_text ? esc(frAgo(c.last_at)) : ''}</span>${un ? '<i class="chdot"></i>' : ''}</div>`;
+}
 function chatsHtml() {
-  const list = chVisible(), fr = friendList().length;
-  return `<div class="card" id="chConvs"><h3>Chats</h3>${list.length ? list.map(c => {
-    const grp = c.kind === 'group', un = chUnread(c);
-    return `<div class="edrow frow cvrow${un ? ' unread' : ''}" data-chopen="${esc(c.id)}">${grp ? '<div class="lv-av" style="--pc:#636366">👥</div>' : frAv(chProf(chOthers(c)[0]))}
-      <div class="edn"><b>${esc(chTitle(c))}</b><span>${esc(c.last_text || 'No messages yet')}</span></div><span class="chwhen">${c.last_text ? esc(frAgo(c.last_at)) : ''}</span>${un ? '<i class="chdot"></i>' : ''}</div>`;
-  }).join('') : `<div class="muted">${fr ? 'No chats yet. Message a friend, or start a group.' : 'Add a friend first, then you can chat here.'}</div>`}
+  const list = chFriendsSide(), fr = friendList().length;
+  return `<div class="card" id="chConvs"><h3>Chats</h3>${list.length ? list.map(chRowHtml).join('') : `<div class="muted">${fr ? 'No chats yet. Message a friend, or start a group.' : 'Add a friend first, then you can chat here.'}</div>`}
     ${fr ? `<div class="grid2"><button class="btn acc" data-chnew>＋ New chat</button><button class="btn" data-chgroup>＋ New group</button></div>` : `<button class="btn acc" data-frnew>＋ Add a friend</button>`}</div>`;
 }
 function chNewSheet() {
@@ -78,11 +81,11 @@ async function chMakeGroup() {
 
 /* ---------- one conversation ---------- */
 function openChat(cid) {
-  if (!chConv(cid)) return; CH.open = cid; CH.msgs = []; CH.mloaded = false; FR.seg = 'chats';
+  if (!chConv(cid)) return; CH.open = cid; CH.msgs = []; CH.mloaded = false; FR.seg = 'chats'; CH.back = tab !== 'friends' ? tab : null; // the thread shows in the Friends tab; Back returns to where it was opened
   if (tab !== 'friends') showTab('friends'); else renderFriends();
   window.scrollTo(0, document.documentElement.scrollHeight); loadMsgs();
 }
-function closeChat() { CH.open = null; CH.msgs = []; CH.mloaded = false; renderFriends(); window.scrollTo(0, 0); if (Date.now() - CH.at > 3000) loadChats(); }
+function closeChat() { const b = CH.back; CH.open = null; CH.back = null; CH.msgs = []; CH.mloaded = false; if (b) showTab(b); else { renderFriends(); window.scrollTo(0, 0); } if (Date.now() - CH.at > 3000) loadChats(); else trPaint(); }
 async function loadMsgs() {
   const cid = CH.open; if (!cid || !sb || !navigator.onLine) return;
   const r = await sb.from('app_messages').select('*').eq('conv_id', cid).order('created_at', { ascending: false }).limit(100).then(r => r, e => ({ error: e }));
@@ -96,7 +99,7 @@ function chMarkRead(cid) {
   const was = chUnread(c), at = new Date(Math.max(Date.now(), new Date(c.last_at).getTime() + 1)).toISOString(); // never earlier than the newest message, even if this phone's clock is behind
   CH.mine[cid] = at;
   if (sb && navigator.onLine) sb.from('app_members').update({ last_read: at }).eq('conv_id', cid).eq('user_id', uid()).then(() => { }, () => { });
-  if (was) frBadge();
+  if (was) { frBadge(); trPaint(); }
 }
 function threadHtml() {
   const c = chConv(CH.open), grp = c.kind === 'group', n = (CH.mem[c.id] || []).length, o = grp ? null : chProf(chOthers(c)[0]);
@@ -212,7 +215,7 @@ document.addEventListener('keydown', e => { if (!appOff() && e.target.id === 'ch
 /* called by startFriends / stopFriends / frRefresh in friends.js */
 function startChat() {
   const c = cacheGet('gymp.chats.' + uid()) || {};
-  Object.assign(CH, { convs: c.convs || [], mem: c.mem || {}, mine: c.mine || {}, profs: c.profs || {}, open: null, msgs: [], mloaded: false, loaded: !!c.convs, at: 0, busy: false });
+  Object.assign(CH, { convs: c.convs || [], mem: c.mem || {}, mine: c.mine || {}, profs: c.profs || {}, open: null, back: null, msgs: [], mloaded: false, loaded: !!c.convs, at: 0, busy: false });
   if (sb && !CH.ch) {
     try {
       CH.ch = sb.channel('chat-' + uid())
@@ -224,5 +227,5 @@ function startChat() {
 }
 function stopChat() {
   clearTimeout(CH.t); if (CH.ch && sb) { try { sb.removeChannel(CH.ch); } catch (e) { } }
-  Object.assign(CH, { convs: [], mem: {}, mine: {}, profs: {}, open: null, msgs: [], mloaded: false, loaded: false, at: 0, busy: false, ch: null });
+  Object.assign(CH, { convs: [], mem: {}, mine: {}, profs: {}, open: null, back: null, msgs: [], mloaded: false, loaded: false, at: 0, busy: false, ch: null });
 }

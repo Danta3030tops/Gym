@@ -257,6 +257,58 @@ with sync_playwright() as p:
     A.click('[data-cledit]'); A.wait_for_timeout(450); A.click('[data-cloff]'); A.wait_for_timeout(500); assert A.locator('.clcard').count() == 0 and A.is_visible('#clNew')
     signin('test@example.com'); openF(); assert A.locator('.clcard').count() == 0 and 'ended your weekly challenge' in A.inner_text('#frNotes'), 'ending it ends it for both'
     signin('coach@example.com'); openF(); seg('people')
+    # trainer portal (milestone 5). coach.kay is a coach (role trainer); test_user adds them as their coach.
+    tr = lambda: T('app_trainers'); kinds = lambda k: [n for n in notes() if n['kind'] == k]
+    coach_id = T('app_profiles')[1]['id']; test_id = T('app_profiles')[0]['id']
+    plan = lambda: [r for r in T('app_routines') if r['user_id'] == test_id][0]
+    openC = lambda: (A.click('nav button[data-tab="clients"]'), A.wait_for_timeout(500))
+    assert A.is_visible('#navClients'), 'coaches get the Clients tab'
+    openC(); assert 'No clients yet' in A.inner_text('#trClients') and '@coach.kay' in A.inner_text('#trClients')
+    signin('test@example.com'); assert not A.is_visible('#navClients'), 'everyone else does not'
+    openF(); seg('people'); assert 'Add your coach' in A.inner_text('#trCard')
+    A.click('[data-tradd]'); A.wait_for_timeout(450); A.fill('#trUser', 'test_user'); A.click('[data-trsend]'); A.wait_for_timeout(300); assert 'your own' in A.inner_text('#trMsg')
+    A.fill('#trUser', 'nobody_here'); A.click('[data-trsend]'); A.wait_for_timeout(400); assert 'No one here' in A.inner_text('#trMsg')
+    A.fill('#trUser', '@Coach.Kay'); A.press('#trUser', 'Enter'); A.wait_for_timeout(600)
+    assert len(tr()) == 1 and tr()[0]['status'] == 'pending' and tr()[0]['client'] == test_id and 'Waiting' in A.inner_text('#trCard')
+    A.click('[data-trcancel]'); A.wait_for_timeout(500); assert tr() == [] and 'Add your coach' in A.inner_text('#trCard')
+    A.click('[data-tradd]'); A.wait_for_timeout(450); A.fill('#trUser', 'coach.kay'); A.click('[data-trsend]'); A.wait_for_timeout(600); assert len(tr()) == 1
+    # the coach sees the request with a badge on the Clients tab, and accepts
+    signin('coach@example.com'); assert A.inner_text('#trBadge') == '1'
+    openC(); assert 'Test Person' in A.inner_text('#trReqs'); A.click('[data-trok]'); A.wait_for_timeout(600)
+    assert tr()[0]['status'] == 'accepted' and A.locator('#trClients .frow').count() == 1 and not A.is_visible('#trReqs') and not A.is_visible('#trBadge') and len(kinds('trainer_ok')) == 1
+    # open the client: stats, plan, recent sessions
+    A.click('#trClients .frow'); A.wait_for_timeout(700)
+    assert 'Test Person' in A.inner_text('#clients') and A.locator('#trPlan .pv').count() == 3 and A.locator('#trLog .hrow').count() == 1 and A.inner_text('#trSum .tstats b >> nth=0') == '1'
+    shot('17-client')
+    # edit their plan with the routine editor: saved to the client's row straight away, one notification per editing session
+    n0 = len(plan()['routine'][0]['slots']); first = plan()['routine'][0]['slots'][0]['opts'][0]['n']
+    A.click('[data-tredit]'); A.wait_for_timeout(450); assert 'Test’s plan' in A.inner_text('#sheetin') and A.locator('.edrow').count() == n0 and not A.is_visible('[data-edreset]')
+    A.click('[data-eddel="0"]'); A.wait_for_timeout(500)
+    assert len(plan()['routine'][0]['slots']) == n0 - 1 and plan()['updated_by'] == coach_id and plan()['routine'][0]['slots'][0]['opts'][0]['n'] != first, 'the edit lands in the client row'
+    A.click('[data-edmv="0:1"]'); A.wait_for_timeout(500); assert len(kinds('routine')) == 1, 'one notification, not one per change'
+    mine = [r for r in T('app_routines') if r['user_id'] == coach_id][0]; assert len(mine['routine']) == 5 and mine['updated_by'] == coach_id, 'the coach’s own plan is untouched'
+    A.click('#sx'); A.wait_for_timeout(700); assert A.locator('#trPlan .pv').nth(0).locator('.pv-x').count() == n0 - 1, 'the client view shows the edited plan'
+    # message the client: a coach conversation, opened from the Clients tab and returning to it; it lives in the Inbox, not in Friends → Chats
+    A.click('#trSum [data-chdm]'); A.wait_for_timeout(700); say('Tweaked your Monday')
+    assert [c['kind'] for c in T('app_convs')] == ['dm', 'group', 'coach'] and 'Test Person' in A.inner_text('.chead')
+    A.click('[data-chback]'); A.wait_for_timeout(500); assert A.is_visible('#clients') and A.is_visible('#trSum'), 'Back returns to the client'
+    A.click('[data-trback]'); A.wait_for_timeout(300); A.click('[data-trseg="inbox"]'); A.wait_for_timeout(300)
+    assert A.locator('#trInbox .cvrow').count() == 1 and 'Tweaked your Monday' in A.inner_text('#trInbox'); shot('18-inbox')
+    openF(); seg('chats'); assert A.locator('#chConvs .cvrow').count() == 1, 'client chats stay out of the coach’s friends chats'
+    # the coach's own plan editor still edits their own plan
+    A.click('nav button[data-tab="more"]'); A.wait_for_timeout(300); A.click('[data-edopen]'); A.wait_for_timeout(450); assert 'Edit routine' in A.inner_text('#sheetin') and A.evaluate('ED_FOR === null'); A.click('#sx'); A.wait_for_timeout(700)
+    # the client is told, gets the new plan, and can message or remove the coach
+    signin('test@example.com'); A.wait_for_timeout(800)
+    assert A.evaluate('ROUTINE[0].slots.length') == n0 - 1 and A.evaluate('Object.keys(S.settings.swaps).length') == 0, 'the edited plan arrives on the client'
+    openF(); assert 'Coach Kay updated your plan' in A.inner_text('#frNotes') and 'Coach Kay is now your coach' in A.inner_text('#frNotes')
+    seg('chats'); assert A.locator('#chConvs .cvrow').count() == 3 and 'Coach Kay · Coach' in A.locator('#chConvs .cvrow').nth(0).inner_text() and A.locator('#chConvs .cvrow.unread').count() >= 1
+    seg('people'); assert 'Coach Kay' in A.inner_text('#trCard') and A.is_visible('#trCard [data-chdm]'); shot('19-my-coach')
+    A.click('[data-trrm]'); A.wait_for_timeout(450); A.click('[data-trrmyes]'); A.wait_for_timeout(700)
+    assert tr() == [] and 'Add your coach' in A.inner_text('#trCard'), 'removing the coach deletes the link'
+    seg('chats'); assert A.locator('#chConvs .cvrow').count() == 2, 'the coach chat goes with it'
+    signin('coach@example.com'); openC(); assert 'No clients yet' in A.inner_text('#trClients') and not A.is_visible('#trBadge')
+    A.click('[data-trseg="inbox"]'); A.wait_for_timeout(300); assert A.locator('#trInbox .cvrow').count() == 0
+    openF(); seg('people')
     # signing out clears the list from the screen
     A.click('nav button[data-tab="more"]'); A.wait_for_timeout(300); A.click('#signOut'); A.wait_for_timeout(300)
     assert A.evaluate("FR.rows.length === 0 && document.getElementById('friends').innerHTML === ''")

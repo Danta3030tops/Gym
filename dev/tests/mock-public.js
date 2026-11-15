@@ -46,9 +46,11 @@
       const member = (c, u) => T('app_members').some(x => x.conv_id === c && x.user_id === u), join = (c, u) => { if (!member(c, u)) T('app_members').push({ id: d.seq++, conv_id: c, user_id: u, last_read: now() }); };
       const conv = (kind, title) => { const c = { id: uuid(), kind, title, created_by: me, created_at: now(), last_at: now(), last_text: '' }; T('app_convs').push(c); return c.id; };
       if (name === 'app_open_chat') {
-        const o = args.other; if (!me || !o || o === me) return no('bad user'); if (!pals(me, o)) return no('not connected');
-        const c = T('app_convs').find(v => v.kind === 'dm' && member(v.id, me) && member(v.id, o)); if (c) return ok(c.id);
-        const id = conv('dm', ''); join(id, me); join(id, o); return ok(id);
+        const o = args.other; if (!me || !o || o === me) return no('bad user');
+        const trains = T('app_trainers').some(r => r.status === 'accepted' && ((r.trainer === me && r.client === o) || (r.trainer === o && r.client === me)));
+        const k = trains ? 'coach' : pals(me, o) ? 'dm' : null; if (!k) return no('not connected'); // a coach / client pair gets a 'coach' chat, like the SQL function
+        const c = T('app_convs').find(v => v.kind === k && member(v.id, me) && member(v.id, o)); if (c) return ok(c.id);
+        const id = conv(k, ''); join(id, me); join(id, o); return ok(id);
       }
       if (name === 'app_new_group') {
         if (!me) return no('sign in'); const id = conv('group', String(args.title || '').slice(0, 40)); join(id, me);
