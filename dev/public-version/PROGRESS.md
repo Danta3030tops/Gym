@@ -34,13 +34,27 @@ Status values: `todo`, `in progress`, `done`.
 | 1 | Sign-in / sign-up screen, first-time setup (role, goal, days), routine built from templates, mock backend + smoke test | done |
 | 2 | Single-user core in `public/`: port workout, history, body, fuel, more tabs to one signed-in user on `app_state` / `app_routines` | done |
 | 3 | Friends: add by username, accept / decline, friends list | done |
-| 4 | Friends features: leaderboard, 1-on-1 chats, group chats, nudges, challenges | in progress |
+| 4 | Friends features: leaderboard, 1-on-1 chats, group chats, nudges, challenges | done |
 | 5 | Trainer portal: add trainer, Clients tab, Inbox tab, routine edits with client notification, remove trainer | todo |
 | 6 | Multi-user tests on the mock, service worker + manifest for `public/`, final review of the schema | todo |
 
 ## Session log
 
 (newest first)
+
+### 15 Nov 2026 — milestone 4 done (challenges were the last part)
+
+- New `public/challenges.js` (loaded after `chat.js`): one weekly challenge per friend, shown as cards under the leaderboard. Types: Most days, Most sets, PR race, Team goal (both train N days), plus optional stakes. Either person can edit or end it. Last week's result and an all-time tally show on the card; a win pops the celebration once.
+- **No new table.** The challenge lives in my own settings (`S.settings.challenges[friendId]`, tally in `S.settings.clTally`), so it syncs with `app_state`. The friend is told with an `app_notes` row (`kind: 'challenge'`, the challenge object in `data`); `clAdopt` (called from `loadNotes`) keeps whichever copy has the newer `u`. Incoming objects are rebuilt field by field (`clClean`). Scores come from the `app_public` summaries the leaderboard already loads (`clWeeks` handles a summary that is up to a week old).
+- Setting, changing or ending a challenge needs a connection (the friend has to be told).
+- Screenshots `dev/tests/last-run-public-8…16-*.png` show the friends screens (ignored by git; run the test to regenerate).
+
+**Next: milestone 5 (trainer portal).** Notes for it:
+- Table `app_trainers` `{ client, trainer, status }`; the insert policy needs the trainer's profile to have `role = 'trainer'`. Mirror `friends.js`: "Add trainer" by username on the client side (More tab or the People segment), request accepted by the trainer.
+- Trainers get two more tabs (Clients, Inbox). The nav already has six buttons, so consider putting Clients and Inbox as segments inside one "Coach" tab, shown only when `ME.role === 'trainer'`.
+- A trainer can read a client's `app_state` and read / write their `app_routines` (see the `st_read`, `rt_*` policies). The routine editor in `extras.js` (`editRoutine`, `mutRoutine`, `saveRoutine`) works on the signed-in person's `ROUTINE`; the trainer version must write the client's row with `updated_by = trainer` and a `note`, then insert an `app_notes` row for the client (add the kind to `NOTE_TEXT` in `friends.js`). The client app should reload `ROUTINE` when that note or a realtime `app_routines` change arrives (watch `routineDirty`: local unsynced edits currently win).
+- Chats: `app_open_chat` returns a `coach` conversation for a trainer / client pair; `chVisible` in `chat.js` hides `coach` chats today, and the mock's `app_open_chat` only knows friends. The Inbox is the trainer's list of `coach` chats.
+- Removing a trainer deletes the `app_trainers` row (either side can).
 
 ### 15 Nov 2026 — milestone 4, part 2: chats (WIP)
 

@@ -76,7 +76,7 @@ async function loadBoard() {
   const id = uid(); LB.at = Date.now();
   const r = await sb.from('app_public').select('*').in('user_id', ids).then(r => r, e => ({ error: e }));
   if (r.error || !session || uid() !== id) return;
-  LB.sums = {}; r.data.forEach(x => { LB.sums[x.user_id] = x.data || {}; }); cacheSet('gymp.board.' + id, LB.sums);
+  LB.sums = {}; r.data.forEach(x => { LB.sums[x.user_id] = x.data || {}; }); cacheSet('gymp.board.' + id, LB.sums); clSettle();
   if (!appOff() && tab === 'friends' && FR.seg === 'board') renderFriends();
 }
 function boardHtml() {
@@ -92,18 +92,19 @@ function boardHtml() {
       const sub = !x.has ? 'Nothing shared yet' : x.st.today ? '🔥 Trained today' : x.st.lastT ? 'Last trained ' + frAgo(x.st.lastT) : 'No workouts yet';
       return `<div class="edrow frow lbrow${x.me ? ' me' : ''}"><i class="lbrank">${rank === 1 && x.st[k] > 0 ? '🥇' : rank}</i>${frAv(x.p)}<div class="edn"><b>${x.me ? 'You' : esc(frName(x.p))}</b><span>${sub}</span></div>
         ${x.me ? '' : `<button class="chip" data-nudge="${esc(x.p.id)}" aria-label="${x.st.today ? 'Send hype' : 'Nudge'}">${x.st.today ? '🔥' : '👊'}</button>`}<b class="lbval">${x.st[k]}</b></div>`;
-    }).join('')}<div class="muted" style="margin-top:10px;font-size:12px">Ranked by ${m[2]}. Tap 👊 to nudge a friend, or 🔥 to cheer one who trained today.</div></div>`;
+    }).join('')}<div class="muted" style="margin-top:10px;font-size:12px">Ranked by ${m[2]}. Tap 👊 to nudge a friend, or 🔥 to cheer one who trained today.</div></div>` + challengesHtml();
 }
 
 /* ---------- notifications (app_notes): nudges and hype now, trainer updates later ---------- */
 const NT = { rows: [], max: 0 };
-const NOTE_TEXT = { nudge: n => `👊 ${n} nudged you. Time to train!`, hype: n => `🔥 ${n} sent you some hype` };
-const noteText = n => (NOTE_TEXT[n.kind] ? NOTE_TEXT[n.kind](frName(FR.profs[n.from_id])) : n.body || 'Something new');
+const NOTE_TEXT = { nudge: n => `👊 ${n} nudged you. Time to train!`, hype: n => `🔥 ${n} sent you some hype`,
+  challenge: (n, x) => (x.data && x.data.off ? `🎯 ${n} ended your weekly challenge` : `🎯 ${n} set a weekly challenge with you: ${(CL_TYPES[x.data && x.data.type] || CL_TYPES.days).t}`) };
+const noteText = n => (NOTE_TEXT[n.kind] ? NOTE_TEXT[n.kind](frName(FR.profs[n.from_id]), n) : n.body || 'Something new');
 async function loadNotes() {
   if (appOff() || !sb || !navigator.onLine) return; const id = uid();
   const r = await sb.from('app_notes').select('*').eq('user_id', id).eq('read', false).order('created_at', { ascending: false }).limit(30).then(r => r, e => ({ error: e }));
   if (r.error || !session || uid() !== id) return;
-  const fresh = r.data.filter(n => n.id > NT.max); NT.rows = r.data;
+  const fresh = r.data.filter(n => n.id > NT.max); NT.rows = r.data; clAdopt(r.data);
   if (fresh.length) { NT.max = Math.max(...fresh.map(n => n.id)); cacheSet('gymp.noteMax.' + id, NT.max); toast(fresh.length === 1 ? noteText(fresh[0]) : `${fresh.length} new notifications`, 3500); buzz(20); }
   frPaint();
 }

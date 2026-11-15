@@ -235,6 +235,28 @@ with sync_playwright() as p:
     A.click('[data-chinfo]'); A.wait_for_timeout(450); assert A.locator('#sheetin [data-chadd]').count() == 0, 'everyone is already in'
     A.click('[data-chleave]'); A.wait_for_timeout(600); assert len(T('app_members')) == 3 and A.locator('.cvrow').count() == 1 and A.inner_text('#frBadge') == '2'
     seg('people')
+    # weekly challenge with a friend (milestone 4). coach.kay sets one with test_user, who has trained 1 day this week.
+    chal = lambda: [n for n in notes() if n['kind'] == 'challenge']
+    openF = lambda: (A.click('nav button[data-tab="friends"]'), A.wait_for_timeout(500))
+    seg('board'); A.wait_for_timeout(300); assert A.is_visible('#clNew') and A.locator('.clcard').count() == 0
+    A.click('[data-clnew]'); A.wait_for_timeout(450); A.click('[data-cltype="team"]'); A.wait_for_timeout(300); assert A.is_visible('#clnRow')
+    A.click('[data-cln="1"]'); assert A.inner_text('#clnV') == '5'
+    A.click('[data-cltype="days"]'); A.wait_for_timeout(300); assert not A.is_visible('#clnRow'); A.click('[data-clidea]'); A.click('[data-clsave]'); A.wait_for_timeout(500)
+    assert len(chal()) == 1 and chal()[0]['data']['type'] == 'days' and 'smoothies' in chal()[0]['data']['stake'], 'the friend is told through app_notes'
+    assert A.locator('.clcard').count() == 1 and 'Most days' in A.inner_text('.clcard') and not A.is_visible('#clNew')
+    assert [A.locator('.clcard .chrow b').nth(i).inner_text() for i in (0, 1)] == ['0', '1'], 'my score, then theirs'
+    assert A.evaluate("Object.keys(S.settings.challenges).length") == 1; shot('16-challenge')
+    signin('test@example.com'); openF()
+    assert 'set a weekly challenge with you: Most days' in A.inner_text('#frNotes')
+    assert A.locator('.clcard').count() == 1 and 'Coach' in A.inner_text('.clcard') and 'smoothies' in A.inner_text('.clcard'), 'the friend sees the same challenge'
+    assert [A.locator('.clcard .chrow b').nth(i).inner_text() for i in (0, 1)] == ['1', '0']
+    # either side can change it, and the newer copy wins
+    A.click('[data-cledit]'); A.wait_for_timeout(450); A.click('[data-cltype="team"]'); A.wait_for_timeout(300); A.click('[data-clsave]'); A.wait_for_timeout(500)
+    assert 'Team goal' in A.inner_text('.clcard') and '1/4' in A.inner_text('.clcard') and len(chal()) == 2
+    signin('coach@example.com'); openF(); assert 'Team goal' in A.inner_text('.clcard') and '0/4' in A.inner_text('.clcard'), 'the change reaches the person who set it'
+    A.click('[data-cledit]'); A.wait_for_timeout(450); A.click('[data-cloff]'); A.wait_for_timeout(500); assert A.locator('.clcard').count() == 0 and A.is_visible('#clNew')
+    signin('test@example.com'); openF(); assert A.locator('.clcard').count() == 0 and 'ended your weekly challenge' in A.inner_text('#frNotes'), 'ending it ends it for both'
+    signin('coach@example.com'); openF(); seg('people')
     # signing out clears the list from the screen
     A.click('nav button[data-tab="more"]'); A.wait_for_timeout(300); A.click('#signOut'); A.wait_for_timeout(300)
     assert A.evaluate("FR.rows.length === 0 && document.getElementById('friends').innerHTML === ''")
