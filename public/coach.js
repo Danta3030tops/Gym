@@ -1,6 +1,6 @@
 /* =====================================================================
    COACH: muscle map · workout summary · effort (reps in reserve) ·
-   couple challenges · strength (est. 1RM) · 5-minute warm-ups
+   strength (est. 1RM) · 5-minute warm-ups
    ===================================================================== */
 
 /* ---------------- which muscles an exercise works ---------------- */
@@ -60,7 +60,7 @@ const patCache = {};
 function patOfName(n) {
   if (!n) return null; const key = n.toLowerCase(); if (key in patCache) return patCache[key];
   let pat = null;
-  for (const D of [DAYS, PROFILES[PROF].days, S.routine || []]) for (const d of D || []) for (const sl of d.slots) for (const o of sl.opts) if (!pat && o.n.toLowerCase() === key) pat = o.pat;
+  for (const D of [DAYS, ROUTINE || []]) for (const d of D || []) for (const sl of d.slots) for (const o of sl.opts) if (!pat && o.n.toLowerCase() === key) pat = o.pat;
   if (!pat) { const l = typeof libFind === 'function' && libFind(n); if (l) pat = l.pat; }
   if (!pat) pat = ssPat(n, null);
   return patCache[key] = pat;
@@ -202,9 +202,9 @@ function summarySheet(wk, di) {
 }
 async function drawSummary(wk, di) {
   const s = daySummary(wk, di), W = 1080, H = 1350, c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
-  const SANS = '-apple-system, BlinkMacSystemFont, "SF Pro Display", Inter, system-ui, sans-serif', k = PROF === 'king';
+  const SANS = '-apple-system, BlinkMacSystemFont, "SF Pro Display", Inter, system-ui, sans-serif';
   const g = x.createLinearGradient(0, 0, W, H);
-  if (k) { g.addColorStop(0, '#b56a00'); g.addColorStop(.42, '#2a1700'); g.addColorStop(1, '#000'); } else { g.addColorStop(0, '#8a3fc4'); g.addColorStop(.45, '#24103a'); g.addColorStop(1, '#05030a'); }
+  g.addColorStop(0, mix(themeColor, [0, 0, 0], .3)); g.addColorStop(.42, mix(themeColor, [0, 0, 0], .85)); g.addColorStop(1, '#000');
   x.fillStyle = g; x.fillRect(0, 0, W, H);
   x.strokeStyle = 'rgba(255,255,255,.16)'; x.lineWidth = 3; roundRect(x, 36, 36, W - 72, H - 72, 60); x.stroke();
   x.textAlign = 'center'; x.fillStyle = '#fff'; x.font = `800 96px ${SANS}`; x.fillText(s.title, W / 2, 230);
@@ -221,11 +221,11 @@ async function drawSummary(wk, di) {
     const y = 940 + i * 54; x.fillStyle = '#fff'; x.fillText((e.delta > 0 ? '▲ ' : '') + e.n.slice(0, 30), 100, y);
     if (e.best) { x.textAlign = 'right'; x.fillStyle = TH.acc; x.fillText(fmtSet(e.timed, e.best), W - 100, y); x.textAlign = 'left'; }
   });
-  x.textAlign = 'center'; x.globalAlpha = .6; x.fillStyle = '#fff'; x.font = `500 24px ${SANS}`; x.fillText('DANTÁ & DESRICA · GYM', W / 2, H - 70); x.globalAlpha = 1;
+  x.textAlign = 'center'; x.globalAlpha = .6; x.fillStyle = '#fff'; x.font = `500 24px ${SANS}`; x.fillText('@' + ME.username + ' · GYM', W / 2, H - 70); x.globalAlpha = 1;
   return new Promise(r => c.toBlob(r, 'image/png'));
 }
 async function shareSummary(wk, di) {
-  const b = await drawSummary(wk, +di), f = new File([b], `${PROF}-${wk}-${di}.png`, { type: 'image/png' });
+  const b = await drawSummary(wk, +di), f = new File([b], `${ME.username}-${wk}-${di}.png`, { type: 'image/png' });
   try { if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], title: 'Workout summary' }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
   download(f.name, b); toast('Saved. Share it from your photos/files');
 }
@@ -236,7 +236,7 @@ afterLog = function (si) {
   const i = Math.max(0, setsOf(curWeek, cur, exId(exOf(cur, si))).length - 1);
   const logged = setsOf(curWeek, cur, exId(exOf(cur, si))); let li = -1; logged.forEach((s, k) => { if (s && (li < 0 || s.t >= logged[li].t)) li = k; });
   if (dayDone(curWeek, cur) && !wasDone) {
-    const key = 'gym.sumShown.' + PROF + '.' + curWeek + '.' + cur;
+    const key = 'gymp.sumShown.' + uid() + '.' + curWeek + '.' + cur;
     if (!localStorage.getItem(key)) {
       localStorage.setItem(key, '1'); hideEffort(); $('toast').classList.remove('show');
       const open = () => { const pr = document.querySelector('#prpop.show, .prpop.show, #pr.show'); if (pr) return setTimeout(open, 500); summarySheet(curWeek, cur); };
@@ -245,75 +245,9 @@ afterLog = function (si) {
   }
   askEffort(si, li >= 0 ? li : i);
 };
-document.addEventListener('click', e => { const b = e.target.closest('[data-chk],[data-pace]'); if (b) window.__dayWasDone = dayDone(curWeek, cur); }, true);
+document.addEventListener('click', e => { if (appOff()) return; const b = e.target.closest('[data-chk],[data-pace]'); if (b) window.__dayWasDone = dayDone(curWeek, cur); }, true);
 
-/* ---------------- couple challenge (History → Score) ---------------- */
-const CH_TYPES = {
-  team: { t: 'Team goal', d: n => `Both of you train ${n} days this week`, icon: '🤝' },
-  days: { t: 'Most days', d: () => 'Most workout days this week wins', icon: '📅' },
-  sets: { t: 'Most sets', d: () => 'Most sets logged this week wins', icon: '🏋️' },
-  prs: { t: 'PR race', d: () => 'Most PRs this week wins', icon: '🏆' }
-};
-function activeChallenge(pt) {
-  const mine = S.settings.challenge || null, theirs = pt && pt.ch || null;
-  const c = !mine ? theirs : !theirs ? mine : (theirs.u || 0) > (mine.u || 0) ? theirs : mine;
-  if (c && c !== mine) { S.settings.challenge = c; touchSettings(); }
-  return c && !c.off ? c : null;
-}
-function chScore(c, sm, last) {
-  if (!sm) return null; const src = last ? (sm.lw || {}) : sm;
-  return c.type === 'sets' ? (last ? src.sets : src.weekSets) || 0 : c.type === 'prs' ? (last ? src.prs : src.weekPRs) || 0 : (last ? src.days : src.weekDays) || 0;
-}
-function chResult(c, me, pt) {
-  const a = chScore(c, me, true), b = chScore(c, pt, true); if (a == null || b == null) return null;
-  if (c.type === 'team') return a >= c.n && b >= c.n ? { win: 'team', a, b } : { win: 'fail', a, b };
-  return { win: a > b ? PROF : b > a ? other() : 'tie', a, b };
-}
-function challengeCard(me, pt) {
-  const c = activeChallenge(pt);
-  if (!c) return `<div class="card chcard empty"><div><b>🎯 Weekly challenge</b><span>Set a goal or a head-to-head for the week, plus what the loser owes.</span></div><button class="chip acc" data-chedit>Set one</button></div>`;
-  const T = CH_TYPES[c.type], a = chScore(c, me), b = chScore(c, pt), mx = c.type === 'team' ? c.n : Math.max(1, a || 0, b || 0);
-  const bar = (p, v) => `<div class="chrow"><span class="kq ${p === 'king' ? 'k' : 'q'}">${PROFILES[p].name}</span><div class="chbar"><i style="width:${Math.min(100, (v || 0) / mx * 100)}%" class="${p === 'king' ? 'k' : 'q'}"></i></div><b>${v ?? '—'}${c.type === 'team' ? '/' + c.n : ''}</b></div>`;
-  const L = PROF === 'king' ? [a, b] : [b, a];
-  let res = '';
-  const r = pt && pt.lw && me.lw ? chResult(c, me, pt) : null;
-  if (r && (c.since || 0) <= parseDk(me.lw.wk).getTime() + 7 * 864e5) {
-    const lwKey = me.lw.wk, tally = S.settings.chTally || {};
-    if (!tally[lwKey]) { S.settings.chTally = { ...tally, [lwKey]: r.win }; touchSettings(); if (r.win === PROF || r.win === 'team') setTimeout(() => celebrate('Challenge won 🏆', c.type === 'team' ? 'You both hit the goal last week' : 'You took last week'), 400); }
-    const loser = r.win === PROF ? other() : r.win === other() ? PROF : null;
-    res = `<div class="chres">${r.win === 'team' ? '🎉 Last week: you both made it' : r.win === 'fail' ? '😬 Last week: goal missed' : r.win === 'tie' ? '🤝 Last week: tied' : `👑 Last week: <b>${PROFILES[r.win].name}</b> won ${Math.max(r.a, r.b)}–${Math.min(r.a, r.b)}`}${loser && c.stake ? `<br>${esc(PROFILES[loser].name)}, pay up: <b>${esc(c.stake)}</b>` : r.win === 'fail' && c.stake ? `<br>You both pay up: <b>${esc(c.stake)}</b>` : ''}</div>`;
-  }
-  const tally = Object.values(S.settings.chTally || {}), wK = tally.filter(x => x === 'king').length, wQ = tally.filter(x => x === 'qxeen').length;
-  return `<div class="card chcard"><div class="chtop"><div><b>${T.icon} ${T.t}</b><span>${T.d(c.n)}</span></div><button class="chip" data-chedit>Edit</button></div>
-    ${bar('king', L[0])}${bar('qxeen', L[1])}
-    ${c.stake ? `<div class="chstake">Stakes: <b>${esc(c.stake)}</b></div>` : ''}${res}
-    ${wK + wQ ? `<div class="chtally">All-time: ${PROFILES.king.name} ${wK} · ${PROFILES.qxeen.name} ${wQ}</div>` : ''}</div>`;
-}
-function challengeSheet() {
-  const c = S.settings.challenge && !S.settings.challenge.off ? S.settings.challenge : { type: 'team', n: 4, stake: '' };
-  window.__chDraft = { ...c };
-  const ideas = ['Loser buys the smoothies 🥤', 'Loser plans date night', 'Loser cooks dinner', 'Loser does the dishes all week', 'Winner picks the movie'];
-  openSheet(`<h3>Weekly challenge</h3><div class="sub">Resets every Monday. Both phones see it.</div>
-    <div class="chtypes">${Object.entries(CH_TYPES).map(([k, T]) => `<button class="chtype ${c.type === k ? 'on' : ''}" data-chtype="${k}"><b>${T.icon} ${T.t}</b><span>${k === 'team' ? 'Work together' : 'Head-to-head'}</span></button>`).join('')}</div>
-    <div class="chn ${c.type === 'team' ? '' : 'hide'}" id="chnRow"><span>Days each</span><div class="exstep"><button data-chn="-1">−</button><b id="chnV">${c.n || 4}</b><button data-chn="1">+</button></div></div>
-    <label class="fl">Stakes (optional)</label><input id="chStake" class="inp" maxlength="60" placeholder="e.g. Loser buys the smoothies 🥤" value="${esc(c.stake || '')}">
-    <div class="chideas">${ideas.map(i => `<button class="chip" data-chidea="${esc(i)}">${esc(i)}</button>`).join('')}</div>
-    <div class="grid2" style="margin-top:14px"><button class="btn acc" data-chsave>Save challenge</button>${S.settings.challenge && !S.settings.challenge.off ? '<button class="btn ghost" data-choff>Turn off</button>' : '<button class="btn" data-sheetclose>Cancel</button>'}</div>`);
-}
-function saveChallenge(off) {
-  const d = window.__chDraft || {}, prev = S.settings.challenge || {};
-  const same = !off && prev.type === d.type && prev.n === d.n && !prev.off;
-  S.settings.challenge = off ? { ...prev, off: true, u: Date.now() } : { type: d.type, n: d.type === 'team' ? (d.n || 4) : null, stake: ($('chStake').value || '').trim(), u: Date.now(), by: PROF, since: same ? prev.since : Date.now() };
-  touchSettings(); closeSheet(); if (histSeg === 'score') renderHistory(); toast(off ? 'Challenge turned off' : 'Challenge set 💪 ' + PROFILES[other()].name + ' will see it');
-  if (typeof scheduleSync === 'function') scheduleSync();
-}
-const _renderScore = renderScore;
-renderScore = function () {
-  _renderScore();
-  const me = summaryOf(S, PROF), pt = partnerSummary(), body = $('histBody'), head = body.querySelector('.dayhead');
-  const div = document.createElement('div'); div.innerHTML = challengeCard(me, pt);
-  head ? head.after(div.firstElementChild) : body.prepend(div.firstElementChild);
-};
+/* friends: milestone 4 (challenges) */
 
 /* ---------------- strength trends (History → PRs) ---------------- */
 function strengthRows() {
@@ -371,7 +305,7 @@ function warmupPlan(di) {
   return pick.slice(0, 6).map(k => ({ k, n: DRILLS[k][0], cue: DRILLS[k][1], sec: k === 'jack' || k === 'highknees' ? 45 : 40 }));
 }
 let WU = null;
-const wuDone = () => localStorage.getItem('gym.wu.' + PROF + '.' + dk(new Date())) === String(cur);
+const wuDone = () => localStorage.getItem('gymp.wu.' + uid() + '.' + dk(new Date())) === String(cur);
 function warmupSheet() {
   const plan = warmupPlan(cur), tot = Math.round((plan.reduce((a, d) => a + d.sec, 0) + (plan.length - 1) * 8) / 60 * 10) / 10;
   openSheet(`<h3>Warm-up for ${esc(DAYS[cur].title)}</h3><div class="sub">${plan.length} moves · about ${Math.round(tot)} minutes · picked for today's muscles</div>
@@ -407,7 +341,7 @@ function wuTick(now) {
   requestAnimationFrame(wuTick);
 }
 function wuFinish() {
-  beep(990, .3, .35); buzz([100, 60, 100]); localStorage.setItem('gym.wu.' + PROF + '.' + dk(new Date()), String(cur));
+  beep(990, .3, .35); buzz([100, 60, 100]); localStorage.setItem('gymp.wu.' + uid() + '.' + dk(new Date()), String(cur));
   wuClose(); toast('✅ Warmed up. Time to lift', 2200); renderWorkout();
 }
 function wuClose() { WU = null; const el = $('wu'); if (el) el.remove(); }
@@ -425,7 +359,7 @@ renderWorkout = function () {
 };
 
 /* ---------------- clicks ---------------- */
-document.addEventListener('click', e => {
+document.addEventListener('click', e => { if (appOff()) return;
   const t = e.target.closest('button, [data-mus]'); if (!t) return; const d = t.dataset;
   if (d.rir !== undefined) return setEffort(+d.rir);
   if (d.rirx !== undefined) return hideEffort();
@@ -435,12 +369,6 @@ document.addEventListener('click', e => {
   if (d.sumshare) { const [wk, di] = d.sumshare.split(':'); return shareSummary(wk, di); }
   if (d.sheetclose !== undefined) return closeSheet();
   if (d.strength) return strengthSheet(d.strength);
-  if (d.chedit !== undefined) return challengeSheet();
-  if (d.chtype) { window.__chDraft.type = d.chtype; document.querySelectorAll('[data-chtype]').forEach(b => b.classList.toggle('on', b === t)); $('chnRow').classList.toggle('hide', d.chtype !== 'team'); return; }
-  if (d.chn) { const v = Math.max(1, Math.min(5, (window.__chDraft.n || 4) + +d.chn)); window.__chDraft.n = v; $('chnV').textContent = v; return; }
-  if (d.chidea) { $('chStake').value = d.chidea; return; }
-  if (d.chsave !== undefined) return saveChallenge(false);
-  if (d.choff !== undefined) return saveChallenge(true);
   if (d.wuopen !== undefined) return warmupSheet();
   if (d.wustart !== undefined) return wuStart();
   if (d.wuclose !== undefined) return wuClose();

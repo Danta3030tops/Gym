@@ -867,7 +867,7 @@ document.addEventListener('pointerdown', () => keepAwake());
 function startApp() {
   curWeek = weekKeyOf(new Date()); applyTheme(ME.color);
   if (typeof applyRoutine === 'function') applyRoutine(); cur = todayIdx();
-  document.body.classList.remove('out'); showTab('workout'); showRestFor();
+  document.body.classList.remove('out'); showTab('workout'); showRestFor(); keepAwake(); if (typeof cafPaint === 'function') cafPaint();
   setSync(navigator.onLine ? 'busy' : 'err', navigator.onLine ? 'Syncing…' : 'Offline · saved on device'); sync();
 }
 function stopApp() {

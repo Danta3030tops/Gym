@@ -42,6 +42,12 @@ Status values: `todo`, `in progress`, `done`.
 
 (newest first)
 
+### 14 Nov 2026 (late) — milestone 2 nearly done; stopped at the usage limit
+
+`public/app.js`, `extras.js`, `coach.js`, `motion.js` are adapted (a `PROF = 'me'` / `PROFILES.me` shim in `app.js` keeps most couple-app code unchanged; partner, live, scoreboard, challenges and chat are removed). `smoke-public.py` passes through sign-up, setup, the workout screen, logging a set, sync to `app_state` / `app_public`, all five tabs, reload, sign-out / sign-in, and the coach empty state.
+
+**Pick up here:** the test fails at the step after `A.click('[data-buildplan]')` (coach builds a plan later): `#onb.show` / `[data-goal]` is not visible. Suspects: the `data-buildplan` listener at the bottom of `public/onboard.js`, or `startOnboarding(1)` being undone (the document click handler in `app.js` also runs). Fix, finish the rest of the test, run `smoke.py` too, then review: PORTING.md section 6 says "no PROF/PROFILES" but the shim was kept on purpose, so update that doc; check the More tab and the routine editor by hand in the screenshots; then mark milestone 2 done.
+
 ### 14 Nov 2026 — any number of training days; milestone 2 started
 
 - Owner: don't restrict training days. Setup now allows 1 to 7 days (`SPLITS` has entries for every count).

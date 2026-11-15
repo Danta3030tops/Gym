@@ -35,5 +35,4 @@
   addEventListener('keydown', e => { if (e.key === 'Escape' && sh.classList.contains('show')) closeSheet(); });
 
   window.__stagger = true;
-  if (typeof tab !== 'undefined' && tab === 'workout' && typeof renderWorkout === 'function' && document.getElementById('list').children.length) renderWorkout();
 })();
