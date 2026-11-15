@@ -309,6 +309,30 @@ with sync_playwright() as p:
     signin('coach@example.com'); openC(); assert 'No clients yet' in A.inner_text('#trClients') and not A.is_visible('#trBadge')
     A.click('[data-trseg="inbox"]'); A.wait_for_timeout(300); assert A.locator('#trInbox .cvrow').count() == 0
     openF(); seg('people')
+    # three accounts (milestone 6): a third person joins, for the leaderboard, group "add a friend", and the non-coach check
+    A.click('nav button[data-tab="more"]'); A.wait_for_timeout(300); A.click('#signOut'); A.wait_for_timeout(300); A.click('[data-aumode="up"]')
+    A.fill('#auUser', 'sam_lifts'); A.fill('#auEmail', 'sam@example.com'); A.fill('#auPass', 'longenough1'); A.click('#auGo'); A.wait_for_timeout(600)
+    A.fill('#obName', 'Sam Lee'); A.click('#onb [data-obnext]'); A.wait_for_timeout(300); A.click('#onb [data-goal="strength"]')
+    for _ in range(4): A.click('#onb [data-obnext]'); A.wait_for_timeout(300)
+    A.click('#obDone'); A.wait_for_timeout(700); assert A.is_visible('.wrap') and len(T('app_profiles')) == 3
+    openF(); add('coach.kay'); add('test_user'); assert len(fr()) == 3 and A.locator('#frSent .frow').count() == 2
+    A.click('[data-tradd]'); A.wait_for_timeout(450); A.fill('#trUser', 'test_user'); A.click('[data-trsend]'); A.wait_for_timeout(500)
+    assert 'isn’t signed up as a coach' in A.inner_text('#trMsg') and tr() == [], 'only coaches can be added as a coach'; A.click('#sx'); A.wait_for_timeout(700)
+    signin('coach@example.com'); openF(); seg('people'); A.click('[data-frok]'); A.wait_for_timeout(600); assert A.locator('#frList .frow').count() == 2
+    seg('board'); A.wait_for_timeout(600); assert A.locator('#lb .lbrow').count() == 3 and 'Test Person' in A.locator('#lb .lbrow').nth(0).inner_text(), 'three on the board, the one who trained first'
+    # group: start with one friend, add the other from the group details
+    seg('chats'); A.click('[data-chgroup]'); A.wait_for_timeout(450); A.fill('#chGName', 'Trio'); A.locator('#sheetin .chpick').nth(0).check(); A.click('[data-chgmake]'); A.wait_for_timeout(700)
+    assert '2 people' in A.inner_text('.chead'); trio = [c for c in T('app_convs') if c['title'] == 'Trio'][0]['id']; members = lambda: [m for m in T('app_members') if m['conv_id'] == trio]
+    A.click('[data-chinfo]'); A.wait_for_timeout(450); assert A.locator('#sheetin [data-chadd]').count() == 1
+    A.click('[data-chadd]'); A.wait_for_timeout(700); assert len(members()) == 3 and A.locator('#sheetin [data-chadd]').count() == 0, 'the other friend is added'
+    A.click('#sx'); A.wait_for_timeout(700); assert '3 people' in A.inner_text('.chead'); say('Welcome both')
+    # a member who is not friends with everyone still sees names (profiles of other members are loaded)
+    signin('sam@example.com'); assert A.inner_text('#frBadge') == '1'; openF(); seg('chats'); A.click('.cvrow'); A.wait_for_timeout(600)
+    assert 'Coach Kay' in A.inner_text('.mwho') and '3 people' in A.inner_text('.chead'); say('Hi all')
+    A.click('[data-chinfo]'); A.wait_for_timeout(450); assert 'Test Person' in A.inner_text('#sheetin') and A.locator('#sheetin [data-chadd]').count() == 0; A.click('#sx'); A.wait_for_timeout(700)
+    signin('test@example.com'); openF(); seg('chats'); assert 'Trio' in A.locator('#chConvs .cvrow').nth(0).inner_text() and 'Hi all' in A.locator('#chConvs .cvrow').nth(0).inner_text()
+    A.click('.cvrow'); A.wait_for_timeout(600); assert [x.strip() for x in A.locator('.mwho').all_inner_texts()] == ['Coach Kay', 'Sam Lee'], 'names of both senders, friend or not'
+    signin('coach@example.com'); openF(); seg('people')
     # signing out clears the list from the screen
     A.click('nav button[data-tab="more"]'); A.wait_for_timeout(300); A.click('#signOut'); A.wait_for_timeout(300)
     assert A.evaluate("FR.rows.length === 0 && document.getElementById('friends').innerHTML === ''")
@@ -318,4 +342,19 @@ with sync_playwright() as p:
     A.click('nav button[data-tab="more"]'); A.wait_for_timeout(300); A.click('#signOut'); A.wait_for_timeout(300); A.click('[data-aumode="forgot"]'); A.fill('#auEmail', 'test@example.com'); A.click('#auGo'); A.wait_for_timeout(300)
     assert 'reset link' in A.inner_text('#auErr')
     assert not errs, errs
+
+    # offline (milestone 6): the service worker caches every file the page loads, and the app opens with no network
+    import re
+    html = open(os.path.join(here, '../../public/index.html')).read(); sw = open(os.path.join(here, '../../public/sw.js')).read()
+    shell = re.findall(r"'([^']+)'", re.search(r'const SHELL = \[(.*?)\];', sw, re.S).group(1))
+    for src in re.findall(r'<script src="([^"]+)"', html):
+        if not src.startswith('http'): assert (src if src.startswith('..') else './' + src) in shell, src + ' is loaded by index.html but missing from SHELL in public/sw.js'
+    for f in shell: assert f == './' or os.path.exists(os.path.join(here, '../../public', f)), f + ' is in SHELL but does not exist'
+    ctx2 = b.new_context(viewport={'width': 390, 'height': 844}); ctx2.add_init_script(mock); B = ctx2.new_page()
+    B.goto(URL); B.evaluate("navigator.serviceWorker.ready.then(() => 1)"); B.wait_for_timeout(1500)
+    names = B.evaluate("caches.keys()"); assert [n for n in names if n.startswith('gymp-')], 'the public app has its own cache'
+    cached = B.evaluate("caches.open(%r).then(c => c.keys()).then(ks => ks.map(k => new URL(k.url).pathname))" % [n for n in names if n.startswith('gymp-')][0])
+    for f in ['/public/app.js', '/public/trainer.js', '/library.js', '/public/index.html']: assert f in cached, f + ' should be cached'
+    ctx2.set_offline(True); B.reload(); B.wait_for_timeout(1500); assert B.is_visible('#auth.show'), 'opens offline from the cache'
+    ctx2.close()
     print('OK public'); b.close()

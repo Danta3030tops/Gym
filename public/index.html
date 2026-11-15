@@ -9,6 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Gym">
 <title>Gym</title>
+<link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="../icon-192.png">
 <link rel="apple-touch-icon" href="../apple-touch-icon.png">
 <style>
@@ -844,5 +845,6 @@ body:not(:has(#rest.show)) #effort{bottom:calc(var(--nav) + var(--sb) + 24px)}
 <script src="trainer.js"></script>
 <script src="auth.js"></script>
 <script src="onboard.js"></script>
+<script>if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => { });</script>
 </body>
 </html>

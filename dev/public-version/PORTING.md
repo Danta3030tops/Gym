@@ -3,7 +3,9 @@
 Everyone porting a file follows this, so the pieces fit together. The couple app's files at the repo root are the source; **never edit them**. Write the ported copy into `public/`.
 
 Script order in `public/index.html`:
-`config.js` → supabase-js → `../data.js` → `../data-qxeen.js` → `../figures.js` → `../library.js` → `core.js` → `templates.js` → `app.js` → `extras.js` → `coach.js` → `motion.js` → `auth.js` → `onboard.js`
+`config.js` → supabase-js → `../data.js` → `../data-qxeen.js` → `../figures.js` → `../library.js` → `core.js` → `templates.js` → `app.js` → `extras.js` → `coach.js` → `motion.js` → `friends.js` → `chat.js` → `challenges.js` → `trainer.js` → `auth.js` → `onboard.js`
+
+(`friends.js`, `chat.js`, `challenges.js`, `trainer.js` are new code for milestones 3 to 5, not ports. Section 5 below describes what was left out of the port; those features now exist in these files in their many-people form.)
 
 Later files may wrap functions from earlier ones, exactly as in the couple app (`coach.js` wraps `afterLog`, `renderPRs`, `excountHtml`, `renderWorkout`).
 

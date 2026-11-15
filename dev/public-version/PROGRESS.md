@@ -29,6 +29,22 @@ Read `PLAN.md` first. This file is the hand-over between work sessions: update i
 - A person can have **one coach at a time** in the app (the database would allow several). Say if clients should be able to have more.
 - Chats are **text only** so far. Photo messages (as in the couple app) are not built; say if you want them before launch.
 
+## What is left before real people can use it (owner)
+
+The build against the mock backend is finished. Nothing has been pushed or merged: everything is on the local branch `public-version`.
+
+1. Look over the branch (`git log main..public-version`, or open `http://localhost:8765/public/` after `python3 -m http.server 8765`; it shows "Not connected yet" until step 3).
+2. Create a **new** Supabase project for the public app (not the couple app's project).
+3. Run `dev/public-version/supabase-public-schema.sql` in that project's SQL editor, then put the project URL and publishable key in `public/config.js`. **The SQL has never been run anywhere**, so expect to fix a typo or two the first time; try sign-up, friends, a chat, a coach link and a plan edit with two or three test accounts before inviting anyone.
+4. In Supabase: Authentication → URL Configuration, add the app's address (for password-reset links).
+5. Merge `public-version` into `main` and push when happy. The couple app's files at the repo root are unchanged.
+6. Answer the open questions above when convenient; each has a working default.
+
+Known rough edges:
+- The couple app's service worker (`/sw.js`) deletes every cache except its own when its version changes, including the public app's cache. The public app simply re-downloads its files the next time it is opened with a connection. Fixing that properly means a one-line change in the root `sw.js` (only delete caches starting `gym-v`), which these sessions were not allowed to touch.
+- Remember to bump `VERSION` in `public/sw.js` whenever a file in `public/` changes (same rule as the couple app), and add any new file to `SHELL` there (the smoke test fails if a script is missing from it).
+- Realtime (live updates without reopening the app) is written but has never run against a real project; the mock has no realtime.
+
 ## Milestones
 
 Status values: `todo`, `in progress`, `done`.
@@ -40,11 +56,24 @@ Status values: `todo`, `in progress`, `done`.
 | 3 | Friends: add by username, accept / decline, friends list | done |
 | 4 | Friends features: leaderboard, 1-on-1 chats, group chats, nudges, challenges | done |
 | 5 | Trainer portal: add trainer, Clients tab, Inbox tab, routine edits with client notification, remove trainer | done |
-| 6 | Multi-user tests on the mock, service worker + manifest for `public/`, final review of the schema | todo |
+| 6 | Multi-user tests on the mock, service worker + manifest for `public/`, final review of the schema | done |
 
 ## Session log
 
 (newest first)
+
+### 15 Nov 2026 — milestone 6 done; the build is finished
+
+- **Offline:** `public/sw.js` (cache `gymp-v1`, same stale-while-revalidate approach as the couple app, only ever deletes caches starting `gymp-`) and `public/manifest.webmanifest`; registered at the end of `public/index.html`. The smoke test checks that every script the page loads is in `SHELL`, that the files exist, and that the app opens with the network off.
+- **Schema review** of `supabase-public-schema.sql` (file edited, **not run**):
+  - New "which columns may be updated" section. Without it, row level security alone let the person accepting a request rewrite who it was from: a coach could have made anyone their "client" and read their data, a friend request could be re-pointed at a stranger, a chat member could move their membership into any conversation, and anyone could change their own role or username. Updates are now limited to `status` (friends, trainers), `last_read` (members), `read` (notes), `display_name` / `color` / `bio` (profiles).
+  - `app_can_post`: 1-on-1 and coach chats can only be written to while the two people are still linked.
+  - `nt_send`: notes only between linked people (it used to let strangers send request-type notes with any text).
+  - `rt_upd`: a routine row can no longer be re-assigned to another person.
+  - `app_members` added to the realtime publication.
+  - The "coach can read client progress photos" storage policy is commented out until the owner decides (open question).
+- **Three-account tests:** a third person signs up; three-person leaderboard; group "add a friend"; a group member who is not friends with everyone still sees names; "isn't signed up as a coach".
+- PORTING.md and CLAUDE.md updated with the public app's file list.
 
 ### 15 Nov 2026 — milestone 5 done (trainer portal)
 
