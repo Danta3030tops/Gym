@@ -62,6 +62,15 @@ Status values: `todo`, `in progress`, `done`.
 
 (newest first)
 
+### 15 Nov 2026 — real Supabase project set up
+
+- New project **Gym Public** (ref `uxxdikfpazjgdipadblt`, org "Gym App", free plan). The couple app's project was not touched.
+- `supabase-public-schema.sql` ran there for the first time: "Success. No rows returned", no edits needed.
+- Auth → URL Configuration → Site URL set to `https://danta3030tops.github.io/Gym/public/`.
+- `public/config.js` now holds the project URL and publishable key.
+- Checked from a local copy of the app, without the mock: the sign-in screen loads connected, the live username check answers, and a signed-out visitor reads no profiles.
+- **Not done yet:** no real account has been created, so sign-up, the profile trigger, friends, chats, coach links and realtime are still untested against the real database. "Confirm email" is at Supabase's default (on), and the free plan's built-in mailer only sends a few emails an hour.
+
 ### 15 Nov 2026 — milestone 6 done; the build is finished
 
 - **Offline:** `public/sw.js` (cache `gymp-v1`, same stale-while-revalidate approach as the couple app, only ever deletes caches starting `gymp-`) and `public/manifest.webmanifest`; registered at the end of `public/index.html`. The smoke test checks that every script the page loads is in `SHELL`, that the files exist, and that the app opens with the network off.
