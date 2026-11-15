@@ -62,6 +62,12 @@ Status values: `todo`, `in progress`, `done`.
 
 (newest first)
 
+### 15 Nov 2026 (night) — `public-next` merged into `main` (gymp-v2)
+
+- Owner ran `supabase-public-update-1.sql` in Gym Public and deployed edge function `login` (Verify JWT off). Checked from outside: `app_photos_ask` / `app_photos_answer` exist and refuse signed-out callers; `login` answers "Invalid login credentials" for an unknown user and passes the CORS preflight. (A first deploy under Supabase's auto-generated name was replaced by one named `login`; the stray one can be deleted.)
+- Merged `public-next` into `main`.
+- **Still open:** Gmail SMTP sender (owner). Username sign-in and a photo request have not been tried with two real accounts yet.
+
 ### 15 Nov 2026 (evening) — `public-next` verified against the mock; still NOT live, waiting on the owner
 
 Automated session. Steps 1 to 3 of the afternoon entry's list are done; step 4 (owner only) is still open.
