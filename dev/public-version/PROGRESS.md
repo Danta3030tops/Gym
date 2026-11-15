@@ -62,13 +62,13 @@ Status values: `todo`, `in progress`, `done`.
 
 (newest first)
 
-### 15 Nov 2026 (late) — the public app is now "Spott"; on branch `spott-rename`, NOT pushed
+### 15 Nov 2026 (late) — the public app is now "Spott"; merged into `main` and pushed
 
 - Owner chose the name **Spott** and logo **A** (bar with a spot above it; drafts and `make.py` in `dev/public-version/logo/`).
 - User-facing name changed in `public/` (title, home-screen name, sign-in wordmark, More footer, export file names, share-card watermark). Internal names are unchanged on purpose (`gymp-*` keys and caches, `app_*` tables, the `/Gym/public/` address).
 - The public app has its own icons now (`public/icon-192.png`, `icon-512.png`, `apple-touch-icon.png`, `maskable-512.png`, `icon.svg`); the couple app keeps the ones in the repo root. `public/sw.js` is `gymp-v3`.
 - Both smoke tests pass.
-- **Pick up here:** merge `spott-rename` into `main` and push when the owner says so. Owner still to do: Gmail SMTP sender (sender name "Spott"), and reword the Supabase email templates to say Spott.
+- **Pick up here:** owner still to do: Gmail SMTP sender (sender name "Spott"), and reword the Supabase email templates to say Spott.
 
 ### 15 Nov 2026 (night) — `public-next` merged into `main` (gymp-v2)
 
