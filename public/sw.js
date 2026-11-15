@@ -1,7 +1,7 @@
 // Public Gym app: offline support. App files are cached so it opens at the gym with no signal.
 // Bump VERSION whenever any file in SHELL changes, so phones pick up the update (close and reopen twice).
 // This worker's scope is public/ only. It keeps its own caches (names starting "gymp-") and never touches the couple app's.
-const VERSION = 'gymp-v1';
+const VERSION = 'gymp-v2';
 const SHELL = ['./', './index.html', './config.js', './core.js', './templates.js', './app.js', './extras.js', './coach.js', './motion.js', './friends.js', './chat.js', './challenges.js', './trainer.js', './auth.js', './onboard.js', './manifest.webmanifest',
   '../data.js', '../data-qxeen.js', '../figures.js', '../library.js', '../icon-192.png', '../icon-512.png', '../apple-touch-icon.png', '../maskable-512.png'];
 const CDN = ['cdn.jsdelivr.net', 'cdnjs.cloudflare.com', 'fonts.googleapis.com', 'fonts.gstatic.com'];

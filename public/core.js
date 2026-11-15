@@ -39,3 +39,19 @@ const stateKey = uid => 'gymp.v1.' + uid;
 function loadLocal(uid) { try { const d = JSON.parse(localStorage.getItem(stateKey(uid)) || 'null'); return d ? { ...blankState(), ...d, settings: { ...blankState().settings, ...(d.settings || {}) } } : blankState(); } catch (e) { return blankState(); } }
 function saveLocal(uid, st) { st.updated = Date.now(); try { localStorage.setItem(stateKey(uid), JSON.stringify(st)); } catch (e) { toast('Phone storage is full'); } }
 const initials = n => { const p = String(n || '?').trim().split(/\s+/); return ((p[0] || '?')[0] + (p[1] ? p[1][0] : (p[0] || '')[1] || '')).toUpperCase(); };
+
+/* ---------- never trust data other people can write ----------
+   A friend's summary, a client's routine and a coach's edits all arrive as free-form JSON that the other person controls.
+   Numbers are forced to numbers and text is cut to size here, at the door; text is still esc()'d wherever it is shown. */
+const safeN = v => Math.max(0, Math.floor(+v) || 0);
+function cleanRoutine(r) {
+  if (!Array.isArray(r)) return r == null ? null : [];
+  const str = (v, n) => String(v ?? '').slice(0, n), okPat = k => typeof P !== 'undefined' && typeof k === 'string' && Object.hasOwn(P, k);
+  return r.filter(d => d && Array.isArray(d.slots)).slice(0, 7).map((d, di) => ({ ...d, d: str(d.d, 12), title: str(d.title, 60), wd: Math.min(7, Math.max(1, safeN(d.wd) || di + 1)),
+    slots: d.slots.filter(sl => sl && Array.isArray(sl.opts) && sl.opts.some(Boolean)).slice(0, 20).map(sl => {
+      const o = { ...sl, sets: Math.min(10, Math.max(1, safeN(sl.sets) || 1)), reps: str(sl.reps, 30), rest: Math.min(3600, safeN(sl.rest)),
+        opts: sl.opts.filter(Boolean).slice(0, 12).map(x => ({ n: str(x.n, 80), pat: okPat(x.pat) ? x.pat : 'squat', cues: (Array.isArray(x.cues) ? x.cues : []).slice(0, 8).map(c => str(c, 200)) })) };
+      if (sl.time) o.time = Math.min(7200, safeN(sl.time)); else delete o.time;
+      return o;
+    }) }));
+}

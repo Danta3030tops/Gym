@@ -15,11 +15,12 @@ const clAll = () => (S && S.settings.challenges) || {};
 const clOn = fid => { const c = clAll()[fid]; return c && !c.off ? c : null; };
 const clActive = () => friendList().filter(p => clOn(p.id)).map(p => ({ p, c: clOn(p.id) }));
 /* never trust what arrives in a note: rebuild the object field by field */
-const clClean = c => ({ type: CL_TYPES[c.type] ? c.type : 'days', n: c.type === 'team' ? Math.max(1, Math.min(7, Math.round(+c.n) || 4)) : null, stake: String(c.stake || '').slice(0, 60), u: +c.u || 0, by: String(c.by || ''), since: +c.since || +c.u || 0, off: !!c.off });
+const clType = t => typeof t === 'string' && Object.hasOwn(CL_TYPES, t) ? CL_TYPES[t] : CL_TYPES.days; // not CL_TYPES[t]: "constructor" would match
+const clClean = c => ({ type: typeof c.type === 'string' && Object.hasOwn(CL_TYPES, c.type) ? c.type : 'days', n: c.type === 'team' ? Math.max(1, Math.min(7, Math.round(+c.n) || 4)) : null, stake: String(c.stake || '').slice(0, 60), u: +c.u || 0, by: String(c.by || ''), since: +c.since || +c.u || 0, off: !!c.off });
 /* this week's and last week's numbers out of a summary that may be up to a week old */
 function clWeeks(sm) {
-  const s = sm || {}, wk = weekKeyOf(new Date()), lw = dk(addDays(parseDk(wk), -7)), z = { days: 0, sets: 0, prs: 0 }, now = { days: s.weekDays || 0, sets: s.weekSets || 0, prs: s.weekPRs || 0 };
-  if (s.wk === wk) return { cur: now, last: s.lw && s.lw.wk === lw ? s.lw : z, known: true };
+  const s = sm || {}, wk = weekKeyOf(new Date()), lw = dk(addDays(parseDk(wk), -7)), z = { days: 0, sets: 0, prs: 0 }, num3 = o => ({ days: safeN(o && o.days), sets: safeN(o && o.sets), prs: safeN(o && o.prs) }), now = { days: safeN(s.weekDays), sets: safeN(s.weekSets), prs: safeN(s.weekPRs) };
+  if (s.wk === wk) return { cur: now, last: s.lw && s.lw.wk === lw ? num3(s.lw) : z, known: true };
   if (s.wk === lw) return { cur: z, last: now, known: true };
   return { cur: z, last: z, known: false }; // hasn't synced for over a week: can't call last week
 }
@@ -30,7 +31,7 @@ function clLastWeek(c, me, th) { // null when the challenge didn't exist last we
   return { a, b, win: c.type === 'team' ? (a >= c.n && b >= c.n ? 'team' : 'fail') : a > b ? 'me' : b > a ? 'them' : 'tie' };
 }
 function clCard({ p, c }) {
-  const T = CL_TYPES[c.type] || CL_TYPES.days, me = clWeeks(summaryOf(S, PROF)), th = clWeeks(LB.sums[p.id]), a = clScore(c, me.cur), b = clScore(c, th.cur), mx = c.type === 'team' ? c.n : Math.max(1, a, b), nm = frName(p).split(' ')[0];
+  const T = clType(c.type), me = clWeeks(summaryOf(S, PROF)), th = clWeeks(LB.sums[p.id]), a = clScore(c, me.cur), b = clScore(c, th.cur), mx = c.type === 'team' ? c.n : Math.max(1, a, b), nm = frName(p).split(' ')[0];
   const bar = (name, v, col) => `<div class="chrow"><span class="kq">${esc(name)}</span><div class="chbar"><i style="width:${Math.min(100, v / mx * 100)}%;background:${col}"></i></div><b>${v}${c.type === 'team' ? '/' + c.n : ''}</b></div>`;
   const r = clLastWeek(c, me, th), tally = Object.values((S.settings.clTally || {})[p.id] || {}), w = tally.filter(x => x === 'me').length, l = tally.filter(x => x === 'them').length;
   const res = !r ? '' : `<div class="chres">${r.win === 'team' ? '🎉 Last week: you both made it' : r.win === 'fail' ? '😬 Last week: goal missed' : r.win === 'tie' ? `🤝 Last week: tied ${r.a}–${r.b}` : `👑 Last week: <b>${r.win === 'me' ? 'you' : esc(nm)}</b> won ${Math.max(r.a, r.b)}–${Math.min(r.a, r.b)}`}${

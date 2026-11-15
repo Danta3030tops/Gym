@@ -598,9 +598,9 @@ const edBase = () => (ED_FOR ? ED_FOR.routine : baseRoutine());
 function editRoutine() {
   const R = edBase(), D = R[edDay];
   openSheet(`<h3>${ED_FOR ? 'Edit ' + esc(ED_FOR.name) + '’s plan' : 'Edit routine'}</h3><div class="sub">${ED_FOR ? 'Every change is saved to their plan straight away.' : 'Your history is kept per exercise name, so renaming or reordering never loses it.'}</div>
-    <div class="days" style="margin:0 0 10px">${R.map((d, i) => `<button class="${i === edDay ? 'on' : ''}" data-edday="${i}">${d.d}</button>`).join('')}</div>
+    <div class="days" style="margin:0 0 10px">${R.map((d, i) => `<button class="${i === edDay ? 'on' : ''}" data-edday="${i}">${esc(d.d)}</button>`).join('')}</div>
     <label class="fld">Day name<input id="edTitle" value="${esc(D.title)}"></label>
-    <div style="margin-top:10px">${D.slots.map((sl, si) => `<div class="edrow"><div class="edn"><b>${esc(sl.opts[0].n)}</b><span>${sl.sets} × ${esc(sl.reps)} · rest ${fmtT(sl.rest)}${sl.opts.length > 1 ? ` · ${sl.opts.length - 1} swaps` : ''}</span></div>
+    <div style="margin-top:10px">${D.slots.map((sl, si) => `<div class="edrow"><div class="edn"><b>${esc(sl.opts[0].n)}</b><span>${safeN(sl.sets)} × ${esc(sl.reps)} · rest ${fmtT(safeN(sl.rest))}${sl.opts.length > 1 ? ` · ${sl.opts.length - 1} swaps` : ''}</span></div>
       <button class="cbtn" data-edmv="${si}:-1" ${si === 0 ? 'disabled' : ''}>↑</button><button class="cbtn" data-edmv="${si}:1" ${si === D.slots.length - 1 ? 'disabled' : ''}>↓</button><button class="cbtn" data-ededit="${si}">✎</button><button class="cbtn" data-eddel="${si}">✕</button></div>`).join('')}</div>
     <button class="btn acc" data-ededit="new">＋ Add exercise</button>
     ${!ED_FOR && S.settings.plan ? '<button class="btn ghost" data-edreset>Rebuild from my setup answers</button>' : ''}`);
@@ -621,8 +621,8 @@ function editSlot(si) {
   const isNew = si === 'new', sl = isNew ? { sets: 3, reps: '10–12', rest: 60, opts: [{ n: '', pat: 'squat', cues: [] }] } : edBase()[edDay].slots[si], o = sl.opts[0];
   openSheet(`<h3>${isNew ? 'Add exercise' : 'Edit exercise'}</h3><div class="sub">${isNew ? edBase()[edDay].title : 'Edits the main exercise. Its swaps stay as they are.'}</div>
     <label class="fld">Exercise name<input id="esN" list="libNames" value="${esc(o.n)}" placeholder="Start typing, e.g. Leg Press"></label><datalist id="libNames">${LIB_ALL.map(x => `<option value="${esc(x.n)}">`).join('')}</datalist>
-    <div class="grid2" style="margin-top:8px"><label class="fld">Sets<input id="esS" inputmode="numeric" value="${sl.sets}"></label><label class="fld">Reps<input id="esR" value="${esc(sl.reps)}" placeholder="8–10, 15, failure"></label>
-    <label class="fld">Rest (sec)<input id="esRest" inputmode="numeric" value="${sl.rest}"></label><label class="fld">Timed? (sec)<input id="esT" inputmode="numeric" value="${sl.time || ''}" placeholder="blank = reps"></label></div>
+    <div class="grid2" style="margin-top:8px"><label class="fld">Sets<input id="esS" inputmode="numeric" value="${safeN(sl.sets)}"></label><label class="fld">Reps<input id="esR" value="${esc(sl.reps)}" placeholder="8–10, 15, failure"></label>
+    <label class="fld">Rest (sec)<input id="esRest" inputmode="numeric" value="${safeN(sl.rest)}"></label><label class="fld">Timed? (sec)<input id="esT" inputmode="numeric" value="${safeN(sl.time) || ''}" placeholder="blank = reps"></label></div>
     <label class="fld" style="margin-top:8px">Form figure<select id="esP">${Object.keys(PAT_NAMES).filter(k => P[k]).map(k => `<option value="${k}" ${o.pat === k ? 'selected' : ''}>${PAT_NAMES[k]}</option>`).join('')}</select></label>
     <label class="fld" style="margin-top:8px">Form tips (one per line)<textarea id="esC" rows="3">${esc((o.cues || []).join('\n'))}</textarea></label>
     <button class="btn acc" data-edsave="${si}">Save</button><button class="btn ghost" data-edback>Back</button>`);

@@ -69,8 +69,9 @@ const frAgo = t => { const s = (Date.now() - new Date(t).getTime()) / 1000; retu
 /* a published summary goes stale (it was written on the day of the last sync), so read it against today's week and month */
 function lbStats(sm) {
   const s = sm || {}, now = new Date(), wk = s.wk === weekKeyOf(now), mk = s.mk === monthKey(now);
-  return { week: wk ? s.weekDays || 0 : 0, sets: wk ? s.weekSets || 0 : 0, month: mk ? s.monthDays || 0 : 0, prs: mk ? s.prsMonth || 0 : 0,
-    streak: Date.now() - (s.at || 0) < 8 * 864e5 ? s.dayStreak || 0 : 0, today: s.td === dk(now) && s.todaySets > 0, lastT: s.lastT || 0 };
+  // every number is forced to a number: this row is written by the other person and is shown as HTML
+  return { week: wk ? safeN(s.weekDays) : 0, sets: wk ? safeN(s.weekSets) : 0, month: mk ? safeN(s.monthDays) : 0, prs: mk ? safeN(s.prsMonth) : 0,
+    streak: Date.now() - safeN(s.at) < 8 * 864e5 ? safeN(s.dayStreak) : 0, today: s.td === dk(now) && safeN(s.todaySets) > 0, lastT: safeN(s.lastT) };
 }
 async function loadBoard() {
   const ids = friendIds(); if (appOff() || !sb || !navigator.onLine || !ids.length) return;
@@ -98,8 +99,8 @@ function boardHtml() {
 
 /* ---------- notifications (app_notes): nudges and hype now, trainer updates later ---------- */
 const NT = { rows: [], max: 0 };
-const NOTE_TEXT = { nudge: n => `👊 ${n} nudged you. Time to train!`, hype: n => `🔥 ${n} sent you some hype`,
-  challenge: (n, x) => (x.data && x.data.off ? `🎯 ${n} ended your weekly challenge` : `🎯 ${n} set a weekly challenge with you: ${(CL_TYPES[x.data && x.data.type] || CL_TYPES.days).t}`) };
+const NOTE_TEXT = { photos: n => `📸 ${n} asked to see your progress photos. Answer under Your coach.`, nudge: n => `👊 ${n} nudged you. Time to train!`, hype: n => `🔥 ${n} sent you some hype`,
+  challenge: (n, x) => (x.data && x.data.off ? `🎯 ${n} ended your weekly challenge` : `🎯 ${n} set a weekly challenge with you: ${clType(x.data && x.data.type).t}`) };
 NOTE_TEXT.routine = n => `✏️ ${n} updated your plan`; NOTE_TEXT.trainer_ok = n => `🤝 ${n} is now your coach`;
 const noteText = n => (NOTE_TEXT[n.kind] ? NOTE_TEXT[n.kind](frName(FR.profs[n.from_id] || TR.profs[n.from_id] || CH.profs[n.from_id]), n) : n.body || 'Something new');
 async function loadNotes() {

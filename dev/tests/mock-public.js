@@ -32,6 +32,7 @@
         if (!u) return { data: {}, error: { message: 'Invalid login credentials' } };
         const s = mk(u); setS(s, 'SIGNED_IN'); return { data: { user: s.user, session: s }, error: null };
       },
+      async setSession({ access_token }) { const u = load().users.find(x => 't-' + x.id === access_token); if (!u) return { data: {}, error: { message: 'bad token' } }; const s = mk(u); setS(s, 'SIGNED_IN'); return { data: { user: s.user, session: s }, error: null }; },
       async signOut() { setS(null, 'SIGNED_OUT'); return { error: null }; },
       async getSession() { return { data: { session: getS() } }; },
       onAuthStateChange(cb) { subs.push(cb); return { data: { subscription: { unsubscribe() { } } } }; },
@@ -45,6 +46,8 @@
       const pals = (a, b) => T('app_friends').some(r => r.status === 'accepted' && ((r.requester === a && r.addressee === b) || (r.requester === b && r.addressee === a)));
       const member = (c, u) => T('app_members').some(x => x.conv_id === c && x.user_id === u), join = (c, u) => { if (!member(c, u)) T('app_members').push({ id: d.seq++, conv_id: c, user_id: u, last_read: now() }); };
       const conv = (kind, title) => { const c = { id: uuid(), kind, title, created_by: me, created_at: now(), last_at: now(), last_text: '' }; T('app_convs').push(c); return c.id; };
+      if (name === 'app_photos_ask') { const r = T('app_trainers').find(x => x.trainer === me && x.client === args.c && x.status === 'accepted'); if (r && (r.photos || 'no') === 'no') r.photos = 'asked'; return ok(null); }
+      if (name === 'app_photos_answer') { const r = T('app_trainers').find(x => x.client === me && x.trainer === args.t && x.status === 'accepted'); if (r) r.photos = args.ok ? 'yes' : 'no'; return ok(null); }
       if (name === 'app_open_chat') {
         const o = args.other; if (!me || !o || o === me) return no('bad user');
         const trains = T('app_trainers').some(r => r.status === 'accepted' && ((r.trainer === me && r.client === o) || (r.trainer === o && r.client === me)));
@@ -101,7 +104,14 @@
       };
       return b;
     }
-    return { auth, rpc, from, channel() { const ch = { on() { return ch; }, subscribe() { return ch; }, send() { return Promise.resolve('ok'); } }; return ch; }, removeChannel() { },
+    // the "login" edge function: username or email + password → tokens (see dev/public-version/edge-login/index.ts)
+    const functions = { async invoke(name, o) {
+      if (name !== 'login') return { data: null, error: { message: 'Function not found' } };
+      const b = (o && o.body) || {}, d = load(), p = (d.t.app_profiles || []).find(x => x.username === b.login);
+      const u = d.users.find(x => (p ? x.id === p.id : x.email === b.login) && x.password === b.password);
+      return u ? { data: { access_token: 't-' + u.id, refresh_token: 'r-' + u.id }, error: null } : { data: { error: 'Invalid login credentials' }, error: { message: 'non-2xx' } };
+    } };
+    return { auth, rpc, from, functions, channel() { const ch = { on() { return ch; }, subscribe() { return ch; }, send() { return Promise.resolve('ok'); } }; return ch; }, removeChannel() { },
       storage: { from: () => ({ upload: async () => ({ error: null }), download: async () => ({ data: null, error: 'x' }), remove: async () => ({}) }) } };
   } };
 })();

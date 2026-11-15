@@ -62,6 +62,23 @@ Status values: `todo`, `in progress`, `done`.
 
 (newest first)
 
+### 15 Nov 2026 (afternoon) — review fixes + two features coded on branch `public-next`; NOT verified, NOT live
+
+The public app is live from `main` (merged 15 Nov). Work since then is on **`public-next`** and must not be pushed or merged without the owner's OK.
+
+Done on `public-next` (all parse; see `git diff main`):
+- Review fixes: `safeN` / `cleanRoutine` in `core.js` applied where other people's data enters (auth.js, app.js sync, trainer.js, friends.js `lbStats`, challenges.js `clWeeks` / `clType`); esc() on day names and reps; sync early-returns; session timer cleared on sign-out; `public/sw.js` is `gymp-v2`.
+- Coach plan save checks `updated_at` first (trainer.js `trSaveRoutine`).
+- Sign in with username or email: `auth.js` `signInByUsername` calls edge function `login` (`dev/public-version/edge-login/index.ts`, **not deployed yet**); the mock has `functions.invoke('login')` and `auth.setSession`.
+- Coach photo requests: `trainer.js` (`trPhotosAsk`, `trPhotosAnswer`, `clientPhotosHtml`, `trHydratePhotos`), note kind `photos` in friends.js, mock rpcs.
+- `dev/public-version/supabase-public-update-1.sql` (**not run yet**): helper functions only answer about the caller, length limits, chat lock, `app_trainers.photos` + rpcs + storage policy.
+
+**Pick up here:**
+1. `dev/tests/smoke-public.py` was being rewritten by another session to use `until(...)` waits instead of sleeps. Check it is complete and passes 5 times in a row; if it is half-done, finish it. My last run failed at the three-account section (`openF(); add('coach.kay'); until(lambda: len(fr()) == 2)`), probably mid-edit.
+2. Add test steps: sign in by username (`test_user` + password, and a wrong password); coach asks for photos → client sees the note and the Allow button → allows → coach's client view shows the Progress photos card without the Ask button → client stops sharing.
+3. Run `smoke.py` too. Commit on `public-next`. Do not push.
+4. Then the owner has to: paste `supabase-public-update-1.sql` in the Gym Public SQL editor; create edge function `login` from `edge-login/index.ts` with "Verify JWT" off; set up Gmail SMTP (Authentication → Emails → SMTP Settings) with their own app password. Only after the SQL update is run should `public-next` be merged and pushed (the photo code calls rpcs that do not exist until then; username sign-in shows a friendly "use your email" message until the function exists).
+
 ### 15 Nov 2026 — real Supabase project set up
 
 - New project **Gym Public** (ref `uxxdikfpazjgdipadblt`, org "Gym App", free plan). The couple app's project was not touched.
