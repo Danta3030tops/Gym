@@ -106,8 +106,8 @@
     }
     // the "login" edge function: username or email + password → tokens (see dev/public-version/edge-login/index.ts)
     const functions = { async invoke(name, o) {
-      if (name !== 'login') return { data: null, error: { message: 'Function not found' } };
-      const b = (o && o.body) || {}, d = load(), p = (d.t.app_profiles || []).find(x => x.username === b.login);
+      if (name !== 'login' || window.__mockNoLogin) return { data: null, error: { message: 'Function not found' } };
+      const b = { ...((o && o.body) || {}) }; b.login = String(b.login || '').trim().toLowerCase(); const d = load(), p = (d.t.app_profiles || []).find(x => x.username === b.login);
       const u = d.users.find(x => (p ? x.id === p.id : x.email === b.login) && x.password === b.password);
       return u ? { data: { access_token: 't-' + u.id, refresh_token: 'r-' + u.id }, error: null } : { data: { error: 'Invalid login credentials' }, error: { message: 'non-2xx' } };
     } };

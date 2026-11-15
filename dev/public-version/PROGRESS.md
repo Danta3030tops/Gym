@@ -62,6 +62,21 @@ Status values: `todo`, `in progress`, `done`.
 
 (newest first)
 
+### 15 Nov 2026 (evening) — `public-next` verified against the mock; still NOT live, waiting on the owner
+
+Automated session. Steps 1 to 3 of the afternoon entry's list are done; step 4 (owner only) is still open.
+
+- **Step 1:** `dev/tests/smoke-public.py` (the `until(...)` rewrite) was already complete. It passed as found; the three-account failure noted below did not come back.
+- **Step 2, new test steps:**
+  - Username sign-in: bad input ("a b"), `test_user` + wrong password, an unknown username (same "Wrong email or password" answer), the friendly "Use your email instead" message while the `login` function is missing (`window.__mockNoLogin` in the mock), then `Test_User` + the right password signs in and survives a reload.
+  - Coach photo requests: photos card is "Private" with an Ask button → coach asks (row `photos = asked`, one `photos` note, no second Ask) → client sees the note and the Allow / Not now buttons → Not now → coach can ask again → client allows (survives a reload, "Stop sharing" offered) → coach's client view shows the Progress photos card with no Ask button → with photo entries put into the client's state, only the file in the client's own folder is listed (another folder and a deleted slot are not) → client stops sharing → coach is back to "Private" + Ask.
+  - Mock: the `login` function lowercases and trims the login like `edge-login/index.ts` does, and can be switched off with `window.__mockNoLogin`.
+- **No app code had to change.** Only `dev/tests/smoke-public.py` and `dev/tests/mock-public.js` were edited.
+- **Results:** `smoke-public.py` passed 6 times in a row with the new steps (about 115 s each); `smoke.py` passed; `syntax.py` OK for every `public/*.js` and the mock.
+- **Not covered by any test** (the mock cannot): the real `login` edge function, the SQL in `supabase-public-update-1.sql` (rpcs, storage policy letting a coach download a client's photos), and real photo downloads in the coach view (the mock's storage returns nothing, so the test checks which photos are listed, not that they load).
+
+**Pick up here:** nothing left for a coding session until the owner has done step 4 of the entry below (run `supabase-public-update-1.sql` in the Gym Public SQL editor; create edge function `login` from `edge-login/index.ts` with "Verify JWT" off; set up Gmail SMTP). After that: try username sign-in and a photo request with two real accounts, then merge `public-next` into `main` and push (owner's OK needed).
+
 ### 15 Nov 2026 (afternoon) — review fixes + two features coded on branch `public-next`; NOT verified, NOT live
 
 The public app is live from `main` (merged 15 Nov). Work since then is on **`public-next`** and must not be pushed or merged without the owner's OK.

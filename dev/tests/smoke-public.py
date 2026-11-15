@@ -130,6 +130,21 @@ with sync_playwright() as p:
     until(lambda: A.is_visible('.wrap') and not A.is_visible('#onb.show'), 'returning user skips setup')
     cnt('.set.ok', 1, 'log is back after signing in again')
 
+    # sign in with a username instead of an email (the "login" server function; emails never reach the browser)
+    def login(u, pw): A.fill('#auEmail', u); A.fill('#auPass', pw); A.click('#auGo')
+    A.click('nav button[data-tab="more"]'); A.click('#signOut'); until(lambda: A.is_visible('#auth.show'), 'signed out')
+    login('a b', 'longenough1'); has('#auErr', 'email or username')
+    login('test_user', 'wrongpass1'); has('#auErr', 'Wrong email or password')
+    until(lambda: A.is_visible('#auth.show') and not A.is_visible('.wrap') and A.is_enabled('#auGo') and A.evaluate('session') is None, 'a wrong password does not sign anyone in')
+    login('nobody_here', 'longenough1'); has('#auErr', 'Wrong email or password', 'an unknown username gets the same answer as a wrong password'); until(lambda: A.is_enabled('#auGo'))
+    A.evaluate('window.__mockNoLogin = true')
+    login('test_user', 'longenough1'); has('#auErr', 'Use your email instead', 'friendly message while the login function is not deployed'); until(lambda: A.is_enabled('#auGo'))
+    A.evaluate('window.__mockNoLogin = false')
+    login('Test_User', 'longenough1')  # typed with capitals: usernames are matched in lower case
+    until(lambda: A.is_visible('.wrap') and not A.is_visible('#onb.show') and A.evaluate("session && session.user.email") == 'test@example.com' and A.evaluate('ME.username') == 'test_user', 'username + password signs in')
+    cnt('.set.ok', 1, 'log is back after signing in by username')
+    reload(); until(lambda: A.is_visible('.wrap') and A.evaluate('ME && ME.username') == 'test_user', 'a username sign-in survives a reload')
+
     # routine editor: edits go to app_routines, and the plan can be rebuilt from the setup answers
     rt = lambda: db()['t']['app_routines'][0]['routine']
     di = A.evaluate('cur'); before = [sl['opts'][0]['n'] for sl in rt()[di]['slots']]
@@ -296,6 +311,12 @@ with sync_playwright() as p:
     A.click('#trClients .frow')
     until(lambda: 'Test Person' in A.inner_text('#clients') and A.locator('#trPlan .pv').count() == 3 and A.locator('#trLog .hrow').count() == 1 and A.inner_text('#trSum .tstats b >> nth=0') == '1', 'client view shows stats, plan and sessions')
     shot('17-client')
+    # progress photos are private until the client says yes: the coach can only ask
+    ph = lambda: tr()[0].get('photos', 'no')
+    until(lambda: 'Private' in A.inner_text('#trPhotos') and A.locator('#trPhotos [data-trphotoask]').count() == 1 and A.locator('#trPhotos img').count() == 0, 'photos are private, with an Ask button')
+    A.click('[data-trphotoask]')
+    until(lambda: ph() == 'asked' and len(kinds('photos')) == 1 and kinds('photos')[0]['user_id'] == test_id, 'the request is saved and the client is told')
+    until(lambda: 'Waiting for Test' in A.inner_text('#trPhotos') and A.locator('#trPhotos [data-trphotoask]').count() == 0, 'no second Ask while waiting')
     # edit their plan with the routine editor: saved to the client's row straight away, one notification per editing session
     n0 = len(plan()['routine'][0]['slots']); first = plan()['routine'][0]['slots'][0]['opts'][0]['n']
     A.click('[data-tredit]'); until(lambda: 'Test’s plan' in A.inner_text('#sheetin') and A.locator('.edrow').count() == n0 and not A.is_visible('[data-edreset]'), 'client plan editor opens')
@@ -320,6 +341,33 @@ with sync_playwright() as p:
     openF(); until(lambda: 'Coach Kay updated your plan' in A.inner_text('#frNotes') and 'Coach Kay is now your coach' in A.inner_text('#frNotes'), 'client is told about the coach and the plan')
     seg('chats'); until(lambda: A.locator('#chConvs .cvrow').count() == 3 and 'Coach Kay · Coach' in A.locator('#chConvs .cvrow').nth(0).inner_text() and A.locator('#chConvs .cvrow.unread').count() >= 1, 'client sees the coach chat')
     seg('people'); until(lambda: 'Coach Kay' in A.inner_text('#trCard') and A.is_visible('#trCard [data-chdm]'), 'my coach card'); shot('19-my-coach')
+    # the coach asked for progress photos: the client sees the note and decides
+    has('#frNotes', 'Coach Kay asked to see your progress photos')
+    until(lambda: 'Coach asked to see your progress photos' in A.inner_text('#trPhAsk') and A.is_visible('#trPhAsk [data-trphotos="yes"]') and A.is_visible('#trPhAsk [data-trphotos="no"]') and not A.is_visible('#trPhOn'), 'client sees the request with Allow / Not now')
+    shot('20-photo-request')
+    A.click('#trPhAsk [data-trphotos="no"]'); until(lambda: ph() == 'no' and not A.is_visible('#trPhAsk') and not A.is_visible('#trPhOn'), 'Not now keeps them private')
+    def openClient(): openC(); A.click('#trClients .frow'); until(lambda: A.is_visible('#trPhotos'), 'client view shows the photos card')
+    setphotos = lambda v: A.evaluate("([id, v]) => { const d = JSON.parse(localStorage.getItem('mockp.db')), st = d.t.app_state.find(r => r.user_id === id); if (v) st.data.photos = v; else delete st.data.photos; localStorage.setItem('mockp.db', JSON.stringify(d)); }", [test_id, v])
+    signin('coach@example.com'); openClient()
+    until(lambda: 'Private' in A.inner_text('#trPhotos') and A.locator('#trPhotos [data-trphotoask]').count() == 1, 'after a no the coach can ask again')
+    A.click('[data-trphotoask]'); until(lambda: ph() == 'asked' and len(kinds('photos')) == 2, 'asked again')
+    signin('test@example.com'); openF(); seg('people'); until(lambda: A.is_visible('#trPhAsk'), 'the request is back')
+    A.click('#trPhAsk [data-trphotos="yes"]')
+    until(lambda: ph() == 'yes' and A.is_visible('#trPhOn') and not A.is_visible('#trPhAsk') and 'Stop sharing' in A.inner_text('#trPhOn'), 'Allow shares the photos and offers Stop sharing')
+    reload(); openF(); seg('people'); until(lambda: A.is_visible('#trPhOn'), 'the answer survives a reload')
+    # the coach now sees the Progress photos card without the Ask button; only files in the client's own folder are shown
+    signin('coach@example.com'); openClient()
+    until(lambda: 'uploaded any photos yet' in A.inner_text('#trPhotos') and 'Shared with you by Test' in A.inner_text('#trPhotos') and A.locator('#trPhotos [data-trphotoask]').count() == 0, 'coach sees the photos card without the Ask button')
+    setphotos({'2026-10': {'front': {'path': test_id + '/2026-10-front.jpg', 'u': 1, 'up': True}, 'side': {'path': 'someone-else/x.jpg', 'u': 1, 'up': True}, 'back': {'del': True, 'u': 1}}})
+    A.click('[data-trback]'); A.click('#trClients .frow')
+    until(lambda: A.locator('#trPhotos .pslot').count() == 3 and A.locator('#trPhotos .pslot.has').count() == 1 and A.get_attribute('#trPhotos img', 'data-cph') == test_id + '/2026-10-front.jpg', 'only the photo in the client’s own folder is listed')
+    shot('21-client-photos'); setphotos(None)
+    # the client stops sharing: private again on both sides
+    signin('test@example.com'); openF(); seg('people'); A.click('#trPhOn [data-trphotos="no"]')
+    until(lambda: ph() == 'no' and not A.is_visible('#trPhOn') and not A.is_visible('#trPhAsk'), 'Stop sharing makes the photos private again')
+    signin('coach@example.com'); openClient()
+    until(lambda: 'Private' in A.inner_text('#trPhotos') and A.locator('#trPhotos img').count() == 0 and A.locator('#trPhotos [data-trphotoask]').count() == 1, 'the coach is back to the Ask button')
+    signin('test@example.com'); openF(); seg('people')
     A.click('[data-trrm]'); A.click('[data-trrmyes]')
     until(lambda: tr() == [] and 'Add your coach' in A.inner_text('#trCard'), 'removing the coach deletes the link')
     seg('chats'); cnt('#chConvs .cvrow', 2, 'the coach chat goes with it')
