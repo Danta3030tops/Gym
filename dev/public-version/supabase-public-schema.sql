@@ -1,6 +1,9 @@
 -- Gym app (public version): run ONCE in a fresh Supabase project → SQL Editor → New query → Run.
--- Safe to run again. Also set: Authentication → Sign In / Providers → Email → turn OFF "Confirm email"
--- (accounts use username + password; the email behind each account is generated from the username).
+-- NEVER run this in the couple app's project. It has still never been run anywhere: reviewed against the app code on 15 Nov 2026
+-- (see dev/public-version/PROGRESS.md), but test it in a fresh project before trusting it.
+-- Safe to run again. Accounts are a username + a real email + a password (the email is used to sign in and for password resets).
+-- Authentication → Sign In / Providers → Email: "Confirm email" can stay ON (people confirm by link, then sign in) or be turned OFF
+-- (they are signed in straight away). The app handles both. Also add the app's address under Authentication → URL Configuration.
 
 create extension if not exists pgcrypto;
 
@@ -126,6 +129,16 @@ language sql stable security definer set search_path = public as $$
   select exists (select 1 from public.app_members where conv_id = c and user_id = u);
 $$;
 
+-- may u post in conversation c? Groups: any member. 1-on-1 and coach chats: only while the two are still linked,
+-- so a removed friend, coach or client can no longer write (the app hides those chats too).
+create or replace function public.app_can_post(c uuid, u uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.app_convs v where v.id = c and (v.kind = 'group' or exists (
+    select 1 from public.app_members m where m.conv_id = c and m.user_id <> u and
+      case v.kind when 'dm' then public.app_are_friends(u, m.user_id)
+                  else public.app_trains(u, m.user_id) or public.app_trains(m.user_id, u) end)));
+$$;
+
 -- keep the inbox preview fresh
 create or replace function public.app_bump_conv() returns trigger
 language plpgsql security definer set search_path = public as $$
@@ -244,7 +257,7 @@ create policy st_upd   on public.app_state for update to authenticated using (us
 -- routine: you and your trainer
 create policy rt_read  on public.app_routines for select to authenticated using (user_id = auth.uid() or public.app_trains(auth.uid(), user_id));
 create policy rt_ins   on public.app_routines for insert to authenticated with check ((user_id = auth.uid() or public.app_trains(auth.uid(), user_id)) and updated_by = auth.uid());
-create policy rt_upd   on public.app_routines for update to authenticated using (user_id = auth.uid() or public.app_trains(auth.uid(), user_id)) with check (updated_by = auth.uid());
+create policy rt_upd   on public.app_routines for update to authenticated using (user_id = auth.uid() or public.app_trains(auth.uid(), user_id)) with check ((user_id = auth.uid() or public.app_trains(auth.uid(), user_id)) and updated_by = auth.uid());
 
 -- public summary: you, your friends, your trainer
 create policy pb_read  on public.app_public for select to authenticated using (user_id = auth.uid() or public.app_linked(auth.uid(), user_id));
@@ -257,18 +270,38 @@ create policy mb_read on public.app_members  for select to authenticated using (
 create policy mb_seen on public.app_members  for update to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy mb_quit on public.app_members  for delete to authenticated using (user_id = auth.uid());
 create policy ms_read on public.app_messages for select to authenticated using (public.app_member(conv_id, auth.uid()));
-create policy ms_send on public.app_messages for insert to authenticated with check (sender = auth.uid() and public.app_member(conv_id, auth.uid()));
+create policy ms_send on public.app_messages for insert to authenticated with check (sender = auth.uid() and public.app_member(conv_id, auth.uid()) and public.app_can_post(conv_id, auth.uid()));
 create policy ms_del  on public.app_messages for delete to authenticated using (sender = auth.uid());
 
 -- notes: only between connected people; you read and clear your own
 create policy nt_read on public.app_notes for select to authenticated using (user_id = auth.uid());
-create policy nt_send on public.app_notes for insert to authenticated with check (from_id = auth.uid() and (public.app_linked(auth.uid(), user_id) or kind in ('friend_req','trainer_req')));
+-- only between linked people (friends, coach and client): a note's text is shown to the receiver, so strangers must not be able to send one.
+-- Kinds the app sends: nudge, hype, challenge, routine, trainer_ok. Friend and coach requests need no note: the pending row is the notification.
+create policy nt_send on public.app_notes for insert to authenticated with check (from_id = auth.uid() and public.app_linked(auth.uid(), user_id));
 create policy nt_upd  on public.app_notes for update to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy nt_del  on public.app_notes for delete to authenticated using (user_id = auth.uid());
 
+-- ============ which columns may be updated ============
+-- Row level security decides WHICH rows someone may update; these grants decide which COLUMNS. Without them, the person
+-- allowed to accept a request could also rewrite who the request is from and link themselves to anyone (a coach could
+-- make any person their "client" and read their data), a chat member could move their membership into any conversation,
+-- and anyone could change their own role or username. The app only ever updates the columns granted here.
+revoke update on public.app_friends  from anon, authenticated;
+revoke update on public.app_trainers from anon, authenticated;
+revoke update on public.app_members  from anon, authenticated;
+revoke update on public.app_notes    from anon, authenticated;
+revoke update on public.app_profiles from anon, authenticated;
+revoke update on public.app_convs    from anon, authenticated;
+revoke update on public.app_messages from anon, authenticated;
+grant update (status)    on public.app_friends  to authenticated;
+grant update (status)    on public.app_trainers to authenticated;
+grant update (last_read) on public.app_members  to authenticated;
+grant update (read)      on public.app_notes    to authenticated;
+grant update (display_name, color, bio) on public.app_profiles to authenticated;
+
 -- ============ live updates ============
 do $$ declare t text; begin
-  foreach t in array array['app_messages','app_notes','app_public','app_friends','app_trainers','app_routines','app_convs'] loop
+  foreach t in array array['app_messages','app_notes','app_public','app_friends','app_trainers','app_routines','app_convs','app_members'] loop
     if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t) then
       execute format('alter publication supabase_realtime add table public.%I', t);
     end if;
@@ -285,8 +318,10 @@ drop policy if exists "app chat send" on storage.objects;
 create policy "app photos own" on storage.objects for all to authenticated
   using (bucket_id = 'app-photos' and (storage.foldername(name))[1] = auth.uid()::text)
   with check (bucket_id = 'app-photos' and (storage.foldername(name))[1] = auth.uid()::text);
-create policy "app photos trainer" on storage.objects for select to authenticated
-  using (bucket_id = 'app-photos' and exists (select 1 from public.app_trainers t where t.status = 'accepted' and t.trainer = auth.uid() and t.client::text = (storage.foldername(name))[1]));
+-- Not created for now: a coach cannot see a client's progress photos. The owner has not decided whether clients should be able to
+-- allow it; when they can, bring this back with a check on the client's choice. (The drop above removes it if it ever existed.)
+-- create policy "app photos trainer" on storage.objects for select to authenticated
+--   using (bucket_id = 'app-photos' and exists (select 1 from public.app_trainers t where t.status = 'accepted' and t.trainer = auth.uid() and t.client::text = (storage.foldername(name))[1]));
 create policy "app chat read" on storage.objects for select to authenticated
   using (bucket_id = 'app-chat' and exists (select 1 from public.app_members m where m.user_id = auth.uid() and m.conv_id::text = (storage.foldername(name))[1]));
 create policy "app chat send" on storage.objects for insert to authenticated

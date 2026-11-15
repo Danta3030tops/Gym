@@ -98,6 +98,19 @@ Things that bit before:
 - UI copy is plain and short. Units default to lb, with a kg toggle.
 - Design language: iOS-style translucent glass, dark by default, light and auto modes; per-profile accent via CSS variables set in `applyTheme()`.
 
+## Public version (`public/`)
+
+A second app for anyone to sign up, built from this one, lives in `public/` (branch `public-version` until the owner merges it). It has its own backend tables (`app_*`), service worker (`public/sw.js`, cache `gymp-v*`) and smoke test (`dev/tests/smoke-public.py` with `dev/tests/mock-public.js`). It loads `data.js`, `data-qxeen.js`, `figures.js`, `library.js` from the repo root read-only, so changes to those four files affect both apps. Read `dev/public-version/PROGRESS.md` before working on it.
+
+| File in `public/` | What's in it |
+|---|---|
+| `core.js`, `auth.js`, `onboard.js`, `templates.js` | helpers and theme, sign-in / sign-up, first-time setup, routine builder |
+| `app.js`, `extras.js`, `coach.js`, `motion.js` | the couple app's files adapted to one signed-in person |
+| `friends.js` | friends, leaderboard, nudges, notifications |
+| `chat.js` | 1-on-1 and group chats |
+| `challenges.js` | weekly challenge with a friend |
+| `trainer.js` | coach and client link, Clients tab, editing a client's plan |
+
 ## Don't
 
 - Don't rename or drop the Supabase tables or change the `S` shape without a migration; both phones hold live data.
