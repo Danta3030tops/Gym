@@ -22,7 +22,7 @@ function showAuth(mode, note) {
   const f = $('auForm'), err = `<div class="au-err ${note && note.ok ? 'ok' : ''}" id="auErr" role="alert">${esc(note ? note.text : '')}</div>`;
   if (!sb) { f.innerHTML = `<div class="banner">⚙️ <b>Not connected yet.</b> This app needs its Supabase project URL and key in <b>config.js</b> before anyone can sign in.</div>`; $('auFoot').textContent = ''; return; }
   if (AU.mode === 'in') f.innerHTML = `<div class="grp">
-      <label><span>Email</span><input id="auEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="you@example.com"></label>
+      <label><span>Login</span><input id="auEmail" type="text" inputmode="email" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Email or username"></label>
       <label><span>Password</span><input id="auPass" type="password" autocomplete="current-password" placeholder="Your password"></label></div>
     ${err}<button class="au-go" id="auGo">Sign in</button><button type="button" class="au-link" data-aumode="forgot">Forgot password?</button>`;
   else if (AU.mode === 'up') f.innerHTML = `<div class="grp">
@@ -50,6 +50,15 @@ const authMsg = m => /invalid login/i.test(m) ? 'Wrong email or password.'
   : /fetch|network|failed to/i.test(m) ? 'Can’t reach the server. Check your connection and try again.'
   : (m || 'Something went wrong. Try again.');
 
+/* Username sign-in goes through the "login" server function, which looks the email up on the server: emails never reach a browser. */
+async function signInByUsername(login, password) {
+  const r = await sb.functions.invoke('login', { body: { login, password } }).then(x => x, e => ({ data: null, error: e }));
+  if (r.data && r.data.access_token) return sb.auth.setSession({ access_token: r.data.access_token, refresh_token: r.data.refresh_token });
+  let msg = r.data && r.data.error;
+  if (!msg && r.error && r.error.context && r.error.context.json) msg = await r.error.context.json().then(b => b && b.error, () => null);
+  return { data: {}, error: { message: msg || 'Username sign-in isn’t available right now. Use your email instead.' } };
+}
+
 /* live "is this username free?" check while typing */
 function checkUsername() {
   const v = $('auUser').value = $('auUser').value.toLowerCase().replace(/\s/g, ''), st = $('auUserSt');
@@ -71,10 +80,10 @@ async function submitAuth() {
   auErr('');
   try {
     if (AU.mode === 'in') {
-      if (!EMAIL_RE.test(email)) return auErr('Enter the email you signed up with.');
+      if (!EMAIL_RE.test(email) && !USER_RE.test(email)) return auErr('Enter your email or username.');
       if (!pass) return auErr('Enter your password.');
       auBusy(true, 'Signing in…');
-      const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+      const { data, error } = EMAIL_RE.test(email) ? await sb.auth.signInWithPassword({ email, password: pass }) : await signInByUsername(email, pass);
       if (error) { auBusy(false, 'Sign in'); return auErr(authMsg(error.message)); }
       session = data.session; await enter();
     } else if (AU.mode === 'up') {
@@ -122,7 +131,7 @@ async function enter() {
     const b = await sb.from('app_routines').select('routine').eq('user_id', uid).maybeSingle(); if (b.error) throw b.error; rt = b.data;
   } catch (e) { offline = true; prof = cacheGet('gymp.me.' + uid); const c = cacheGet('gymp.routine.' + uid); rt = c ? { routine: c.routine } : null; }
   if (!prof) return showAuth('in', { text: offline ? 'Can’t reach the server. Check your connection and try again.' : 'Your profile is missing. Sign in again, or create a new account.' });
-  ME = prof; ROUTINE = rt ? rt.routine : null; S = loadLocal(uid);
+  ME = prof; ROUTINE = rt ? cleanRoutine(rt.routine) : null; S = loadLocal(uid);
   if (!offline) { cacheSet('gymp.me.' + uid, prof); if (rt) cacheSet('gymp.routine.' + uid, { routine: rt.routine }); }
   applyTheme(prof.color);
   $('auth').classList.remove('show');

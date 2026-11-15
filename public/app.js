@@ -227,7 +227,7 @@ function renderWorkout() {
   const today = todayExact();
   $('days').innerHTML = DAYS.map((d, i) => {
     const date = dayDate(curWeek, i);
-    return `<button class="${i === cur ? 'on' : ''} ${i === today ? 'today' : ''}" data-day="${i}">${dayDone(curWeek, i) ? '<span class="dot"></span>' : ''}${d.d}<small>${date.getDate()} · ${d.title.split(' ')[0]}</small></button>`;
+    return `<button class="${i === cur ? 'on' : ''} ${i === today ? 'today' : ''}" data-day="${i}">${dayDone(curWeek, i) ? '<span class="dot"></span>' : ''}${esc(d.d)}<small>${date.getDate()} · ${esc(String(d.title).split(' ')[0])}</small></button>`;
   }).join('');
   const done = DAYS.filter((_, i) => dayDone(curWeek, i)).length;
   $('weekline').textContent = `This week: ${done} / ${DAYS.length} days complete${isDeload(curWeek) ? ' · 🧘 deload' : ''}`;
@@ -272,7 +272,7 @@ function renderWorkout() {
     return `<div class="card ${done >= sl.sets ? 'done' : ''} ${jdone ? 'justdone' : ''}" style="--i:${si}">
       <div class="top"><div class="info"><div class="num">EXERCISE ${si + 1}${sl.bonus ? ' · BONUS' : ''}${S.settings.swaps[slotKey(cur, si)] ? ' · SWAPPED' : ''}</div>
        <div class="name">${esc(ex.n)}</div>
-       <div class="meta"><span><b>${sl.sets} × ${sl.reps}</b></span><span>Rest ${fmtT(prefOf(id).rest || sl.rest)}${prefOf(id).rest ? ' ★' : ''}</span><span>Tempo ${P[ex.pat].tempo.join('-')}</span></div></div>
+       <div class="meta"><span><b>${safeN(sl.sets)} × ${esc(sl.reps)}</b></span><span>Rest ${fmtT(prefOf(id).rest || sl.rest)}${prefOf(id).rest ? ' ★' : ''}</span><span>Tempo ${P[ex.pat].tempo.join('-')}</span></div></div>
        <button class="thumb" data-form="${si}"><div data-anim="${ss ? ssPat(ss[0], ex.pat) + '|' + ssPat(ss[1], ex.pat) : ex.pat}"></div><div class="lbl">FORM</div></button></div>
       <div class="chips"><button class="chip acc" data-pace="${si}">▶ ${sl.time ? 'Start timer' : 'Pace set'}</button><button class="chip" data-swap="${si}">↻ Swap</button><button class="chip" data-exhist="${si}">📈 Progress</button>${extraChips(sl, ex, si)}</div>
       <div class="target">🎯 Target <input inputmode="decimal" data-tgt="${si}" value="${esc(tgt)}" placeholder="—"> ${unit()}${sug}</div>
@@ -733,7 +733,7 @@ async function sync() {
   try {
     const { data, error } = await sb.from('app_state').select('data').eq('user_id', id).maybeSingle();
     if (error) throw error;
-    if (!mine()) { syncing = false; return; } // signed out, or someone else signed in, while we waited
+    if (!mine()) { syncing = false; if (syncAgain) { syncAgain = false; sync(); } return; } // signed out, or someone else signed in, while we waited
     if (data && data.data && data.data.logs) { S = merge(S, data.data); persist(); }
     await syncPhotos(id);
     const { error: e2 } = await sb.from('app_state').upsert({ user_id: id, data: S, updated_at: new Date().toISOString() });
@@ -741,12 +741,12 @@ async function sync() {
     if (localStorage.getItem(routineDirty(id))) { const r = await sb.from('app_routines').upsert(routineRow(id, ROUTINE)); if (!r.error) localStorage.removeItem(routineDirty(id)); }
     else { // pick up edits made elsewhere (another phone, or a trainer)
       const r = await sb.from('app_routines').select('routine,updated_by').eq('user_id', id).maybeSingle();
-      if (mine() && !r.error && r.data && JSON.stringify(r.data.routine) !== JSON.stringify(ROUTINE)) {
-        ROUTINE = r.data.routine; cacheSet('gymp.routine.' + id, { routine: ROUTINE });
+      const got = r.data ? cleanRoutine(r.data.routine) : null;
+      if (mine() && !r.error && r.data && JSON.stringify(got) !== JSON.stringify(ROUTINE)) { ROUTINE = got; cacheSet('gymp.routine.' + id, { routine: ROUTINE });
         if (r.data.updated_by && r.data.updated_by !== id) { Object.assign(S.settings, { swaps: {}, exSkip: {}, exSkipDef: {}, u: Date.now() }); persist(); } // a coach moved things around: my per-slot swaps and removals no longer line up
       }
     }
-    if (!mine()) { syncing = false; return; }
+    if (!mine()) { syncing = false; if (syncAgain) { syncAgain = false; sync(); } return; }
     if (typeof publishSummary === 'function') await publishSummary(PROF, id, sb, S);
     lastSync = Date.now(); setSync('ok', 'Synced');
     if (S.settings.appearance && S.settings.appearance !== appearance) { appearance = S.settings.appearance; localStorage.setItem('gymp.appearance', appearance); applyTheme(); }
@@ -881,5 +881,5 @@ function stopApp() {
   clearTimeout(syncT); clearTimeout(rGoT); clearInterval(rInt); rInt = null; for (const k in RT) delete RT[k];
   $('rest').classList.remove('show', 'go');
   if (PC) { PC.done = true; PC = null; } $('pacer').classList.remove('show'); pvStop(); closeSheet();
-  for (const k in urlCache) delete urlCache[k]; lastSync = 0; DAYS = []; document.body.classList.add('out');
+  for (const k in urlCache) delete urlCache[k]; lastSync = 0; DAYS = []; localStorage.removeItem('gymp.session'); localStorage.removeItem('gymp.sessFired'); /* the session timer belongs to whoever was signed in */ document.body.classList.add('out');
 }

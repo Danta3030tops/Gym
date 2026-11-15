@@ -41,7 +41,9 @@ function coachCardHtml() {
   if (!c) return `<div class="card" id="trCard"><h3>Your coach</h3><div class="muted">Working with a trainer? Add them and they can follow your training, edit your plan and message you.</div><button class="btn" data-tradd>＋ Add your coach</button></div>`;
   return `<div class="card" id="trCard"><h3>Your coach</h3><div class="edrow frow">${frAv(c.p)}${frWho(c.p)}${c.r.status === 'accepted'
     ? `<button class="chip acc" data-chdm="${esc(c.p.id)}">💬</button><button class="chip" data-trrm="${c.r.id}">Remove</button>` : `<button class="chip" data-trcancel="${c.r.id}">Cancel</button>`}</div>
-    <div class="muted" style="margin-top:8px">${c.r.status === 'accepted' ? 'Your coach can see your workouts and edit your plan. Removing them ends that straight away.' : 'Waiting for them to accept.'}</div></div>`;
+    <div class="muted" style="margin-top:8px">${c.r.status === 'accepted' ? 'Your coach can see your workouts and edit your plan. Removing them ends that straight away.' : 'Waiting for them to accept.'}</div>
+    ${c.r.status !== 'accepted' ? '' : c.r.photos === 'asked' ? `<div class="nud" id="trPhAsk">📸 <b>${esc(frName(c.p).split(' ')[0])}</b> asked to see your progress photos. You can change this at any time.<div class="row" style="margin-top:8px"><button class="chip acc" data-trphotos="yes">Allow</button><button class="chip" data-trphotos="no">Not now</button></div></div>`
+      : c.r.photos === 'yes' ? `<div class="hrow" id="trPhOn" style="margin-top:6px"><span>📸 Your coach can see your progress photos</span><button class="chip" data-trphotos="no">Stop sharing</button></div>` : ''}</div>`;
 }
 function trAddSheet() {
   openSheet(`<h3>Add your coach</h3><div class="sub">Type your trainer’s username. Once they accept, they can see your training and edit your plan.</div>
@@ -117,7 +119,7 @@ async function trOpenClient(cid) {
   if (!sb || !navigator.onLine) { TR.vr.err = true; return renderClients(); }
   const [rt, st, pb] = await Promise.all([sb.from('app_routines').select('*').eq('user_id', cid).maybeSingle(), sb.from('app_state').select('data').eq('user_id', cid).maybeSingle(), sb.from('app_public').select('*').eq('user_id', cid).maybeSingle()].map(q => q.then(r => r, e => ({ error: e }))));
   if (TR.view !== cid || appOff()) return;
-  if (rt.error) TR.vr.err = true; else Object.assign(TR.vr, { routine: (rt.data && rt.data.routine) || [], st: (st.data && st.data.data) || null, loaded: true });
+  if (rt.error) TR.vr.err = true; else Object.assign(TR.vr, { routine: cleanRoutine(rt.data && rt.data.routine) || [], at: (rt.data && rt.data.updated_at) || null, st: (st.data && st.data.data) || null, loaded: true });
   if (pb.data) LB.sums[cid] = pb.data.data || {};
   renderClients();
 }
@@ -144,25 +146,32 @@ function clientViewHtml() {
       : `<div class="muted">${esc(frName(p).split(' ')[0])} hasn’t built a plan yet. They can do that from their Workout tab.</div>`}</div>
       <div class="card" id="trLog"><h3>Recent sessions</h3>${ses.length ? ses.map(s => `<div class="hrow"><span>${fmtD(new Date(s.t), { weekday: 'short', month: 'short', day: 'numeric' })}</span><b style="flex:1">${esc(s.title)}</b><b class="acc2">${s.sets} sets</b></div>`).join('') : '<div class="muted">Nothing logged yet.</div>'}</div>`;
   }
-  return h + (row ? `<div class="foot"><button class="chip" data-trrm="${row.id}" style="color:#ff453a">Remove client</button></div>` : '');
+  return h + (v.loaded ? clientPhotosHtml(p, row, v) : '') + (row ? `<div class="foot"><button class="chip" data-trrm="${row.id}" style="color:#ff453a">Remove client</button></div>` : '');
 }
 /* edit a client's plan with the routine editor (extras.js reads ED_FOR) */
 function trEdit() {
   const p = TR.profs[TR.view]; if (!p || !TR.vr || !TR.vr.loaded || !TR.vr.routine.length) return;
-  ED_FOR = { id: p.id, name: frName(p).split(' ')[0], routine: clone(TR.vr.routine), noted: false }; edDay = 0; editRoutine();
+  ED_FOR = { id: p.id, name: frName(p).split(' ')[0], routine: clone(TR.vr.routine), at: TR.vr.at, noted: false }; edDay = 0; editRoutine();
 }
 /* called by mutRoutine in extras.js after every change a coach makes */
 async function trSaveRoutine() {
   const e = ED_FOR; if (!e) return; if (TR.vr && TR.view === e.id) TR.vr.routine = e.routine;
   if (!sb || !navigator.onLine) return toast('You’re offline. That change wasn’t saved.', 3500);
-  const { error } = await sb.from('app_routines').upsert({ user_id: e.id, routine: e.routine, updated_by: uid(), updated_at: new Date().toISOString(), note: '' }).then(r => r, x => ({ error: x }));
+  // don't save over a change the client made while this coach had the plan open
+  const cur = await sb.from('app_routines').select('updated_at').eq('user_id', e.id).maybeSingle().then(r => r, x => ({ error: x }));
+  if (!cur.error && cur.data && e.at && cur.data.updated_at !== e.at) { ED_FOR = null; closeSheet(); toast(`${e.name} changed their plan while you were editing. Here is the latest: make your change again.`, 5000); return trOpenClient(e.id); }
+  const at = new Date().toISOString();
+  const { error } = await sb.from('app_routines').upsert({ user_id: e.id, routine: e.routine, updated_by: uid(), updated_at: at, note: '' }).then(r => r, x => ({ error: x }));
   if (error) return toast('Couldn’t save that change. Check your connection.', 3500);
+  e.at = at; if (TR.vr && TR.view === e.id) TR.vr.at = at;
   if (!e.noted) { e.noted = true; sb.from('app_notes').insert({ user_id: e.id, from_id: uid(), kind: 'routine', body: '', data: {}, read: false }).then(() => { }, () => { }); } // one notification per editing session
   if (!appOff() && tab === 'clients') renderClients();
 }
 
 document.addEventListener('click', e => {
-  if (appOff()) return; const t = e.target.closest('[data-tradd],[data-trsend],[data-trcancel],[data-trrm],[data-trrmyes],[data-trok],[data-trno],[data-trseg],[data-trview],[data-trback],[data-tredit]'); if (!t) return; const d = t.dataset;
+  if (appOff()) return; const t = e.target.closest('[data-tradd],[data-trsend],[data-trcancel],[data-trrm],[data-trrmyes],[data-trok],[data-trno],[data-trseg],[data-trview],[data-trback],[data-tredit],[data-trphotos],[data-trphotoask]'); if (!t) return; const d = t.dataset;
+  if (d.trphotos) return trPhotosAnswer(d.trphotos === 'yes');
+  if (d.trphotoask !== undefined) return trPhotosAsk();
   if (d.tradd !== undefined) return trAddSheet();
   if (d.trsend !== undefined) return trAdd();
   if (d.trcancel) return trAnswer(d.trcancel, false, 'Request cancelled');
@@ -177,6 +186,41 @@ document.addEventListener('click', e => {
 });
 document.addEventListener('keydown', e => { if (!appOff() && e.key === 'Enter' && e.target.id === 'trUser') { e.preventDefault(); trAdd(); } });
 
+/* ---------- progress photos: the coach asks, the client decides (app_trainers.photos: no / asked / yes) ----------
+   Until the client says yes the storage rules give the coach nothing; the client can withdraw it at any time. */
+async function trPhotosAnswer(ok) {
+  const c = trCoach(); if (!c || !sb || !navigator.onLine) return toast('You’re offline. Try again when you’re connected.');
+  const { error } = await sb.rpc('app_photos_answer', { t: c.p.id, ok }).then(r => r, e => ({ error: e }));
+  if (error) return toast('Couldn’t save that. Try again.');
+  c.r.photos = ok ? 'yes' : 'no'; toast(ok ? '📸 Your coach can now see your progress photos' : 'Your progress photos are private', 3000); trPaint();
+}
+async function trPhotosAsk() {
+  const cid = TR.view, row = TR.rows.find(r => r.client === cid && r.trainer === uid()); if (!row) return;
+  if (!sb || !navigator.onLine) return toast('You’re offline. Try again when you’re connected.');
+  const { error } = await sb.rpc('app_photos_ask', { c: cid }).then(r => r, e => ({ error: e }));
+  if (error) return toast('Couldn’t send that. Try again.');
+  row.photos = 'asked'; sb.from('app_notes').insert({ user_id: cid, from_id: uid(), kind: 'photos', body: '', data: {}, read: false }).then(() => { }, () => { });
+  toast('Request sent'); renderClients();
+}
+function clientPhotosHtml(p, row, v) {
+  const ph = (row && row.photos) || 'no', first = esc(frName(p).split(' ')[0]);
+  if (ph !== 'yes') return `<div class="card" id="trPhotos"><h3>Progress photos</h3><div class="muted">${ph === 'asked' ? `Waiting for ${first} to answer your request.` : `Private. ${first} decides whether you can see them.`}</div>${ph === 'no' ? '<button class="btn" data-trphotoask>📸 Ask to see them</button>' : ''}</div>`;
+  const all = (v.st && v.st.photos && typeof v.st.photos === 'object') ? v.st.photos : {}, ok = x => x && !x.del && typeof x.path === 'string' && x.path.startsWith(p.id + '/'); // only files in this client's own folder
+  const months = Object.keys(all).filter(m => /^\d{4}-\d{2}$/.test(m) && all[m] && POSES.some(q => ok(all[m][q]))).sort().reverse().slice(0, 6);
+  return `<div class="card" id="trPhotos"><h3>Progress photos</h3>${months.length ? months.map(m => `<div class="month"><div class="mh">${fmtMonth(m)}</div><div class="poses">${POSES.map(q => ok(all[m][q]) ? `<div class="pslot has"><img data-cph="${esc(all[m][q].path)}" alt=""><span class="pl">${q[0].toUpperCase() + q.slice(1)}</span></div>` : `<div class="pslot"><span>${q[0].toUpperCase() + q.slice(1)}</span><span style="font-size:10px">—</span></div>`).join('')}</div></div>`).join('')
+    : `<div class="muted">${first} hasn’t uploaded any photos yet.</div>`}<div class="muted" style="font-size:12px;margin-top:8px">Shared with you by ${first}, who can stop sharing at any time.</div></div>`;
+}
+const trPhotoUrls = {};
+async function trHydratePhotos() {
+  for (const img of document.querySelectorAll('#clients img[data-cph]')) {
+    const path = img.dataset.cph; if (img.getAttribute('src')) continue;
+    if (!trPhotoUrls[path]) { const r = await sb.storage.from('app-photos').download(path).then(x => x, e => ({ error: e })); if (r.error || !r.data) continue; trPhotoUrls[path] = URL.createObjectURL(r.data); }
+    if (img.isConnected) img.src = trPhotoUrls[path];
+  }
+}
+const _renderClients = renderClients;
+renderClients = function () { _renderClients(); if (!appOff() && sb) trHydratePhotos(); };
+
 /* called by startFriends / stopFriends in friends.js */
 function startTrainer() {
   const c = cacheGet('gymp.trainers.' + uid()) || {};
@@ -186,5 +230,6 @@ function startTrainer() {
 }
 function stopTrainer() {
   Object.assign(TR, { rows: [], profs: {}, loaded: false, busy: false, at: 0, sumAt: 0, seg: 'clients', view: null, vr: null });
+  for (const k in trPhotoUrls) { URL.revokeObjectURL(trPhotoUrls[k]); delete trPhotoUrls[k]; }
   ED_FOR = null; $('navClients').hidden = true; const b = $('trBadge'); if (b) b.hidden = true; const el = $('clients'); if (el) el.innerHTML = '';
 }
