@@ -658,7 +658,7 @@ function renderMore() {
     <div class="hrow"><span>Reset all swaps to your originals</span><button class="chip" id="swReset">Reset</button></div></div>`;
   h += moreExtras();
   if (!standalone) h += `<div class="card"><h3>Install on your phone</h3>${deferredInstall ? `<button class="btn acc" id="instBtn">Add to Home Screen</button>` : `<div class="muted"><b>iPhone:</b> Safari → Share button → <i>Add to Home Screen</i>.<br><b>Android:</b> Chrome → ⋮ menu → <i>Install app</i>.<br>It then opens full screen like a normal app and works offline at the gym.</div>`}</div>`;
-  h += `<div class="foot">Gym Routine · data stays yours. Local data: ${(JSON.stringify(S).length / 1024).toFixed(0)} KB<br><button class="chip" id="wipe" style="margin-top:10px;color:var(--acc2)">Clear data on this phone</button></div>`;
+  h += `<div class="foot">Spott · data stays yours. Local data: ${(JSON.stringify(S).length / 1024).toFixed(0)} KB<br><button class="chip" id="wipe" style="margin-top:10px;color:var(--acc2)">Clear data on this phone</button></div>`;
   $('more').innerHTML = h;
 }
 
@@ -672,23 +672,23 @@ const stamp = () => dk(new Date());
 let JSZipP = null;
 const loadJSZip = () => JSZipP = JSZipP || new Promise((res, rej) => { if (window.JSZip) return res(window.JSZip); const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js'; s.onload = () => res(window.JSZip); s.onerror = () => { JSZipP = null; rej(); }; document.head.appendChild(s); });
 async function doExport(kind) {
-  if (kind === 'json') { download(`gym-${ME.username}-backup-${stamp()}.json`, new Blob([JSON.stringify({ exported: new Date().toISOString(), app: 'gym-routine', username: ME.username, ...S }, null, 1)], { type: 'application/json' })); }
+  if (kind === 'json') { download(`spott-${ME.username}-backup-${stamp()}.json`, new Blob([JSON.stringify({ exported: new Date().toISOString(), app: 'gym-routine', username: ME.username, ...S }, null, 1)], { type: 'application/json' })); }
   if (kind === 'sets') {
     const rows = [['week_start', 'routine_day', 'date', 'time', 'exercise', 'set', 'weight', 'unit', 'reps_or_secs', 'weight_b', 'reps_b']];
     for (const wk of Object.keys(S.logs).sort()) for (const di of Object.keys(S.logs[wk]).sort()) for (const id in S.logs[wk][di]) {
       const e = S.logs[wk][di][id]; (e.sets || []).forEach((s, i) => { if (!s) return; const d = new Date(s.t || parseDk(wk)); rows.push([wk, DAYS[di] ? DAYS[di].d + ' ' + DAYS[di].title : di, dk(d), d.toTimeString().slice(0, 5), e.n, i + 1, s.w, unit(), s.r, s.w2 ?? '', s.r2 ?? '']); });
     }
-    download(`gym-${ME.username}-workouts-${stamp()}.csv`, new Blob([csv(rows)], { type: 'text/csv' }));
+    download(`spott-${ME.username}-workouts-${stamp()}.csv`, new Blob([csv(rows)], { type: 'text/csv' }));
   }
   if (kind === 'body') {
     const rows = [['date', 'weight', 'unit', 'waist_in', 'chest_in', 'arms_in', 'thighs_in', 'hips_in', 'body_fat_pct', 'note']];
     for (const d of Object.keys(S.body).sort()) { const b = S.body[d]; if (b.del) continue; rows.push([d, b.w, unit(), b.waist, b.chest, b.arms, b.thighs, b.hips, b.bf, b.note]); }
-    download(`gym-${ME.username}-body-${stamp()}.csv`, new Blob([csv(rows)], { type: 'text/csv' }));
+    download(`spott-${ME.username}-body-${stamp()}.csv`, new Blob([csv(rows)], { type: 'text/csv' }));
   }
   if (kind === 'fuel') {
     const rows = [['date', 'calories', 'protein_g', 'water_glasses', 'steps', 'extra_cardio_min']];
     for (const d of Object.keys(S.fuel || {}).sort()) { const f = S.fuel[d]; rows.push([d, f.cal, f.protein, f.water, f.steps, f.cardio]); }
-    download(`gym-${ME.username}-fuel-${stamp()}.csv`, new Blob([csv(rows)], { type: 'text/csv' }));
+    download(`spott-${ME.username}-fuel-${stamp()}.csv`, new Blob([csv(rows)], { type: 'text/csv' }));
   }
   if (kind === 'photos') {
     const list = []; for (const m in S.photos) for (const p of POSES) if (photoMeta(m, p)) list.push([m, p]);
@@ -697,7 +697,7 @@ async function doExport(kind) {
     try {
       const JSZip = await loadJSZip(); const z = new JSZip();
       for (const [m, p] of list) { const b = await photoBlob(m, p); if (b) z.file(`${m}-${p}.jpg`, b); }
-      download(`gym-${ME.username}-photos-${stamp()}.zip`, await z.generateAsync({ type: 'blob' })); toast('Photos exported');
+      download(`spott-${ME.username}-photos-${stamp()}.zip`, await z.generateAsync({ type: 'blob' })); toast('Photos exported');
     } catch (e) { toast('Need internet once to build the zip. Try again online.'); }
   }
 }
@@ -706,7 +706,7 @@ $('importInput').addEventListener('change', async e => {
   try {
     const d = JSON.parse(await f.text()); if (!d || !(d.v === 2 || d.v === 3) || !d.logs) throw 0;
     S = merge(S, d); save(); renderAll(); toast('✅ Backup imported and merged');
-  } catch (err) { toast('That file isn\'t a Gym backup'); }
+  } catch (err) { toast('That file isn\'t a Spott backup'); }
 });
 
 /* ================= cloud sync (Supabase) ================= */
