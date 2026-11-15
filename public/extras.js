@@ -493,7 +493,7 @@ async function drawRecap(mk) {
     const y = 1115 + i * 52; x.fillStyle = '#fff'; x.fillText((p.w ? '🏆 ' : '') + p.n.slice(0, 30), 100, y);
     if (p.w) { x.textAlign = 'right'; x.fillStyle = TH.acc; x.fillText(`${p.w} × ${p.r}`, W - 100, y); x.textAlign = 'left'; }
   });
-  x.textAlign = 'center'; x.globalAlpha = .6; x.fillStyle = '#fff'; x.font = `500 24px ${INT}`; x.fillText('@' + ME.username + ' · GYM', W / 2, H - 70); x.globalAlpha = 1;
+  x.textAlign = 'center'; x.globalAlpha = .6; x.fillStyle = '#fff'; x.font = `500 24px ${INT}`; x.fillText('@' + ME.username + ' · SPOTT', W / 2, H - 70); x.globalAlpha = 1;
   return new Promise(r => c.toBlob(r, 'image/png'));
 }
 function roundRect(x, a, b, w, h, r) { x.beginPath(); x.moveTo(a + r, b); x.arcTo(a + w, b, a + w, b + h, r); x.arcTo(a + w, b + h, a, b + h, r); x.arcTo(a, b + h, a, b, r); x.arcTo(a, b, a + w, b, r); x.closePath(); }
@@ -670,13 +670,13 @@ function buildICS() {
     const s = new Date(now2.getFullYear(), now2.getMonth() + 1, 1, 9, 0);
     ev.push(['BEGIN:VEVENT', `UID:${ME.username}-photo-${stamp2}@gym`, `DTSTAMP:${stamp2}`, `DTSTART:${fmtL(s)}`, 'DURATION:PT15M', 'RRULE:FREQ=MONTHLY;BYMONTHDAY=1', `SUMMARY:📸 ${PROFILES[PROF].name} monthly photo check-in`, 'DESCRIPTION:Front, side, back. Same spot, same lighting. Log weight & measurements too.', 'BEGIN:VALARM', 'ACTION:DISPLAY', 'TRIGGER:PT0M', 'DESCRIPTION:Photo check-in day', 'END:VALARM', 'END:VEVENT'].join('\r\n'));
   }
-  return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Gym//EN', 'CALSCALE:GREGORIAN', ...ev, 'END:VCALENDAR'].join('\r\n');
+  return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Spott//EN', 'CALSCALE:GREGORIAN', ...ev, 'END:VCALENDAR'].join('\r\n');
 }
 function addToCalendar() {
   const r = S.settings.rem = S.settings.rem || remDef();
   r.time = $('rmT').value || r.time; touchSettings();
   if (!baseRoutine().some((_, i) => remOn(r, i)) && !r.photo) return toast('Pick at least one day');
-  const ics = buildICS(), name = 'gym-reminders.ics';
+  const ics = buildICS(), name = 'spott-reminders.ics';
   if (/iPhone|iPad|iPod/.test(navigator.userAgent)) { location.href = 'data:text/calendar;charset=utf-8,' + encodeURIComponent(ics); return; }
   download(name, new Blob([ics], { type: 'text/calendar' })); toast('Downloaded. Open it to add to your calendar', 4000);
 }

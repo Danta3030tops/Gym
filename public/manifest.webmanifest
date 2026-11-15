@@ -1,6 +1,6 @@
 {
-  "name": "Gym",
-  "short_name": "Gym",
+  "name": "Spott",
+  "short_name": "Spott",
   "description": "Workout tracker with rep pacing, rest timers, body stats, friends and coaching",
   "start_url": "./",
   "scope": "./",

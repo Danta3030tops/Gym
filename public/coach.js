@@ -221,7 +221,7 @@ async function drawSummary(wk, di) {
     const y = 940 + i * 54; x.fillStyle = '#fff'; x.fillText((e.delta > 0 ? '▲ ' : '') + e.n.slice(0, 30), 100, y);
     if (e.best) { x.textAlign = 'right'; x.fillStyle = TH.acc; x.fillText(fmtSet(e.timed, e.best), W - 100, y); x.textAlign = 'left'; }
   });
-  x.textAlign = 'center'; x.globalAlpha = .6; x.fillStyle = '#fff'; x.font = `500 24px ${SANS}`; x.fillText('@' + ME.username + ' · GYM', W / 2, H - 70); x.globalAlpha = 1;
+  x.textAlign = 'center'; x.globalAlpha = .6; x.fillStyle = '#fff'; x.font = `500 24px ${SANS}`; x.fillText('@' + ME.username + ' · SPOTT', W / 2, H - 70); x.globalAlpha = 1;
   return new Promise(r => c.toBlob(r, 'image/png'));
 }
 async function shareSummary(wk, di) {
