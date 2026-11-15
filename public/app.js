@@ -791,15 +791,16 @@ function renderAll(quiet) {
   if (tab === 'history') renderHistory();
   if (tab === 'fuel' && !(quiet && document.activeElement && document.activeElement.matches('input'))) renderFuel();
   if (tab === 'body' && !(quiet && document.activeElement && document.activeElement.matches('input,select'))) renderBody();
+  if (tab === 'friends' && !quiet && typeof renderFriends === 'function') renderFriends();
   if (tab === 'more' && !quiet) renderMore();
 }
 function showTab(t) {
-  const ORD = ['workout', 'history', 'body', 'fuel', 'more'], from = ORD.indexOf(tab), to = ORD.indexOf(t);
+  const ORD = ['workout', 'history', 'body', 'fuel', 'friends', 'more'], from = ORD.indexOf(tab), to = ORD.indexOf(t);
   if (t === 'workout' && tab !== 'workout') window.__stagger = true;
   setTimeout(() => { const sec = $('t-' + t); if (!sec) return; sec.classList.remove('enter-l', 'enter-r', 'enter-f'); void sec.offsetWidth; sec.classList.add(from < 0 || from === to ? 'enter-f' : to > from ? 'enter-r' : 'enter-l'); if (typeof movePill === 'function') movePill(); }, 0);
   tab = t; document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
   document.querySelectorAll('.tab').forEach(s => s.classList.toggle('on', s.id === 't-' + t));
-  $('htitle').innerHTML = esc(PROFILES[PROF].label) + ' <span>' + { workout: 'Split', history: 'Log', body: 'Body', fuel: 'Fuel', more: 'App' }[t] + '</span>';
+  $('htitle').innerHTML = esc(PROFILES[PROF].label) + ' <span>' + { workout: 'Split', history: 'Log', body: 'Body', fuel: 'Fuel', friends: 'Friends', more: 'App' }[t] + '</span>';
   renderAll(); window.scrollTo(0, 0);
 }
 
@@ -869,8 +870,10 @@ function startApp() {
   if (typeof applyRoutine === 'function') applyRoutine(); cur = todayIdx();
   document.body.classList.remove('out'); showTab('workout'); showRestFor(); keepAwake(); if (typeof cafPaint === 'function') cafPaint();
   setSync(navigator.onLine ? 'busy' : 'err', navigator.onLine ? 'Syncing…' : 'Offline · saved on device'); sync();
+  if (typeof startFriends === 'function') startFriends();
 }
 function stopApp() {
+  if (typeof stopFriends === 'function') stopFriends();
   clearTimeout(syncT); clearTimeout(rGoT); clearInterval(rInt); rInt = null; for (const k in RT) delete RT[k];
   $('rest').classList.remove('show', 'go');
   if (PC) { PC.done = true; PC = null; } $('pacer').classList.remove('show'); pvStop(); closeSheet();

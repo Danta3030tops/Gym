@@ -139,6 +139,50 @@ with sync_playwright() as p:
     A.click('#onb [data-wd="6"]'); A.click('#onb [data-obnext]'); A.wait_for_timeout(200); A.click('#onb [data-obnext]'); A.wait_for_timeout(300); A.click('#obDone'); A.wait_for_timeout(600)
     assert A.locator('#days button').count() == 5 and A.locator('#list .card').count() == 6, 'coach now has a 5-day plan incl. Saturday'
 
+    # friends (milestone 3): add by username, accept / decline / cancel / remove. Signed in as coach.kay here.
+    fr = lambda: db()['t'].get('app_friends', [])
+    def signin(email):
+        A.click('nav button[data-tab="more"]'); A.wait_for_timeout(300); A.click('#signOut'); A.wait_for_timeout(300)
+        A.fill('#auEmail', email); A.fill('#auPass', 'longenough1'); A.click('#auGo'); A.wait_for_timeout(700)
+        assert A.is_visible('.wrap'), 'signed in as ' + email
+    def add(u):
+        A.click('[data-frnew]'); A.wait_for_timeout(450); A.fill('#frUser', u); A.click('[data-fradd]'); A.wait_for_timeout(450)
+    tabF = lambda: (A.click('nav button[data-tab="friends"]'), A.wait_for_timeout(400))
+    tabF(); assert 'No friends yet' in A.inner_text('#friends') and '@coach.kay' in A.inner_text('#friends') and not A.is_visible('#frBadge')
+    add('zz'); assert '3 to 20' in A.inner_text('#frMsg')
+    A.fill('#frUser', 'nobody_here'); A.click('[data-fradd]'); A.wait_for_timeout(400); assert 'No one here' in A.inner_text('#frMsg')
+    A.fill('#frUser', 'coach.kay'); A.click('[data-fradd]'); A.wait_for_timeout(400); assert 'your own' in A.inner_text('#frMsg')
+    A.fill('#frUser', '@Test_User'); A.press('#frUser', 'Enter'); A.wait_for_timeout(500)
+    assert not A.is_visible('#sheet.show') and len(fr()) == 1 and fr()[0]['status'] == 'pending', 'request row is created'
+    assert 'Test Person' in A.inner_text('#frSent') and A.locator('#frList .frow').count() == 0
+    add('test_user'); assert 'already asked' in A.inner_text('#frMsg') and len(fr()) == 1, 'no duplicate request'
+    A.click('#sx'); A.wait_for_timeout(600); A.click('[data-frcancel]'); A.wait_for_timeout(500); assert fr() == [] and not A.is_visible('#frSent'), 'cancel deletes the request'
+    add('test_user'); assert len(fr()) == 1; shot('8-friends-sent')
+    # the other person sees it, with a badge, and declines
+    signin('test@example.com'); assert A.is_visible('#frBadge') and A.inner_text('#frBadge') == '1', 'badge on the Friends tab'
+    tabF(); assert 'Coach Kay' in A.inner_text('#frReqs') and 'Coach' in A.inner_text('#frReqs .edn span'); shot('9-friends-request')
+    A.click('[data-frno]'); A.wait_for_timeout(500); assert fr() == [] and not A.is_visible('#frReqs') and not A.is_visible('#frBadge'), 'decline deletes the request'
+    # ask the other way; adding someone who already asked you accepts their request
+    add('coach.kay'); assert len(fr()) == 1
+    signin('coach@example.com'); tabF(); assert A.is_visible('[data-frok]')
+    add('test_user'); assert len(fr()) == 1 and fr()[0]['status'] == 'accepted', 'adding back accepts'
+    assert A.locator('#frList .frow').count() == 1 and 'Test Person' in A.inner_text('#frList') and not A.is_visible('#frReqs') and not A.is_visible('#frBadge')
+    assert A.evaluate('friendList().map(p => p.username).join()') == 'test_user' and A.evaluate('isFriend(friendIds()[0])')
+    shot('10-friends-list')
+    # both sides see the friendship; it survives a reload; either can remove it
+    signin('test@example.com'); tabF(); assert 'Coach Kay' in A.inner_text('#frList') and '1 friend' in A.inner_text('#friends')
+    A.reload(); A.wait_for_timeout(800); tabF(); assert A.locator('#frList .frow').count() == 1
+    A.click('#frList .frow'); A.wait_for_timeout(450); assert 'Friends since' in A.inner_text('#sheetin')
+    A.click('[data-frrm]'); A.wait_for_timeout(450); A.click('[data-frrmyes]'); A.wait_for_timeout(600)
+    assert fr() == [] and 'No friends yet' in A.inner_text('#friends'), 'remove deletes the friendship'
+    # accept with the button
+    add('coach.kay'); signin('coach@example.com'); tabF(); A.click('[data-frok]'); A.wait_for_timeout(500)
+    assert fr()[0]['status'] == 'accepted' and A.locator('#frList .frow').count() == 1
+    # signing out clears the list from the screen
+    A.click('nav button[data-tab="more"]'); A.wait_for_timeout(300); A.click('#signOut'); A.wait_for_timeout(300)
+    assert A.evaluate("FR.rows.length === 0 && document.getElementById('friends').innerHTML === ''")
+    A.fill('#auEmail', 'coach@example.com'); A.fill('#auPass', 'longenough1'); A.click('#auGo'); A.wait_for_timeout(700)
+
     # forgot password
     A.click('nav button[data-tab="more"]'); A.wait_for_timeout(300); A.click('#signOut'); A.wait_for_timeout(300); A.click('[data-aumode="forgot"]'); A.fill('#auEmail', 'test@example.com'); A.click('#auGo'); A.wait_for_timeout(300)
     assert 'reset link' in A.inner_text('#auErr')

@@ -33,7 +33,7 @@ Status values: `todo`, `in progress`, `done`.
 |---|---|---|
 | 1 | Sign-in / sign-up screen, first-time setup (role, goal, days), routine built from templates, mock backend + smoke test | done |
 | 2 | Single-user core in `public/`: port workout, history, body, fuel, more tabs to one signed-in user on `app_state` / `app_routines` | done |
-| 3 | Friends: add by username, accept / decline, friends list | todo |
+| 3 | Friends: add by username, accept / decline, friends list | done |
 | 4 | Friends features: leaderboard, 1-on-1 chats, group chats, nudges, challenges | todo |
 | 5 | Trainer portal: add trainer, Clients tab, Inbox tab, routine edits with client notification, remove trainer | todo |
 | 6 | Multi-user tests on the mock, service worker + manifest for `public/`, final review of the schema | todo |
@@ -41,6 +41,17 @@ Status values: `todo`, `in progress`, `done`.
 ## Session log
 
 (newest first)
+
+### 15 Nov 2026 — milestone 3 done (friends)
+
+- New `public/friends.js` (loaded after `motion.js`) and a sixth tab, **Friends**, between Fuel and More, with a red badge for incoming requests.
+- Add by username (sheet; `@` and capitals are tolerated), Sent list with Cancel, Requests with Accept / Decline, friends list, tap a friend for a sheet with "Remove friend" (confirm sheet). Adding someone who already asked you accepts their request. Declining, cancelling and removing all delete the `app_friends` row.
+- Data: `FR.rows` (my `app_friends` rows, fetched as two queries: `requester = me` and `addressee = me`) and `FR.profs` (their `app_profiles` rows), cached in `gymp.friends.<uid>`. Refreshes on start, on opening the tab, on coming back to the app, on reconnect, and on a realtime `postgres_changes` subscription to `app_friends` (a no-op in the mock).
+- **For later milestones use `friendList()` (profile rows), `friendIds()`, `isFriend(id)`, and the row helpers `frAv(p)` / `frWho(p)` / `frName(p)` / `frColor(p)`.** Another person's `color` must always go through `frColor` (it is validated) before it reaches a style attribute.
+- `app.js` calls `startFriends()` / `stopFriends()` from `startApp` / `stopApp` and `renderFriends()` from `renderAll`.
+- No `app_notes` row is written for a friend request: the pending row itself is the notification. Revisit when notifications are built (milestones 4 and 5).
+- Schema notes for the milestone 6 review: realtime DELETE events on `app_friends` are not filtered by RLS and carry only the id (fine, the client just reloads); the unique pair index is what stops duplicate requests when two people ask at the same moment.
+- `smoke-public.py` covers all of it with two accounts signing in and out on one page.
 
 ### 15 Nov 2026 — milestone 2 done
 
