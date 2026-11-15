@@ -2,7 +2,7 @@
    Accounts are a username (public handle, how friends find you) plus a real email (sign-in and password reset) and a password. */
 'use strict';
 const CFG = window.GYM_PUBLIC_CONFIG || {};
-let sb = null, session = null, ME = null, ROUTINE = null, ST = blankState();
+let sb = null, session = null, ME = null, ROUTINE = null, S = blankState();
 const USER_RE = /^[a-z0-9_.]{3,20}$/, EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const AU = { mode: 'in', role: 'user', busy: false, nameT: null, nameOk: null, nameFor: '' };
 
@@ -122,24 +122,16 @@ async function enter() {
     const b = await sb.from('app_routines').select('routine').eq('user_id', uid).maybeSingle(); if (b.error) throw b.error; rt = b.data;
   } catch (e) { offline = true; prof = cacheGet('gymp.me.' + uid); const c = cacheGet('gymp.routine.' + uid); rt = c ? { routine: c.routine } : null; }
   if (!prof) return showAuth('in', { text: offline ? 'Can’t reach the server. Check your connection and try again.' : 'Your profile is missing. Sign in again, or create a new account.' });
-  ME = prof; ROUTINE = rt ? rt.routine : null; ST = loadLocal(uid);
+  ME = prof; ROUTINE = rt ? rt.routine : null; S = loadLocal(uid);
   if (!offline) { cacheSet('gymp.me.' + uid, prof); if (rt) cacheSet('gymp.routine.' + uid, { routine: rt.routine }); }
   applyTheme(prof.color);
   $('auth').classList.remove('show');
   if (!rt && !offline) startOnboarding(); else showHome();
 }
-/* placeholder home until the workout screens are ported (milestone 2) */
-function showHome() {
-  $('onb').classList.remove('show'); $('auth').classList.remove('show'); document.body.classList.remove('out');
-  const days = ROUTINE || [];
-  $('home').innerHTML = `<div class="hello"><div class="lv-av">${esc(initials(ME.display_name || ME.username))}</div><div><b>${esc(ME.display_name || ME.username)}</b><span>@${esc(ME.username)}${ME.role === 'trainer' ? ' · Coach' : ''}</span></div></div>
-    ${days.length ? `<div class="dayhead"><div><h2>Your week</h2><div class="sub">${days.length} training days</div></div></div>` + days.map(d => `<div class="card"><div class="num">${esc(d.d)}</div><h3>${esc(d.title)}</h3>${d.slots.map(sl => `<div class="pv-x"><b>${esc(sl.opts[0].n)}</b><span>${sl.sets} × ${esc(sl.reps)}</span></div>`).join('')}</div>`).join('')
-      : `<div class="card muted">No workout plan on this account. You can add one any time from settings.</div>`}
-    <button class="btn" id="signOut">Sign out</button>`;
-  window.scrollTo(0, 0);
-}
+/* hand over to the app (public/app.js) */
+function showHome() { $('onb').classList.remove('show'); $('auth').classList.remove('show'); startApp(); }
 document.addEventListener('click', async e => {
-  if (e.target.closest('#signOut')) { await sb.auth.signOut().catch(() => { }); session = null; ME = null; ROUTINE = null; showAuth('in'); }
+  if (e.target.closest('#signOut')) { stopApp(); await sb.auth.signOut().catch(() => { }); session = null; ME = null; ROUTINE = null; S = blankState(); showAuth('in'); }
 });
 
 (async function initAuth() {
@@ -149,7 +141,7 @@ document.addEventListener('click', async e => {
   if (!sb) return showAuth('in');
   sb.auth.onAuthStateChange((ev, s) => {
     if (ev === 'PASSWORD_RECOVERY') { session = s; showAuth('newpw'); }
-    else if (ev === 'SIGNED_OUT') { session = null; if (ME) { ME = null; showAuth('in'); } }
+    else if (ev === 'SIGNED_OUT') { session = null; if (ME) { stopApp(); ME = null; ROUTINE = null; S = blankState(); showAuth('in'); } }
     else if (s) session = s; // token refreshes
   });
   const { data } = await sb.auth.getSession().catch(() => ({ data: {} }));

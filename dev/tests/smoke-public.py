@@ -48,13 +48,13 @@ with sync_playwright() as p:
     for f in ['glutes', 'arms', 'core']: A.click(f'[data-focus="{f}"]')
     assert A.evaluate("OB.focus.join()") == 'arms,core', 'only the last two focus picks are kept'
     A.click('[data-focus="core"]'); A.click('[data-focus="glutes"]'); shot('4a-setup-focus'); A.click('[data-obnext]'); A.wait_for_timeout(300)
-    # schedule: default Mon Tue Thu Fri; drop to Mon Thu Fri (can't go below 3), then swap Thu for Sunday; all 7 can't be picked
+    # schedule: default Mon Tue Thu Fri; any number of days from one to all seven
     assert A.locator('[data-wd]').count() == 7, 'weekends are offered'
-    A.click('[data-wd="2"]'); A.click('[data-wd="1"]'); A.wait_for_timeout(100)
-    assert A.evaluate("OB.wds.join()") == '1,4,5', 'at least three days stay selected'
-    for d in [2, 3, 6, 7]: A.click(f'[data-wd="{d}"]')
-    assert A.evaluate("OB.wds.join()") == '1,2,3,4,5,6', 'six days at most'
-    for d in [2, 3, 6, 7, 4]: A.click(f'[data-wd="{d}"]')
+    for d in [2, 4, 5, 1]: A.click(f'[data-wd="{d}"]')
+    assert A.evaluate("OB.wds.join()") == '1', 'one day is allowed, zero is not'
+    for d in [2, 3, 4, 5, 6, 7]: A.click(f'[data-wd="{d}"]')
+    assert A.evaluate("OB.wds.join()") == '1,2,3,4,5,6,7', 'all seven days are allowed'
+    for d in [2, 3, 4, 6]: A.click(f'[data-wd="{d}"]')
     assert A.evaluate("OB.wds.join()") == '1,5,7'
     A.click('[data-mins="45"]'); shot('4b-setup-schedule'); A.click('[data-obnext]'); A.wait_for_timeout(300)
     A.click('[data-equip="home"]'); A.click('[data-level="some"]'); A.click('[data-unit="kg"]'); shot('4c-setup-equipment')
@@ -68,38 +68,64 @@ with sync_playwright() as p:
     assert A.evaluate("OB.routine.every(d => d.slots.some(s => LIB.glutes.concat(LIB.arms).some(o => o.n === s.opts[0].n)))"), 'focus areas show up every day'
     # the builder holds up for every combination of answers
     bad = A.evaluate("""(() => { const out = [];
-      for (const goal of ['muscle','strength','lean','general']) for (const equip of ['gym','home','body']) for (const mins of [30,45,60]) for (const level of ['new','seasoned']) for (const wds of [[1,3,5],[2,4,6,7],[1,2,3,4,5],[1,2,3,5,6,7]]) for (const focus of [[],['glutes','arms'],['back','shoulders']]) {
+      for (const goal of ['muscle','strength','lean','general']) for (const equip of ['gym','home','body']) for (const mins of [30,45,60]) for (const level of ['new','seasoned']) for (const wds of [[3],[2,6],[1,3,5],[2,4,6,7],[1,2,3,4,5],[1,2,3,5,6,7],[1,2,3,4,5,6,7]]) for (const focus of [[],['glutes','arms'],['back','shoulders']]) {
         const r = buildRoutine({ goal, equip, mins, level, wds, focus }), names = r.flatMap(d => d.slots.filter(s => !s.time || s.sets > 1).map(s => s.opts[0].n));
         const want = Math.min({30:4,45:5,60:6}[mins], level === 'new' ? 5 : 6) + (goal === 'lean' ? 1 : 0);
-        if (r.length !== wds.length || r.map(d => d.wd).join() !== wds.join() || r.some(d => d.slots.length !== want) || r.some(d => d.slots.some(s => !s.opts.length || s.opts.some(o => !o || !P[o.pat] || !fitsEquip(o.n, equip)))) || (equip !== 'body' && new Set(names).size !== names.length)) out.push([goal, equip, mins, level, wds.length, focus.join('+')].join(' '));
+        if (r.length !== wds.length || r.map(d => d.wd).join() !== wds.join() || r.some(d => d.slots.length !== want) || r.some(d => d.slots.some(s => !s.opts.length || s.opts.some(o => !o || !P[o.pat] || !fitsEquip(o.n, equip)))) || (equip === 'gym' && new Set(names).size !== names.length)) out.push([goal, equip, mins, level, wds.length, focus.join('+')].join(' '));
       } return out; })()""")
     assert not bad, bad[:8]
     shot('5-setup-plan')
     A.click('#obDone'); A.wait_for_timeout(500)
     assert A.is_visible('.wrap') and not A.is_visible('#onb.show'), 'app shows after setup'
-    assert A.locator('#home .card').count() == 3
+    assert A.locator('#days button').count() == 3 and A.inner_text('#days').replace('\n', ' ').count('Mon') == 1, 'day strip shows the 3 training days'
+    assert A.evaluate("DAYS.map(d => d.wd).join()") == '1,5,7'
+    assert A.locator('#list .card').count() == 6, 'selected day lists its 6 exercises'
+    assert 'Test' in A.inner_text('#htitle')
     d = db(); me = d['t']['app_profiles'][0]
     assert me['display_name'] == 'Test Person' and me['color'] == '#0a84ff' and me['role'] == 'user'
     assert len(d['t']['app_routines'][0]['routine']) == 3 and d['t']['app_state'][0]['data']['settings']['unit'] == 'kg' and d['t']['app_state'][0]['data']['settings']['plan']['equip'] == 'home'
     shot('6-home')
 
     # session survives a reload; sign out; username now taken; sign back in
-    A.reload(); A.wait_for_timeout(600); assert A.is_visible('.wrap') and A.locator('#home .card').count() == 3
-    A.click('#signOut'); A.wait_for_timeout(300); assert A.is_visible('#auth.show') and not A.is_visible('.wrap')
+    # log a set, check it lands in the state blob and the cloud copy, visit every tab
+    A.fill('[data-w="0:0"]', '20'); A.fill('[data-r="0:0"]', '10'); A.click('[data-chk="0:0"]'); A.wait_for_timeout(2500)
+    assert A.locator('.set.ok').count() == 1, 'set is ticked'
+    assert A.is_visible('#rest.show'), 'rest timer starts'
+    sets = A.evaluate("Object.values(Object.values(Object.values(S.logs)[0])[0])[0].sets"); assert sets[0]['w'] == 20 and sets[0]['r'] == 10
+    cloud = db()['t']['app_state'][0]['data']['logs']; assert cloud, 'state synced to app_state'
+    assert db()['t'].get('app_public'), 'summary published to app_public'
+    A.click('#rskip')
+    for t in ['history', 'body', 'fuel', 'more', 'workout']:
+        A.click(f'nav button[data-tab="{t}"]'); A.wait_for_timeout(400); assert A.is_visible(f'#t-{t}.on'), t
+        if t == 'history':
+            for seg in ['muscles', 'prs', 'weeks']: A.click(f'[data-hseg="{seg}"]'); A.wait_for_timeout(250)
+            assert A.locator('[data-hseg]').count() == 3, 'no scoreboard yet'
+        if t == 'more': assert '@test_user' in A.inner_text('#more'); shot('7-more')
+    shot('6-workout')
+    A.reload(); A.wait_for_timeout(800); assert A.is_visible('.wrap') and A.locator('#list .card').count() == 6 and A.locator('.set.ok').count() == 1, 'session and log survive a reload'
+    A.click('nav button[data-tab="more"]'); A.wait_for_timeout(300)
+    A.click('#signOut'); A.wait_for_timeout(300); assert A.is_visible('#auth.show') and not A.is_visible('.wrap') and not A.is_visible('nav')
     A.click('[data-aumode="up"]'); A.fill('#auUser', 'test_user'); A.wait_for_timeout(600); assert 'Taken' in A.inner_text('#auUserSt')
     A.click('[data-aumode="in"]'); A.fill('#auEmail', 'test@example.com'); A.fill('#auPass', 'longenough1'); A.click('#auGo'); A.wait_for_timeout(500)
     assert A.is_visible('.wrap') and not A.is_visible('#onb.show'), 'returning user skips setup'
+    assert A.locator('.set.ok').count() == 1, 'log is back after signing in again'
 
     # coach account: can skip the plan
-    A.click('#signOut'); A.wait_for_timeout(300); A.click('[data-aumode="up"]')
+    A.click('nav button[data-tab="more"]'); A.wait_for_timeout(300); A.click('#signOut'); A.wait_for_timeout(300); A.click('[data-aumode="up"]')
     A.fill('#auUser', 'coach.kay'); A.fill('#auEmail', 'coach@example.com'); A.fill('#auPass', 'longenough1'); A.click('[data-role="trainer"]'); A.click('#auGo'); A.wait_for_timeout(500)
     A.fill('#obName', 'Coach Kay'); A.click('[data-obnext]'); A.wait_for_timeout(300)
     assert A.is_visible('#obSkip'), 'coaches can skip their own plan'; A.click('#obSkip'); A.wait_for_timeout(500)
-    assert A.is_visible('.wrap') and 'Coach' in A.inner_text('#home')
+    assert A.is_visible('.wrap') and A.is_visible('[data-buildplan]'), 'coach without a plan sees the empty state'
     assert db()['t']['app_profiles'][1]['role'] == 'trainer'
+    for t in ['history', 'body', 'fuel', 'more', 'workout']: A.click(f'nav button[data-tab="{t}"]'); A.wait_for_timeout(300)
+    # ...and can build one later
+    A.click('[data-buildplan]'); A.wait_for_timeout(300); assert A.is_visible('#onb.show') and A.is_visible('[data-goal]')
+    A.click('[data-goal="strength"]'); A.click('[data-obnext]'); A.wait_for_timeout(200); A.click('[data-obnext]'); A.wait_for_timeout(200)
+    A.click('[data-wd="6"]'); A.click('[data-obnext]'); A.wait_for_timeout(200); A.click('[data-obnext]'); A.wait_for_timeout(300); A.click('#obDone'); A.wait_for_timeout(600)
+    assert A.locator('#days button').count() == 5 and A.locator('#list .card').count() == 6, 'coach now has a 5-day plan incl. Saturday'
 
     # forgot password
-    A.click('#signOut'); A.wait_for_timeout(300); A.click('[data-aumode="forgot"]'); A.fill('#auEmail', 'test@example.com'); A.click('#auGo'); A.wait_for_timeout(300)
+    A.click('nav button[data-tab="more"]'); A.wait_for_timeout(300); A.click('#signOut'); A.wait_for_timeout(300); A.click('[data-aumode="forgot"]'); A.fill('#auEmail', 'test@example.com'); A.click('#auGo'); A.wait_for_timeout(300)
     assert 'reset link' in A.inner_text('#auErr')
     assert not errs, errs
     print('OK public'); b.close()

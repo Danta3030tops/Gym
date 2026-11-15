@@ -10,7 +10,7 @@ Read `PLAN.md` first. This file is the hand-over between work sessions: update i
 - Never touch the live Supabase project (`xszyjrrrqpcciofrrfiu`) and never run SQL anywhere. The public app needs a new Supabase project that only the owner can create; until then everything is built and tested against `dev/tests/mock-public.js`.
 - After every round run both tests from the repo root with a local server on port 8765:
   `python3 dev/tests/smoke.py` (couple app) and `python3 dev/tests/smoke-public.py` (public app).
-- **Use subagents for the heavy lifting** (owner request, to get more done on less allowance): the main session plans, delegates self-contained pieces (porting a file, writing a feature, extending a test) to subagents with a precise brief, then reviews their diff and runs the tests itself. Keep small edits in the main session.
+- **Do the work in the main session; do not spawn subagents** (owner decision, 14 Nov 2026: cheaper on their plan).
 - Same conventions as `CLAUDE.md`: no build step, no frameworks, compact style, `esc()` for user text, iOS glass look.
 
 ## Decisions (owner, 14 Nov 2026)
@@ -32,7 +32,7 @@ Status values: `todo`, `in progress`, `done`.
 | # | Milestone | Status |
 |---|---|---|
 | 1 | Sign-in / sign-up screen, first-time setup (role, goal, days), routine built from templates, mock backend + smoke test | done |
-| 2 | Single-user core in `public/`: port workout, history, body, fuel, more tabs to one signed-in user on `app_state` / `app_routines` | todo |
+| 2 | Single-user core in `public/`: port workout, history, body, fuel, more tabs to one signed-in user on `app_state` / `app_routines` | in progress |
 | 3 | Friends: add by username, accept / decline, friends list | todo |
 | 4 | Friends features: leaderboard, 1-on-1 chats, group chats, nudges, challenges | todo |
 | 5 | Trainer portal: add trainer, Clients tab, Inbox tab, routine edits with client notification, remove trainer | todo |
@@ -41,6 +41,12 @@ Status values: `todo`, `in progress`, `done`.
 ## Session log
 
 (newest first)
+
+### 14 Nov 2026 — any number of training days; milestone 2 started
+
+- Owner: don't restrict training days. Setup now allows 1 to 7 days (`SPLITS` has entries for every count).
+- Owner: no subagents; the main session does everything.
+- Milestone 2 groundwork is in: `PORTING.md` is the contract for the port, `public/index.html` has the full app layout and loads `app.js`, `extras.js`, `coach.js`, `motion.js`; `auth.js` calls `startApp()` / `stopApp()`; `onboard.js` handles `data-buildplan`; `smoke-public.py` already expects the full app. The four ported files are being adapted from fresh copies of the root files.
 
 ### 14 Nov 2026 — weekends and six-day weeks (owner request)
 

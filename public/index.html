@@ -597,7 +597,7 @@ button:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 @keyframes pacerIn{from{opacity:0;transform:translateY(24px) scale(.985)}}
 .chatlist{min-height:calc(100dvh - 330px)}
 /* ================= public version: sign-in, sign-up, first-time setup ================= */
-body.out .wrap{display:none}
+body.out .wrap,body.out nav,body.out #rest,body.out #sessBar,body.out #effort{display:none!important}
 #auth,#onb{position:fixed;inset:0;z-index:70;display:none;flex-direction:column;align-items:center;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:calc(28px + var(--st)) 20px calc(28px + var(--sb));background:var(--bg) radial-gradient(110% 60% at 50% -10%,color-mix(in srgb,var(--acc) 38%,transparent),transparent 70%)}
 #auth.show,#onb.show{display:flex;animation:tabF .4s ease-out both}
 .au-in{width:100%;max-width:400px;margin:auto 0;display:flex;flex-direction:column}
@@ -737,8 +737,61 @@ body:not(:has(#rest.show)) #effort{bottom:calc(var(--nav) + var(--sb) + 24px)}
 <div class="wrap">
   <header>
     <div><h1 id="htitle">Gym</h1><div class="sync" id="sync"><i></i><span>Signed in</span></div></div>
+    <div class="row"><div class="pill" id="wkpill"></div></div>
   </header>
-  <div id="home"></div>
+
+  <!-- WORKOUT -->
+  <section class="tab on" id="t-workout">
+    <div class="days" id="days"></div>
+    <div class="weekline" id="weekline"></div>
+    <div id="newweek"></div>
+    <div class="dayhead"><div><h2 id="dtitle"></h2><div class="sub" id="ddate"></div></div><div class="prog" id="dprog"></div></div>
+    <div class="bar"><i id="dbar"></i></div>
+    <div id="excount"></div>
+    <div id="list"></div>
+    <div class="foot">Tap the figure for form tips · ↻ swaps the exercise · ▶ paces your reps<br>A rest timer starts when you tick off a set. A fresh week starts every Monday, and last week moves to History.</div>
+  </section>
+
+  <!-- HISTORY -->
+  <section class="tab" id="t-history"><div id="hist"></div></section>
+
+  <!-- BODY -->
+  <section class="tab" id="t-body"><div id="body"></div></section>
+
+  <!-- FUEL -->
+  <section class="tab" id="t-fuel"><div id="fuel"></div></section>
+
+  <!-- MORE -->
+  <section class="tab" id="t-more"><div id="more"></div></section>
+</div>
+
+<div id="rest"><div class="in">
+  <div class="t" id="rt">0:00</div>
+  <div class="l"><b id="rlab">Rest</b><small id="rsub"></small><div class="pb"><i id="rpb"></i></div></div>
+  <button id="rminus">−15</button><button id="rplus">+15</button><button id="rskip">✕</button>
+</div></div>
+
+<nav>
+  <button data-tab="workout" class="on"><svg viewBox="0 0 24 24"><path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12"/></svg>Workout</button>
+  <button data-tab="history"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>History</button>
+  <button data-tab="body"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2.5"/><path d="M12 8v7M7 10l5 1 5-1M9 22l3-7 3 7"/></svg>Body</button>
+  <button data-tab="fuel"><svg viewBox="0 0 24 24"><path d="M12 2s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/><path d="M9 14a3 3 0 0 0 3 3"/></svg>Fuel</button>
+  <button data-tab="more"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>More</button>
+</nav>
+
+<div class="ov" id="ov"></div>
+<div class="sheet" id="sheet"><div class="grab"></div><button class="xbtn" id="sx">✕</button><div class="in" id="sheetin"></div></div>
+
+<div id="pacer">
+  <div class="pn" id="pn"></div>
+  <div class="pt" id="ptitle"></div>
+  <div class="pfig" id="pfig"></div>
+  <div class="phase" id="pphase">GET READY</div>
+  <div class="pbar"><i id="ppb"></i></div>
+  <div class="reps" id="preps">0</div>
+  <div class="tempoctl">Tempo <button id="tslow">slower</button><b id="tval"></b><button id="tfast">faster</button></div>
+  <button class="pvoice" id="pvoice" aria-pressed="false">🔈 Voice off</button>
+  <div class="pbtns"><button id="pcancel">Cancel</button><button id="ppause">Pause</button><button class="main" id="pdone">Done · Log</button></div>
 </div>
 
 <!-- sign in / create account -->
@@ -758,6 +811,8 @@ body:not(:has(#rest.show)) #effort{bottom:calc(var(--nav) + var(--sb) + 24px)}
 </div>
 
 <div id="toast"></div>
+<input type="file" id="photoInput" accept="image/*" class="hide">
+<input type="file" id="importInput" accept="application/json,.json" class="hide">
 
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -767,6 +822,10 @@ body:not(:has(#rest.show)) #effort{bottom:calc(var(--nav) + var(--sb) + 24px)}
 <script src="../library.js"></script>
 <script src="core.js"></script>
 <script src="templates.js"></script>
+<script src="app.js"></script>
+<script src="extras.js"></script>
+<script src="coach.js"></script>
+<script src="motion.js"></script>
 <script src="auth.js"></script>
 <script src="onboard.js"></script>
 </body>
