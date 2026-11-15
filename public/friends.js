@@ -32,19 +32,21 @@ async function loadFriends() {
   } catch (e) { FR.err = true; }
   frPaint();
 }
-function frPaint() {
-  const b = $('frBadge'), n = session && ME ? frIncoming().length + NT.rows.length : 0;
+function frBadge() {
+  const b = $('frBadge'), n = session && ME ? frIncoming().length + NT.rows.length + chUnreadCount() : 0;
   if (b) { b.hidden = !n; b.textContent = n > 9 ? '9+' : n; }
-  if (!appOff() && tab === 'friends') renderFriends();
 }
+function frPaint() { frBadge(); if (!appOff() && tab === 'friends') renderFriends(); }
 function renderFriends() {
-  const inc = frIncoming(), out = frOutgoing(), acc = frAccepted(), off = !navigator.onLine;
+  if (CH.open && chConv(CH.open)) return renderThread(); // an open conversation takes over the tab
+  const inc = frIncoming(), out = frOutgoing(), acc = frAccepted(), off = !navigator.onLine, unread = chUnreadCount();
   if (!FR.seg) FR.seg = acc.length ? 'board' : 'people';
   let h = `<div class="dayhead"><div><h2>Friends</h2><div class="sub">${acc.length ? acc.length + (acc.length === 1 ? ' friend' : ' friends') : 'Add people by their username'}</div></div></div>
-    <div class="seg" style="margin-top:0">${[['board', 'Leaderboard'], ['people', 'People' + (inc.length ? ' · ' + inc.length : '')]].map(([k, t]) => `<button class="${FR.seg === k ? 'on' : ''}" data-frseg="${k}">${t}</button>`).join('')}</div>`;
+    <div class="seg" style="margin-top:0">${[['board', 'Leaderboard'], ['chats', 'Chats' + (unread ? ' · ' + unread : '')], ['people', 'People' + (inc.length ? ' · ' + inc.length : '')]].map(([k, t]) => `<button class="${FR.seg === k ? 'on' : ''}" data-frseg="${k}">${t}</button>`).join('')}</div>`;
   if (NT.rows.length) h += `<div class="card" id="frNotes"><h3>New for you</h3>${NT.rows.slice(0, 8).map(n => `<div class="hrow"><b style="flex:1;font-weight:500">${esc(noteText(n))}</b><span>${esc(frAgo(n.created_at))}</span></div>`).join('')}
     ${NT.rows.length > 8 ? `<div class="muted">and ${NT.rows.length - 8} more</div>` : ''}<button class="btn ghost" data-ntclear>Clear</button></div>`;
   if (FR.seg === 'board') h += boardHtml();
+  else if (FR.seg === 'chats') h += chatsHtml();
   else {
     if (inc.length) h += `<div class="card" id="frReqs"><h3>Requests</h3>${inc.map(({ r, p }) => `<div class="edrow frow">${frAv(p)}${frWho(p)}<button class="chip acc" data-frok="${r.id}">Accept</button><button class="chip" data-frno="${r.id}">Decline</button></div>`).join('')}</div>`;
     h += `<div class="card" id="frList"><h3>Your friends</h3>${acc.length ? acc.map(({ r, p }) => `<div class="edrow frow" data-frview="${r.id}">${frAv(p)}${frWho(p)}<span class="frchev">›</span></div>`).join('')
@@ -56,6 +58,7 @@ function renderFriends() {
   $('friends').innerHTML = h;
   if (Date.now() - FR.at > 5000) loadFriends(); // opening the tab refreshes it
   if (FR.seg === 'board' && Date.now() - LB.at > 5000) loadBoard();
+  if (FR.seg === 'chats' && Date.now() - CH.at > 5000) loadChats();
 }
 
 /* ---------- leaderboard: me (from my own state) against friends' published summaries (app_public) ---------- */
@@ -166,6 +169,7 @@ function frViewSheet(rid) {
   const since = row.created_at ? new Date(row.created_at).toLocaleDateString([], { month: 'short', year: 'numeric' }) : '';
   openSheet(`<div class="hello" style="margin:0 0 12px">${frAv(p)}<div><b>${esc(frName(p))}</b><span>@${esc(p.username)}${p.role === 'trainer' ? ' · Coach' : ''}</span></div></div>
     <div class="muted">${since ? 'Friends since ' + esc(since) + '.' : 'You’re friends.'}</div>
+    <button class="btn acc" data-chdm="${esc(p.id)}">💬 Message</button>
     <button class="btn ghost" data-frrm="${row.id}" style="color:#ff453a">Remove friend</button>`);
 }
 function frRemoveSheet(rid) {
@@ -189,7 +193,7 @@ document.addEventListener('click', e => {
   if (d.frview) return frViewSheet(d.frview);
 });
 document.addEventListener('keydown', e => { if (!appOff() && e.key === 'Enter' && e.target.id === 'frUser') { e.preventDefault(); frAdd(); } });
-const frRefresh = () => loadFriends().then(() => { loadNotes(); if (tab === 'friends' && FR.seg === 'board') loadBoard(); });
+const frRefresh = () => loadFriends().then(() => { loadNotes(); loadChats(); if (CH.open) loadMsgs(); if (tab === 'friends' && FR.seg === 'board') loadBoard(); });
 document.addEventListener('visibilitychange', () => { if (!appOff() && !document.hidden) frRefresh(); });
 addEventListener('online', () => { if (!appOff()) frRefresh(); });
 
@@ -197,7 +201,7 @@ addEventListener('online', () => { if (!appOff()) frRefresh(); });
 function startFriends() {
   const c = cacheGet(frKey()) || {}; Object.assign(FR, { rows: c.rows || [], profs: c.profs || {}, loaded: !!c.rows, busy: false, err: false, at: 0, seg: null });
   Object.assign(LB, { sums: cacheGet('gymp.board.' + uid()) || {}, metric: 'week', at: 0 }); Object.assign(NT, { rows: [], max: cacheGet('gymp.noteMax.' + uid()) || 0 });
-  frPaint(); loadFriends().then(loadNotes); // notes name the sender, so load friends first
+  startChat(); frPaint(); loadFriends().then(() => { loadNotes(); loadChats(); }); // notes and chats name people, so load friends first
   if (sb && !FR.ch) {
     try {
       FR.ch = sb.channel('friends-' + uid())
@@ -209,6 +213,7 @@ function startFriends() {
   }
 }
 function stopFriends() {
+  stopChat();
   if (FR.ch && sb) { try { sb.removeChannel(FR.ch); } catch (e) { } }
   Object.assign(FR, { rows: [], profs: {}, loaded: false, busy: false, ch: null, err: false, at: 0, seg: null });
   Object.assign(LB, { sums: {}, at: 0 }); Object.assign(NT, { rows: [], max: 0 });

@@ -42,6 +42,26 @@ Status values: `todo`, `in progress`, `done`.
 
 (newest first)
 
+### 15 Nov 2026 — milestone 4, part 2: chats (WIP)
+
+Done, in the new `public/chat.js` (loaded after `friends.js`):
+- Friends tab segments are now **Leaderboard · Chats · People**. Unread chats count towards the tab badge.
+- Conversation list (`loadChats`, `chatsHtml`): my `app_members` rows, their `app_convs`, all members, and profiles of group members who are not my friends (`CH.profs`). Unread = `app_convs.last_at` is later than my `app_members.last_read`.
+- A conversation takes over the Friends tab while open (`CH.open`, `renderThread`, back button). Send (button or Enter), failed sends can be retried by tapping, delete my own message, day separators, sender names in groups.
+- 1-on-1: "New chat", or "💬 Message" in a friend's sheet, both through rpc `app_open_chat` (reuses the existing conversation). Groups: "New group" through `app_new_group`; group details sheet with rename (`app_group_rename`), add a friend (`app_group_add`), leave (deletes my `app_members` row).
+- Realtime: `app_messages` INSERT and `app_convs` UPDATE. The mock has no realtime, so the tests see new messages by signing in again.
+- `mock-public.js` has the four chat rpcs (same rules as the SQL functions) and does what the `app_msg_bump` trigger does.
+- Test default `GYM_TEST_SLOW` is now 3 (about 160 s): this Mac is often busy and shorter pauses failed at random. **If `smoke-public.py` fails on an odd step, run it again before debugging.**
+
+Not built (decide later): photo messages (bucket `app-chat`); "add a friend to a group" is not covered by the test (needs a third account, do it in milestone 6).
+
+Schema notes for the milestone 6 review:
+- `app_members` is not in the realtime publication, so being added to a group only shows up on the next refresh or when the first message arrives. Add it.
+- A 1-on-1 chat stays writable after the friendship ends (`ms_send` only checks membership). The app hides such chats (`chVisible`), but the policy should also require `app_linked`, or `app_friends` deletion should remove the membership.
+- 'coach' conversations are hidden by `chVisible` until milestone 5 shows them.
+
+**Still to do for milestone 4:** challenges. The couple app's version is in root `coach.js` (search "challenge"); `summaryOf` already publishes `ch: settings.challenge`. Make it "challenge a friend".
+
 ### 15 Nov 2026 — milestone 4, part 1: leaderboard, nudges, notifications (WIP)
 
 Done, in `public/friends.js`:

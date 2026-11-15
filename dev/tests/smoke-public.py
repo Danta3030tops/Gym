@@ -12,7 +12,7 @@ with sync_playwright() as p:
     ctx = b.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=2, service_workers='block', color_scheme='dark')
     ctx.add_init_script(mock); ctx.route('**/@supabase/**', lambda r: r.abort())
     errs = []; A = ctx.new_page(); A.on('pageerror', lambda e: errs.append(str(e)))
-    _wait = A.wait_for_timeout; A.wait_for_timeout = lambda ms: _wait(ms * float(os.environ.get('GYM_TEST_SLOW', '2')))  # pauses are stretched; set GYM_TEST_SLOW=1 on a fast, idle machine
+    _wait = A.wait_for_timeout; A.wait_for_timeout = lambda ms: _wait(ms * float(os.environ.get('GYM_TEST_SLOW', '3')))  # pauses are stretched; set GYM_TEST_SLOW=1 on a fast, idle machine
     shot = lambda n: A.screenshot(path=os.path.join(here, f'last-run-public-{n}.png'))
     db = lambda: A.evaluate("JSON.parse(localStorage.getItem('mockp.db'))")
     def reload():  # wait until the page has settled on the sign-in screen, setup, or the app (a fixed pause was flaky)
@@ -198,6 +198,43 @@ with sync_playwright() as p:
     A.click('[data-nudge]'); A.wait_for_timeout(400); assert len(notes()) == 2 and notes()[1]['kind'] == 'nudge' and notes()[1]['read'] is False
     reload(); assert not A.is_visible('#frBadge'), 'cleared notes stay cleared'
     signin('coach@example.com'); assert A.inner_text('#frBadge') == '1'; tabF(); assert 'Test Person nudged you' in A.inner_text('#frNotes')
+    # chats (milestone 4): 1-on-1 and group. Signed in as coach.kay, friends with test_user.
+    T = lambda n: db()['t'].get(n, [])
+    seg = lambda k: (A.click(f'[data-frseg="{k}"]'), A.wait_for_timeout(300))
+    def say(text): A.fill('#chIn', text); A.click('[data-chsend]'); A.wait_for_timeout(400)
+    seg('chats'); assert 'No chats yet' in A.inner_text('#chConvs')
+    A.click('[data-chnew]'); A.wait_for_timeout(450); A.click('#sheetin [data-chdm]'); A.wait_for_timeout(700)
+    assert A.is_visible('#chIn') and 'Test Person' in A.inner_text('.chead') and A.is_disabled('[data-chsend]')
+    assert len(T('app_convs')) == 1 and T('app_convs')[0]['kind'] == 'dm' and len(T('app_members')) == 2
+    say('Hello from coach'); assert A.locator('.msg.me').count() == 1 and T('app_messages')[0]['body'] == 'Hello from coach' and T('app_convs')[0]['last_text'] == 'Hello from coach'
+    A.click('[data-chback]'); A.wait_for_timeout(400); assert 'Hello from coach' in A.inner_text('#chConvs') and A.locator('.cvrow.unread').count() == 0, 'my own message is not unread'
+    # opening a chat with the same friend again reuses the conversation (from the friend's sheet this time)
+    seg('people'); A.click('#frList .frow'); A.wait_for_timeout(450); A.click('#sheetin [data-chdm]'); A.wait_for_timeout(700)
+    assert len(T('app_convs')) == 1 and A.locator('.msg.me').count() == 1, 'same conversation, history loaded'; shot('13-chat')
+    signin('test@example.com'); assert A.inner_text('#frBadge') == '1', 'unread chat shows on the badge'
+    A.click('nav button[data-tab="friends"]'); A.wait_for_timeout(400); seg('chats')
+    assert A.locator('.cvrow.unread').count() == 1; A.click('.cvrow'); A.wait_for_timeout(600)
+    assert A.locator('.msg.them').count() == 1 and 'Hello from coach' in A.inner_text('#chList') and not A.is_visible('#frBadge'), 'reading clears the badge'
+    say('Hey coach'); assert A.locator('.msg').count() == 2 and len(T('app_messages')) == 2
+    A.fill('#chIn', 'line one'); A.press('#chIn', 'Enter'); A.wait_for_timeout(400); assert len(T('app_messages')) == 3, 'Enter sends'
+    A.locator('.msg.me .mb').last.click(); A.wait_for_timeout(450); A.click('[data-chdel]'); A.wait_for_timeout(500)
+    assert len(T('app_messages')) == 2 and A.locator('.msg').count() == 2, 'delete my own message'
+    # group chat: needs at least one friend, can be renamed
+    A.click('[data-chback]'); A.wait_for_timeout(400); A.click('[data-chgroup]'); A.wait_for_timeout(450)
+    A.click('[data-chgmake]'); A.wait_for_timeout(200); assert 'at least one' in A.inner_text('#chGMsg')
+    A.fill('#chGName', 'Lifters'); A.check('#sheetin .chpick'); A.click('[data-chgmake]'); A.wait_for_timeout(700)
+    assert 'Lifters' in A.inner_text('.chead') and '2 people' in A.inner_text('.chead') and [c['kind'] for c in T('app_convs')] == ['dm', 'group'] and len(T('app_members')) == 4
+    say('First!'); A.click('[data-chinfo]'); A.wait_for_timeout(450); A.fill('#chRName', 'Squad'); A.click('[data-chrename]'); A.wait_for_timeout(500)
+    assert 'Squad' in A.inner_text('.chead') and T('app_convs')[1]['title'] == 'Squad'; shot('14-group')
+    reload(); A.click('nav button[data-tab="friends"]'); A.wait_for_timeout(400); seg('chats')
+    assert A.locator('.cvrow').count() == 2 and A.locator('.cvrow.unread').count() == 0 and 'Squad' in A.locator('.cvrow').nth(0).inner_text(); shot('15-chats')
+    # the other member sees both as unread (plus one unread nudge), reads the group, then leaves it
+    signin('coach@example.com'); assert A.inner_text('#frBadge') == '3'
+    A.click('nav button[data-tab="friends"]'); A.wait_for_timeout(400); seg('chats'); assert A.locator('.cvrow.unread').count() == 2
+    A.click('.cvrow'); A.wait_for_timeout(600); assert 'First!' in A.inner_text('#chList') and 'Test Person' in A.inner_text('.mwho'), 'group messages name the sender'
+    A.click('[data-chinfo]'); A.wait_for_timeout(450); assert A.locator('#sheetin [data-chadd]').count() == 0, 'everyone is already in'
+    A.click('[data-chleave]'); A.wait_for_timeout(600); assert len(T('app_members')) == 3 and A.locator('.cvrow').count() == 1 and A.inner_text('#frBadge') == '2'
+    seg('people')
     # signing out clears the list from the screen
     A.click('nav button[data-tab="more"]'); A.wait_for_timeout(300); A.click('#signOut'); A.wait_for_timeout(300)
     assert A.evaluate("FR.rows.length === 0 && document.getElementById('friends').innerHTML === ''")

@@ -2,7 +2,8 @@
    Data lives in localStorage ("mockp.db") so it survives reloads and is shared by pages in one browser context.
    Covers: auth (sign up / in / out, reset, update), rpc app_username_free, and a generic table API
    (select / insert / upsert / update / delete with eq, neq, in, order, limit, single, maybeSingle).
-   It does NOT enforce row level security: extend it as later milestones need (friends, chats, realtime). */
+   plus the chat rpcs (app_open_chat, app_new_group, app_group_add, app_group_rename) and the message trigger.
+   It does NOT enforce row level security and has no realtime: extend it as later milestones need. */
 (function () {
   window.GYM_PUBLIC_CONFIG = { supabaseUrl: 'https://mock.supabase.co', supabaseAnonKey: 'mock-publishable-key-0123456789' };
   const KEY = 'mockp.db', PK = { app_profiles: 'id', app_state: 'user_id', app_routines: 'user_id', app_public: 'user_id' };
@@ -39,6 +40,27 @@
     };
     async function rpc(name, args) {
       if (name === 'app_username_free') { const u = String(args.u || '').toLowerCase(); return { data: USER_RE.test(u) && !(load().t.app_profiles || []).some(p => p.username === u), error: null }; }
+      /* chats: the same rules as the database functions in supabase-public-schema.sql */
+      const d = load(), s = getS(), me = s && s.user.id, T = t => (d.t[t] = d.t[t] || []), ok = v => { save(d); return { data: v, error: null }; }, no = msg => ({ data: null, error: { message: msg } });
+      const pals = (a, b) => T('app_friends').some(r => r.status === 'accepted' && ((r.requester === a && r.addressee === b) || (r.requester === b && r.addressee === a)));
+      const member = (c, u) => T('app_members').some(x => x.conv_id === c && x.user_id === u), join = (c, u) => { if (!member(c, u)) T('app_members').push({ id: d.seq++, conv_id: c, user_id: u, last_read: now() }); };
+      const conv = (kind, title) => { const c = { id: uuid(), kind, title, created_by: me, created_at: now(), last_at: now(), last_text: '' }; T('app_convs').push(c); return c.id; };
+      if (name === 'app_open_chat') {
+        const o = args.other; if (!me || !o || o === me) return no('bad user'); if (!pals(me, o)) return no('not connected');
+        const c = T('app_convs').find(v => v.kind === 'dm' && member(v.id, me) && member(v.id, o)); if (c) return ok(c.id);
+        const id = conv('dm', ''); join(id, me); join(id, o); return ok(id);
+      }
+      if (name === 'app_new_group') {
+        if (!me) return no('sign in'); const id = conv('group', String(args.title || '').slice(0, 40)); join(id, me);
+        (args.people || []).forEach(p => { if (p !== me && pals(me, p)) join(id, p); }); return ok(id);
+      }
+      if (name === 'app_group_add') {
+        if (!member(args.c, me) || !pals(me, args.p)) return no('not allowed'); if ((T('app_convs').find(v => v.id === args.c) || {}).kind !== 'group') return no('not a group');
+        join(args.c, args.p); return ok(null);
+      }
+      if (name === 'app_group_rename') {
+        if (!member(args.c, me)) return no('not allowed'); const c = T('app_convs').find(v => v.id === args.c && v.kind === 'group'); if (c) c.title = String(args.t || '').slice(0, 40); return ok(null);
+      }
       return { data: null, error: { message: 'mock: unknown rpc ' + name } };
     }
     function from(t) {
@@ -53,6 +75,10 @@
             const i = rows.findIndex(x => x[pk] === r[pk]);
             if (i >= 0) { if (q.op === 'insert') throw { message: 'duplicate key value violates unique constraint' }; rows[i] = { ...rows[i], ...r }; return rows[i]; }
             rows.push(r); return r;
+          });
+          if (t === 'app_messages' && q.op === 'insert') out.forEach(r => { // what the app_msg_bump trigger does
+            const c = (d.t.app_convs || []).find(v => v.id === r.conv_id); if (c) { c.last_at = r.created_at; c.last_text = String(r.body || (r.photo ? '📷 Photo' : '')).slice(0, 120); }
+            const mb = (d.t.app_members || []).find(x => x.conv_id === r.conv_id && x.user_id === r.sender); if (mb) mb.last_read = r.created_at;
           });
         } else if (q.op === 'update') { out = rows.filter(match); out.forEach(r => Object.assign(r, q.payload)); }
         else if (q.op === 'delete') { out = rows.filter(match); d.t[t] = rows.filter(r => !match(r)); }
