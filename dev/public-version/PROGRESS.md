@@ -32,7 +32,7 @@ Status values: `todo`, `in progress`, `done`.
 | # | Milestone | Status |
 |---|---|---|
 | 1 | Sign-in / sign-up screen, first-time setup (role, goal, days), routine built from templates, mock backend + smoke test | done |
-| 2 | Single-user core in `public/`: port workout, history, body, fuel, more tabs to one signed-in user on `app_state` / `app_routines` | in progress |
+| 2 | Single-user core in `public/`: port workout, history, body, fuel, more tabs to one signed-in user on `app_state` / `app_routines` | done |
 | 3 | Friends: add by username, accept / decline, friends list | todo |
 | 4 | Friends features: leaderboard, 1-on-1 chats, group chats, nudges, challenges | todo |
 | 5 | Trainer portal: add trainer, Clients tab, Inbox tab, routine edits with client notification, remove trainer | todo |
@@ -41,6 +41,16 @@ Status values: `todo`, `in progress`, `done`.
 ## Session log
 
 (newest first)
+
+### 15 Nov 2026 — milestone 2 done
+
+- The failing test step was a test bug, not an app bug: `[data-goal]` also matches hidden buttons in the Fuel tab, so the selectors in that part of `smoke-public.py` are now scoped to `#onb`. **When writing tests, scope setup-screen selectors to `#onb`.**
+- `smoke-public.py` now also covers the routine editor: reorder, remove, "Rebuild from my setup answers", all checked in `app_routines`, and the routine staying out of the state blob.
+- `gym.pacerVoice` renamed to `gymp.pacerVoice` (last couple-app localStorage key in `public/`).
+- PORTING.md section 1 now documents the `PROF = 'me'` / `PROFILES.me` shim as intended.
+- Checked the Workout and More screenshots by eye: fine.
+- Known leftovers, harmless: dead `#picker` / `#pbar` CSS in `public/index.html`.
+- Test note: `smoke.py` sometimes times out waiting for `[data-prof="king"]` when the local server resets a connection. The couple app is unchanged; just run it again.
 
 ### 14 Nov 2026 (late) — milestone 2 nearly done; stopped at the usage limit
 

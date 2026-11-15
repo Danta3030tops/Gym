@@ -110,6 +110,21 @@ with sync_playwright() as p:
     assert A.is_visible('.wrap') and not A.is_visible('#onb.show'), 'returning user skips setup'
     assert A.locator('.set.ok').count() == 1, 'log is back after signing in again'
 
+    # routine editor: edits go to app_routines, and the plan can be rebuilt from the setup answers
+    rt = lambda: db()['t']['app_routines'][0]['routine']
+    di = A.evaluate('cur'); before = [sl['opts'][0]['n'] for sl in rt()[di]['slots']]
+    A.click('nav button[data-tab="more"]'); A.wait_for_timeout(300); A.click('[data-edopen]'); A.wait_for_timeout(400)
+    assert A.locator('.edrow').count() == len(before), 'editor lists the day'
+    A.click('[data-edmv="0:1"]'); A.wait_for_timeout(400)
+    assert [sl['opts'][0]['n'] for sl in rt()[di]['slots']][:2] == [before[1], before[0]], 'reorder is saved to app_routines'
+    A.click(f'[data-eddel="{len(before) - 1}"]'); A.wait_for_timeout(400)
+    assert len(rt()[di]['slots']) == len(before) - 1 and A.locator('.edrow').count() == len(before) - 1, 'remove is saved to app_routines'
+    assert 'routine' not in db()['t']['app_state'][0]['data'], 'the routine stays out of the state blob'
+    A.click('[data-edreset]'); A.wait_for_timeout(500)
+    assert [sl['opts'][0]['n'] for sl in rt()[di]['slots']] == before, 'rebuild restores the plan from the setup answers'
+    A.click('nav button[data-tab="workout"]'); A.wait_for_timeout(300); assert A.locator('#list .card').count() == 6
+    assert A.evaluate("localStorage.getItem('gymp.routineDirty.' + session.user.id)") is None, 'no unsynced routine edits left'
+
     # coach account: can skip the plan
     A.click('nav button[data-tab="more"]'); A.wait_for_timeout(300); A.click('#signOut'); A.wait_for_timeout(300); A.click('[data-aumode="up"]')
     A.fill('#auUser', 'coach.kay'); A.fill('#auEmail', 'coach@example.com'); A.fill('#auPass', 'longenough1'); A.click('[data-role="trainer"]'); A.click('#auGo'); A.wait_for_timeout(500)
@@ -119,9 +134,9 @@ with sync_playwright() as p:
     assert db()['t']['app_profiles'][1]['role'] == 'trainer'
     for t in ['history', 'body', 'fuel', 'more', 'workout']: A.click(f'nav button[data-tab="{t}"]'); A.wait_for_timeout(300)
     # ...and can build one later
-    A.click('[data-buildplan]'); A.wait_for_timeout(300); assert A.is_visible('#onb.show') and A.is_visible('[data-goal]')
-    A.click('[data-goal="strength"]'); A.click('[data-obnext]'); A.wait_for_timeout(200); A.click('[data-obnext]'); A.wait_for_timeout(200)
-    A.click('[data-wd="6"]'); A.click('[data-obnext]'); A.wait_for_timeout(200); A.click('[data-obnext]'); A.wait_for_timeout(300); A.click('#obDone'); A.wait_for_timeout(600)
+    A.click('[data-buildplan]'); A.wait_for_timeout(300); assert A.is_visible('#onb.show') and A.is_visible('#onb [data-goal]')
+    A.click('#onb [data-goal="strength"]'); A.click('#onb [data-obnext]'); A.wait_for_timeout(200); A.click('#onb [data-obnext]'); A.wait_for_timeout(200)
+    A.click('#onb [data-wd="6"]'); A.click('#onb [data-obnext]'); A.wait_for_timeout(200); A.click('#onb [data-obnext]'); A.wait_for_timeout(300); A.click('#obDone'); A.wait_for_timeout(600)
     assert A.locator('#days button').count() == 5 and A.locator('#list .card').count() == 6, 'coach now has a 5-day plan incl. Saturday'
 
     # forgot password

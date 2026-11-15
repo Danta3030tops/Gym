@@ -446,7 +446,7 @@ function pace(nowMs) {
 }
 
 /* ================= voice coach (rep pacer only) ================= */
-const pvOn = () => localStorage.getItem('gym.pacerVoice') === '1';
+const pvOn = () => localStorage.getItem('gymp.pacerVoice') === '1';
 let pvVoice = null;
 function pvPick() {
   if (!('speechSynthesis' in window)) return null;
@@ -473,7 +473,7 @@ function pvRep(rep, ph, cls) {
   } else if (cls === 'phase up' && P0[2] && rep === 0) pvSay(P0[2]);
 }
 function pvPaint() { const b = $('pvoice'); if (!b) return; const on = pvOn(); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); b.innerHTML = on ? '🔊 Voice on' : '🔈 Voice off'; }
-$('pvoice').onclick = () => { localStorage.setItem('gym.pacerVoice', pvOn() ? '0' : '1'); pvPaint(); if (pvOn()) { pvVoice = pvPick(); pvSay("Voice coach on. I'll count your reps.", true); } else pvStop(); };
+$('pvoice').onclick = () => { localStorage.setItem('gymp.pacerVoice', pvOn() ? '0' : '1'); pvPaint(); if (pvOn()) { pvVoice = pvPick(); pvSay("Voice coach on. I'll count your reps.", true); } else pvStop(); };
 pvPaint();
 function finishPace() {
   if (!PC) return; PC.done = true; const { si, i } = PC; let reps = PC.reps;

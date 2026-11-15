@@ -9,7 +9,9 @@ Later files may wrap functions from earlier ones, exactly as in the couple app (
 
 ## 1. One signed-in person, no profiles
 
-There is no `PROFILES`, `PROF`, profile picker, `selectProfile`, `other()`, or second person on the phone.
+There is no profile picker, `selectProfile`, `other()`, or second person on the phone.
+
+**As built:** `public/app.js` keeps a small shim, `const PROF = 'me'` and `PROFILES.me` (getters that read `ME`, `ROUTINE` and `TH`), so most couple-app code that reads `PROFILES[PROF]` runs unchanged. It is always the signed-in person; never add a second key to it. Friends' data (milestones 3 to 5) must not go through this shim.
 
 Identity comes from globals owned by `core.js` / `auth.js`. **Do not redeclare them** (a second `const`/`let` of the same name is a page-breaking error):
 
