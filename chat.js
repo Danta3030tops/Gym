@@ -198,8 +198,18 @@ function renderChat(scroll) {
   if ($('chatIn')) { $('chatIn').value = keep; updSend(); }
   fillPhotos();
   const list = $('chatList');
-  if (list) requestAnimationFrame(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: scroll ? 'smooth' : 'auto' }));
+  if (list) chatToBottom();
 }
+/* Jump to the newest message. Instant and clamped to the real end of the page: a smooth scroll aimed past the end, while photos
+   were still loading and the tab was sliding in, could leave iOS drawing the tab bar, rest timer and message box mid-screen. */
+function chatToBottom() {
+  requestAnimationFrame(() => { if (tab === 'chat') window.scrollTo(0, Math.max(0, document.documentElement.scrollHeight - innerHeight)); });
+}
+// photos arrive after the first scroll and make the page taller: stay pinned to the newest message if we were already there
+document.addEventListener('load', e => {
+  if (tab !== 'chat' || e.target.tagName !== 'IMG' || !e.target.closest('#chatList')) return;
+  if (document.documentElement.scrollHeight - innerHeight - scrollY < e.target.offsetHeight + 160) chatToBottom();
+}, true);
 function updSend() { const b = document.querySelector('[data-chatsend]'), ta = $('chatIn'); if (!b || !ta) return; b.disabled = !ta.value.trim(); ta.style.height = 'auto'; ta.style.height = Math.min(120, ta.scrollHeight) + 'px'; }
 
 document.addEventListener('input', e => { if (e.target.id === 'chatIn') updSend(); });
