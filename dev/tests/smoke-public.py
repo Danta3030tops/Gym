@@ -44,20 +44,38 @@ with sync_playwright() as p:
     A.click('[data-obnext]'); A.wait_for_timeout(300)
     assert A.is_disabled('[data-obnext]'), 'goal is required'
     A.click('[data-goal="lean"]'); A.click('[data-obnext]'); A.wait_for_timeout(300)
-    A.click('[data-days="3"]'); A.click('[data-level="new"]'); A.click('[data-unit="kg"]'); shot('4-setup-schedule')
+    # focus: up to two areas
+    for f in ['glutes', 'arms', 'core']: A.click(f'[data-focus="{f}"]')
+    assert A.evaluate("OB.focus.join()") == 'arms,core', 'only the last two focus picks are kept'
+    A.click('[data-focus="core"]'); A.click('[data-focus="glutes"]'); shot('4a-setup-focus'); A.click('[data-obnext]'); A.wait_for_timeout(300)
+    # schedule: default Mon Tue Thu Fri; drop to Mon Thu Fri, can't go below 3
+    A.click('[data-wd="2"]'); A.click('[data-wd="1"]'); A.wait_for_timeout(100)
+    assert A.evaluate("OB.wds.join()") == '1,4,5', 'at least three days stay selected'
+    A.click('[data-mins="45"]'); shot('4b-setup-schedule'); A.click('[data-obnext]'); A.wait_for_timeout(300)
+    A.click('[data-equip="home"]'); A.click('[data-level="some"]'); A.click('[data-unit="kg"]'); shot('4c-setup-equipment')
     A.click('[data-obnext]'); A.wait_for_timeout(300)
     assert A.locator('.pv').count() == 3, '3-day plan'
+    assert A.evaluate("OB.routine.map(d => d.d).join()") == 'Mon,Thu,Fri', 'plan lands on the chosen weekdays'
     plan = A.evaluate("OB.routine.map(d => d.slots.map(s => s.opts[0].n))")
-    flat = [n for d in plan for n in d]; assert len(flat) - flat.count('Incline Treadmill Walk') == len(set(flat)) - 1, 'no exercise repeats across the week (cardio finisher aside)'
-    assert all(len(d) == 6 for d in plan), 'new lifter: 5 exercises + cardio finisher per day'
-    assert A.evaluate("OB.routine.every(d => d.slots.every(s => s.opts.length >= 2 && s.opts.every(o => P[o.pat])))"), 'every slot has swap options with a figure'
+    lifts = [n for d in plan for n in d[:-1]]; assert len(lifts) == len(set(lifts)), 'no exercise repeats across the week'
+    assert all(len(d) == 6 for d in plan), '45 min: 5 exercises + cardio finisher per day'
+    assert A.evaluate("OB.routine.every(d => d.slots.every(s => s.opts.length >= 2 && s.opts.every(o => P[o.pat] && fitsEquip(o.n, 'home'))))"), 'every option has a figure and fits home equipment'
+    assert A.evaluate("OB.routine.every(d => d.slots.some(s => LIB.glutes.concat(LIB.arms).some(o => o.n === s.opts[0].n)))"), 'focus areas show up every day'
+    # the builder holds up for every combination of answers
+    bad = A.evaluate("""(() => { const out = [];
+      for (const goal of ['muscle','strength','lean','general']) for (const equip of ['gym','home','body']) for (const mins of [30,45,60]) for (const level of ['new','seasoned']) for (const wds of [[1,3,5],[1,2,4,5],[1,2,3,4,5]]) for (const focus of [[],['glutes','arms'],['back','shoulders']]) {
+        const r = buildRoutine({ goal, equip, mins, level, wds, focus }), names = r.flatMap(d => d.slots.filter(s => !s.time || s.sets > 1).map(s => s.opts[0].n));
+        const want = Math.min({30:4,45:5,60:6}[mins], level === 'new' ? 5 : 6) + (goal === 'lean' ? 1 : 0);
+        if (r.length !== wds.length || r.some(d => d.slots.length !== want) || r.some(d => d.slots.some(s => !s.opts.length || s.opts.some(o => !o || !P[o.pat] || !fitsEquip(o.n, equip)))) || (equip !== 'body' && new Set(names).size !== names.length)) out.push([goal, equip, mins, level, wds.length, focus.join('+')].join(' '));
+      } return out; })()""")
+    assert not bad, bad[:8]
     shot('5-setup-plan')
     A.click('#obDone'); A.wait_for_timeout(500)
     assert A.is_visible('.wrap') and not A.is_visible('#onb.show'), 'app shows after setup'
     assert A.locator('#home .card').count() == 3
     d = db(); me = d['t']['app_profiles'][0]
     assert me['display_name'] == 'Test Person' and me['color'] == '#0a84ff' and me['role'] == 'user'
-    assert len(d['t']['app_routines'][0]['routine']) == 3 and d['t']['app_state'][0]['data']['settings']['unit'] == 'kg'
+    assert len(d['t']['app_routines'][0]['routine']) == 3 and d['t']['app_state'][0]['data']['settings']['unit'] == 'kg' and d['t']['app_state'][0]['data']['settings']['plan']['equip'] == 'home'
     shot('6-home')
 
     # session survives a reload; sign out; username now taken; sign back in

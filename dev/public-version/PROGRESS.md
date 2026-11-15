@@ -41,6 +41,12 @@ Status values: `todo`, `in progress`, `done`.
 
 (newest first)
 
+### 14 Nov 2026 — setup asks more, plan uses the answers (owner request)
+
+First-time setup is now six steps: name + colour, goal, focus areas (up to two), training days (Mon–Fri toggles, 3 to 5) + session length, equipment + experience + units, plan preview.
+`buildRoutine({ goal, focus, wds, mins, equip, level })` in `templates.js` uses all of it: session length sets exercises per day (4 / 5 / 6), equipment filters the library by exercise name (`fitsEquip`), focus areas get an extra set or an extra exercise each day, days land on the chosen weekdays. The answers are saved in `ST.settings.plan` so the plan can be rebuilt later (a "Rebuild my plan" option in settings would be a natural addition in milestone 2).
+`smoke-public.py` checks every combination of answers produces a valid plan.
+
 ### 14 Nov 2026 — milestone 1 done
 
 Built in `public/`:

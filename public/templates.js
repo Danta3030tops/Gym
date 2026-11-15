@@ -38,24 +38,54 @@ const DOSE = {
   lean: [{ sets: 3, reps: '10–12', rest: 75 }, { sets: 3, reps: '12–15', rest: 60 }],
   general: [{ sets: 3, reps: '8–10', rest: 90 }, { sets: 3, reps: '10–12', rest: 75 }]
 };
-function buildRoutine({ goal = 'general', days = 4, level = 'some' } = {}) {
-  const split = SPLITS[days] || SPLITS[4], dose = DOSE[goal] || DOSE.general, used = new Set();
+/* ---- setup answers that shape the plan ---- */
+const FOCUS = [['glutes', '🍑', 'Glutes', ['glutes']], ['legs', '🦵', 'Legs', ['quads', 'hamstrings']], ['chest', '🫁', 'Chest', ['chest']], ['back', '🪽', 'Back', ['back']], ['shoulders', '🤸', 'Shoulders', ['shoulders']], ['arms', '💪', 'Arms', ['arms']], ['core', '🎯', 'Core', ['core']]];
+const EQUIP = [['gym', '🏟️', 'Full gym', 'Barbells, machines and cables'], ['home', '🏠', 'Dumbbells at home', 'Dumbbells and a bench'], ['body', '🤸', 'No equipment', 'Bodyweight only, anywhere']];
+const MINS = [[30, '30 min', 4], [45, '45 min', 5], [60, '60+ min', 6]]; // session length → exercises per day
+const DEFAULT_WDS = { 3: [1, 3, 5], 4: [1, 2, 4, 5], 5: [1, 2, 3, 4, 5] };
+/* what each exercise needs, judged from its name */
+const GYM_RE = /barbell|leg press|hack squat|pendulum|smith|belt squat|box squat|front squat|leg extension|leg curl|single-leg curl|deadlift|good morning|cable|back extension|reverse hyper|glute-ham|nordic|stability ball|machine|bench press|decline|hammer strength|pec deck|landmine|svend|pulldown|pull-ups?|chin-ups?|pendlay|chest-supported|t-bar|seal row|meadows|inverted row|rope (hammer|pullover)|\(rope\)|rack pull|face pulls|ez-bar|preacher|spider|pushdown|skull|chest dips|tricep dips|seated calf|donkey calf|leg press calf|hanging|captain|ab wheel|treadmill|stairmaster|elliptical|bike|rowing machine|sled|battle|kettlebell/i;
+const DB_RE = /dumbbell|\bdb\b/i;
+const LOAD_RE = /dumbbell|\bdb\b|goblet|arnold|lateral raise|front raise|y-raise|upright row|hammer curl|concentration|renegade|rdl|russian twist|weighted|swings|thrusters|overhead|band/i;
+const needsGym = n => GYM_RE.test(n) && !DB_RE.test(n);
+const fitsEquip = (n, equip) => equip === 'gym' || (!needsGym(n) && (equip === 'home' || !LOAD_RE.test(n)));
+const CAT_FALLBACK = { hamstrings: 'glutes', back: 'core', shoulders: 'chest', arms: 'chest', calves: 'quads', chest: 'core', quads: 'glutes', glutes: 'quads' };
+
+/* answers: goal, level, equip, mins (30/45/60), focus (ids from FOCUS, up to 2), wds (weekdays 1–5, three to five of them) */
+function buildRoutine({ goal = 'general', days, wds, level = 'some', equip = 'gym', mins = 60, focus = [] } = {}) {
+  wds = (wds && wds.length >= 3 ? [...wds] : DEFAULT_WDS[days] || DEFAULT_WDS[4]).filter(d => d >= 1 && d <= 5).sort((a, b) => a - b).slice(0, 5);
+  const split = SPLITS[wds.length] || SPLITS[4], used = new Set();
+  let dose = DOSE[goal] || DOSE.general;
+  if (equip === 'body') dose = [{ sets: dose[0].sets, reps: '10–15', rest: 60 }, { sets: 3, reps: '15–20', rest: 45 }]; // no load to add, so more reps
+  const perDay = Math.min((MINS.find(m => m[0] === mins) || MINS[2])[2], level === 'new' ? 5 : 6);
+  const focusCats = FOCUS.filter(f => focus.includes(f[0])).flatMap(f => f[3]);
   const opt = o => ({ n: o.n, pat: o.pat, cues: o.cues || [] });
+  const free = o => !used.has(o.n.toLowerCase()) && fitsEquip(o.n, equip);
+  const poolFor = cat => { let c = cat; for (let i = 0; i < 3; i++) { const pool = (LIB[c] || []).filter(free); if (pool.length) return pool; c = CAT_FALLBACK[c] || 'core'; } return (LIB.core || []).filter(o => fitsEquip(o.n, equip)); };
   const pick = (cat, want) => {
-    const pool = LIB[cat] || [], free = o => !used.has(o.n.toLowerCase());
-    const first = (libFind(want) && free(libFind(want)) ? libFind(want) : null) || pool.find(free) || pool[0];
+    const w = want && libFind(want), pool = poolFor(cat);
+    const first = (w && free(w) ? w : null) || (w && pool.find(o => o.pat === w.pat)) || pool[0]; // same movement as the preferred lift when it has to change
     used.add(first.n.toLowerCase());
-    // swap options: other free moves from the same group, same movement pattern first
-    const alts = pool.filter(o => o !== first && free(o)).sort((a, b) => (b.pat === first.pat) - (a.pat === first.pat)).slice(0, 3);
+    let alts = pool.filter(o => o !== first).sort((a, b) => (b.pat === first.pat) - (a.pat === first.pat)).slice(0, 3); // swap options, same movement first
+    if (alts.length < 3) alts = alts.concat((LIB[cat] || []).filter(o => o !== first && !alts.includes(o) && fitsEquip(o.n, equip))).slice(0, 3); // small pool: allow moves used on another day
     return [first, ...alts].map(opt);
   };
-  return split.map(([wd, title, slots]) => {
-    const list = level === 'new' ? slots.slice(0, 5) : slots; // fewer exercises while learning the movements
-    const out = list.map(([cat, want], i) => {
-      const d = cat === 'core' || cat === 'calves' ? { sets: 3, reps: '12–15', rest: 60 } : dose[i < 2 ? 0 : 1];
-      return { sets: level === 'new' ? Math.min(3, d.sets) : d.sets, reps: d.reps, rest: d.rest, opts: pick(cat, want) };
+  return split.map(([, title, base], di) => {
+    let slots = base.map(([cat, want]) => ({ cat, want, plus: 0 }));
+    // focus areas: an extra set where the day already trains them, otherwise one focus exercise right after the main lifts
+    if (focusCats.length) {
+      const fc = focusCats[di % focusCats.length], hit = slots.filter(sl => focusCats.includes(sl.cat));
+      if (hit.length) hit.slice(0, 2).forEach(sl => sl.plus = 1); else slots.splice(2, 0, { cat: fc, want: null, plus: 0 });
+    }
+    slots = slots.slice(0, perDay);
+    const out = slots.map((sl, i) => {
+      const d = sl.cat === 'core' || sl.cat === 'calves' ? { sets: 3, reps: equip === 'body' ? '15–20' : '12–15', rest: 60 } : dose[i < 2 ? 0 : 1];
+      return { sets: Math.min(5, (level === 'new' ? Math.min(3, d.sets) : d.sets) + sl.plus), reps: d.reps, rest: d.rest, opts: pick(sl.cat, sl.want) };
     });
-    if (goal === 'lean') { const c = libFind('Incline Treadmill Walk') || (LIB.cardio || [])[0]; if (c) out.push({ sets: 1, reps: '12 min', time: 720, rest: 0, opts: [c, ...(LIB.cardio || []).filter(o => o !== c).slice(0, 3)].map(opt) }); }
-    return { d: WD_NAMES[wd], wd, title, slots: out };
+    if (goal === 'lean') {
+      const pool = (LIB.cardio || []).filter(o => fitsEquip(o.n, equip)), c = pool[0], m = mins <= 30 ? 8 : 12;
+      if (c) out.push({ sets: 1, reps: m + ' min', time: m * 60, rest: 0, opts: [c, ...pool.slice(1, 4)].map(opt) });
+    }
+    return { d: WD_NAMES[wds[di]], wd: wds[di], title, slots: out };
   });
 }
