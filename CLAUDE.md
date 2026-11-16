@@ -111,6 +111,7 @@ A second app for anyone to sign up, built from this one, lives in `public/`. It 
 | `challenges.js` | weekly challenge with a friend |
 | `trainer.js` | coach and client link, Clients tab, editing a client's plan |
 | `meals.js` | meal planner on the Fuel tab: macro tracking, meal plan, coach edits a client's meal plan |
+| `bigz.js` | Coach Bigz, the recorded voice coach (clips in `public/voice/bigz/`, phrases in its `manifest.json`); loaded last, wraps the pacer voice, rest timer, `logSet`, `afterLog`, `renderMore` |
 
 ## Don't
 

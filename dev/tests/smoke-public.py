@@ -114,7 +114,19 @@ with sync_playwright() as p:
 
     # session survives a reload; sign out; username now taken; sign back in
     # log a set, check it lands in the state blob and the cloud copy, visit every tab
+    # Coach Bigz: off by default, switched on in Settings; his clips download and the right ones are queued
+    go('more'); has('#more', 'Coach Bigz'); assert A.inner_text('#bzT') == 'Off' and A.text_content('#pvoice') == 'Coach Bigz off', 'Coach Bigz starts off'
+    A.click('#bzT'); until("pvOn() && document.querySelector('#bzT').textContent === 'On' && document.querySelector('#pvoice').textContent === 'Coach Bigz on'", 'the Settings switch turns Coach Bigz on')
+    until("Object.keys(BZ.bytes).length === 117", 'all 117 clips download', timeout=20000)
+    A.evaluate("window.__bz = []; const _p = BZ.q.push.bind(BZ.q); BZ.q.push = n => { __bz.push(n); return _p(n); }; 0"); go('workout')
+    d = A.evaluate("bzDecode(22).then(b => b.duration, () => 0)"); print('  clip 22 decodes to', round(d, 2), 's' if d else '(this browser build cannot decode the clips; queueing is still checked)')
+    until("!BZ.cur && !BZ.q.length", 'his hello finishes', timeout=6000)
     A.fill('[data-w="0:0"]', '20'); A.fill('[data-r="0:0"]', '10'); A.click('[data-chk="0:0"]')
+    until(lambda: A.evaluate('__bz')[:1] == [68] and any(n in A.evaluate('__bz') for n in (47, 12, 52, 53)), 'Coach Bigz calls the first set and the rest')
+    A.evaluate("__bz.length = 0; openPacer(0)"); until(lambda: A.evaluate('__bz')[:1][0] in (11, 2) and all(n in A.evaluate('__bz') for n in (19, 20, 21)), 'Coach Bigz opens the next set, counts in and says go', timeout=9000)
+    until(lambda: 22 in A.evaluate('__bz'), 'Coach Bigz counts the first rep', timeout=12000); A.click('#pcancel')
+    A.evaluate("bzToggle()"); assert A.text_content('#pvoice') == 'Coach Bigz off' and not A.evaluate("!!(BZ.cur || BZ.q.length)"), 'switching Coach Bigz off stops him'
+    assert A.evaluate("__bz.length = 0, bzPlay(47, 'q'), pvSay('1', true), __bz.length") == 0, 'nothing is queued while Coach Bigz is off'
     cnt('.set.ok', 1, 'set is ticked')
     until(lambda: A.is_visible('#rest.show'), 'rest timer starts')
     sets = A.evaluate("Object.values(Object.values(Object.values(S.logs)[0])[0])[0].sets"); assert sets[0]['w'] == 20 and sets[0]['r'] == 10

@@ -1,0 +1,704 @@
+[
+{
+"n": 1,
+"f": "001.m4a",
+"t": "Yuh ready?",
+"d": 0.81
+},
+{
+"n": 2,
+"f": "002.m4a",
+"t": "Get set now.",
+"d": 1.21
+},
+{
+"n": 3,
+"f": "003.m4a",
+"t": "Let's get to it!",
+"d": 1.21
+},
+{
+"n": 4,
+"f": "004.m4a",
+"t": "Push it up!",
+"d": 0.85
+},
+{
+"n": 5,
+"f": "005.m4a",
+"t": "Hold it deh!",
+"d": 0.91
+},
+{
+"n": 6,
+"f": "006.m4a",
+"t": "Easy, bring it down.",
+"d": 1.92
+},
+{
+"n": 7,
+"f": "007.m4a",
+"t": "And relax.",
+"d": 1.23
+},
+{
+"n": 8,
+"f": "008.m4a",
+"t": "Remember to breathe.",
+"d": 1.63
+},
+{
+"n": 9,
+"f": "009.m4a",
+"t": "Brace yuhself.",
+"d": 1.15
+},
+{
+"n": 10,
+"f": "010.m4a",
+"t": "Switch sides now.",
+"d": 1.25
+},
+{
+"n": 11,
+"f": "011.m4a",
+"t": "Do it again!",
+"d": 1.06
+},
+{
+"n": 12,
+"f": "012.m4a",
+"t": "Tek a likkle rest.",
+"d": 1.28
+},
+{
+"n": 13,
+"f": "013.m4a",
+"t": "Alright, back to work.",
+"d": 1.77
+},
+{
+"n": 14,
+"f": "014.m4a",
+"t": "Finish strong!",
+"d": 1.31
+},
+{
+"n": 15,
+"f": "015.m4a",
+"t": "Good work! Done!",
+"d": 1.81
+},
+{
+"n": 16,
+"f": "016.m4a",
+"t": "Five.",
+"d": 0.82
+},
+{
+"n": 17,
+"f": "017.m4a",
+"t": "Four.",
+"d": 0.85
+},
+{
+"n": 18,
+"f": "018.m4a",
+"t": "Three.",
+"d": 0.79
+},
+{
+"n": 19,
+"f": "019.m4a",
+"t": "Two.",
+"d": 0.69
+},
+{
+"n": 20,
+"f": "020.m4a",
+"t": "One.",
+"d": 0.95
+},
+{
+"n": 21,
+"f": "021.m4a",
+"t": "Gwaan!",
+"d": 0.93
+},
+{
+"n": 22,
+"f": "022.m4a",
+"t": "One!",
+"d": 0.8
+},
+{
+"n": 23,
+"f": "023.m4a",
+"t": "Two!",
+"d": 0.7
+},
+{
+"n": 24,
+"f": "024.m4a",
+"t": "Three!",
+"d": 0.66
+},
+{
+"n": 25,
+"f": "025.m4a",
+"t": "Four!",
+"d": 0.79
+},
+{
+"n": 26,
+"f": "026.m4a",
+"t": "Five!",
+"d": 0.89
+},
+{
+"n": 27,
+"f": "027.m4a",
+"t": "Six!",
+"d": 0.85
+},
+{
+"n": 28,
+"f": "028.m4a",
+"t": "Seven!",
+"d": 0.81
+},
+{
+"n": 29,
+"f": "029.m4a",
+"t": "Eight!",
+"d": 0.69
+},
+{
+"n": 30,
+"f": "030.m4a",
+"t": "Nine!",
+"d": 0.86
+},
+{
+"n": 31,
+"f": "031.m4a",
+"t": "Ten!",
+"d": 0.77
+},
+{
+"n": 32,
+"f": "032.m4a",
+"t": "Eleven!",
+"d": 0.85
+},
+{
+"n": 33,
+"f": "033.m4a",
+"t": "Twelve!",
+"d": 0.92
+},
+{
+"n": 34,
+"f": "034.m4a",
+"t": "Thirteen!",
+"d": 1.04
+},
+{
+"n": 35,
+"f": "035.m4a",
+"t": "Fourteen!",
+"d": 1.04
+},
+{
+"n": 36,
+"f": "036.m4a",
+"t": "Fifteen!",
+"d": 1.05
+},
+{
+"n": 37,
+"f": "037.m4a",
+"t": "Sixteen!",
+"d": 1.08
+},
+{
+"n": 38,
+"f": "038.m4a",
+"t": "Seventeen!",
+"d": 1.09
+},
+{
+"n": 39,
+"f": "039.m4a",
+"t": "Eighteen!",
+"d": 0.98
+},
+{
+"n": 40,
+"f": "040.m4a",
+"t": "Nineteen!",
+"d": 1.04
+},
+{
+"n": 41,
+"f": "041.m4a",
+"t": "Twenty!",
+"d": 0.79
+},
+{
+"n": 42,
+"f": "042.m4a",
+"t": "Halfway deh!",
+"d": 1.02
+},
+{
+"n": 43,
+"f": "043.m4a",
+"t": "Two more!",
+"d": 0.93
+},
+{
+"n": 44,
+"f": "044.m4a",
+"t": "Last one!",
+"d": 1.0
+},
+{
+"n": 45,
+"f": "045.m4a",
+"t": "Personal best!",
+"d": 1.15
+},
+{
+"n": 46,
+"f": "046.m4a",
+"t": "All reps complete!",
+"d": 1.42
+},
+{
+"n": 47,
+"f": "047.m4a",
+"t": "Time to rest.",
+"d": 1.09
+},
+{
+"n": 48,
+"f": "048.m4a",
+"t": "Ten seconds remaining.",
+"d": 1.52
+},
+{
+"n": 49,
+"f": "049.m4a",
+"t": "Five seconds!",
+"d": 1.14
+},
+{
+"n": 50,
+"f": "050.m4a",
+"t": "Rest time over. Let's move!",
+"d": 2.08
+},
+{
+"n": 51,
+"f": "051.m4a",
+"t": "yah get too comfortable now enuh!",
+"d": 2.0
+},
+{
+"n": 52,
+"f": "052.m4a",
+"t": "Catch yuh breath.",
+"d": 1.1
+},
+{
+"n": 53,
+"f": "053.m4a",
+"t": "Take some water.",
+"d": 1.1
+},
+{
+"n": 54,
+"f": "054.m4a",
+"t": "Good recovery. Ready fi go again?",
+"d": 2.35
+},
+{
+"n": 55,
+"f": "055.m4a",
+"t": "Yuh come yah fi exercise or fi take pictures?",
+"d": 2.65
+},
+{
+"n": 56,
+"f": "056.m4a",
+"t": "Di weight nuh heavy, yuh just negotiating!",
+"d": 3.05
+},
+{
+"n": 57,
+"f": "057.m4a",
+"t": "see yuh resting. Resting from what?",
+"d": 2.78
+},
+{
+"n": 58,
+"f": "058.m4a",
+"t": "Even di dumbbell tired a look pon yuh.",
+"d": 2.46
+},
+{
+"n": 59,
+"f": "059.m4a",
+"t": "Yuh muscles a write a complaint right now.",
+"d": 2.67
+},
+{
+"n": 60,
+"f": "060.m4a",
+"t": "Easy nuh, nobody nah chase yuh!",
+"d": 2.39
+},
+{
+"n": 61,
+"f": "061.m4a",
+"t": "A gym yuh come to, not a social gathering!",
+"d": 3.03
+},
+{
+"n": 62,
+"f": "062.m4a",
+"t": "Di weights dem nuh bite, man!",
+"d": 1.96
+},
+{
+"n": 63,
+"f": "063.m4a",
+"t": "Yuh and di bench look like good friends.",
+"d": 2.25
+},
+{
+"n": 64,
+"f": "064.m4a",
+"t": "A likkle more work nuh ago hurt.",
+"d": 2.14
+},
+{
+"n": 65,
+"f": "065.m4a",
+"t": "Big man, di set still deh fi do!",
+"d": 2.48
+},
+{
+"n": 66,
+"f": "066.m4a",
+"t": "Yuh did come yah with a plan. Remember?",
+"d": 2.51
+},
+{
+"n": 67,
+"f": "067.m4a",
+"t": "First workout complete! Respect!",
+"d": 2.84
+},
+{
+"n": 68,
+"f": "068.m4a",
+"t": "First set done. Good start!",
+"d": 2.37
+},
+{
+"n": 69,
+"f": "069.m4a",
+"t": "Yuh halfway through di workout!",
+"d": 1.87
+},
+{
+"n": 70,
+"f": "070.m4a",
+"t": "New personal best! Big achievement!",
+"d": 2.77
+},
+{
+"n": 71,
+"f": "071.m4a",
+"t": "Workout complete! Yuh put in di work!",
+"d": 3.15
+},
+{
+"n": 72,
+"f": "072.m4a",
+"t": "Weekly goal complete. Consistency!",
+"d": 2.88
+},
+{
+"n": 73,
+"f": "073.m4a",
+"t": "Another day added to the streak!",
+"d": 2.28
+},
+{
+"n": 74,
+"f": "074.m4a",
+"t": "First time doing this exercise? Well done!",
+"d": 3.06
+},
+{
+"n": 75,
+"f": "075.m4a",
+"t": "Welcome back! Good fi see yuh putting in di work again!",
+"d": 3.79
+},
+{
+"n": 76,
+"f": "076.m4a",
+"t": "Need a moment? Take yuh time.",
+"d": 2.07
+},
+{
+"n": 77,
+"f": "077.m4a",
+"t": "Skipping this exercise. No problem, we move.",
+"d": 3.33
+},
+{
+"n": 78,
+"f": "078.m4a",
+"t": "Try a lighter weight and focus pon yuh form.",
+"d": 3.02
+},
+{
+"n": 79,
+"f": "079.m4a",
+"t": "Ready fi challenge yuhself? Increase di weight only if yuh form is solid.",
+"d": 4.95
+},
+{
+"n": 80,
+"f": "080.m4a",
+"t": "Didn't hit di target? No stress. We go again.",
+"d": 3.54
+},
+{
+"n": 81,
+"f": "081.m4a",
+"t": "If something feels uncomfortable, stop and reassess. No need to force it.",
+"d": 4.85
+},
+{
+"n": 82,
+"f": "082.m4a",
+"t": "Finishing early today? Respect. Recover properly.",
+"d": 3.94
+},
+{
+"n": 83,
+"f": "083.m4a",
+"t": "Been a while since yuh last workout? Ease back in. No need fi rush.",
+"d": 4.64
+},
+{
+"n": 84,
+"f": "084.m4a",
+"t": "Keep yuh feet planted.",
+"d": 1.66
+},
+{
+"n": 85,
+"f": "085.m4a",
+"t": "Control di weight on di way down.",
+"d": 2.23
+},
+{
+"n": 86,
+"f": "086.m4a",
+"t": "Push up smooth and steady.",
+"d": 1.9
+},
+{
+"n": 87,
+"f": "087.m4a",
+"t": "Keep yuh wrists straight.",
+"d": 1.78
+},
+{
+"n": 88,
+"f": "088.m4a",
+"t": "Feet planted firmly.",
+"d": 1.6
+},
+{
+"n": 89,
+"f": "089.m4a",
+"t": "Keep yuh chest up.",
+"d": 1.22
+},
+{
+"n": 90,
+"f": "090.m4a",
+"t": "Control di movement.",
+"d": 1.53
+},
+{
+"n": 91,
+"f": "091.m4a",
+"t": "Drive through yuh feet.",
+"d": 1.57
+},
+{
+"n": 92,
+"f": "092.m4a",
+"t": "Brace yuh core.",
+"d": 1.28
+},
+{
+"n": 93,
+"f": "093.m4a",
+"t": "Keep di weight close.",
+"d": 1.72
+},
+{
+"n": 94,
+"f": "094.m4a",
+"t": "Drive through yuh hips.",
+"d": 1.65
+},
+{
+"n": 95,
+"f": "095.m4a",
+"t": "Keep yuh back neutral.",
+"d": 1.57
+},
+{
+"n": 96,
+"f": "096.m4a",
+"t": "Keep yuh elbows steady.",
+"d": 1.71
+},
+{
+"n": 97,
+"f": "097.m4a",
+"t": "No swinging di weight.",
+"d": 1.6
+},
+{
+"n": 98,
+"f": "098.m4a",
+"t": "Squeeze at di top.",
+"d": 1.41
+},
+{
+"n": 99,
+"f": "099.m4a",
+"t": "Lower it slowly.",
+"d": 1.38
+},
+{
+"n": 100,
+"f": "100.m4a",
+"t": "Keep yuh wrists aligned.",
+"d": 1.84
+},
+{
+"n": 101,
+"f": "101.m4a",
+"t": "Press up smoothly.",
+"d": 1.46
+},
+{
+"n": 102,
+"f": "102.m4a",
+"t": "Don't rush di movement.",
+"d": 1.64
+},
+{
+"n": 103,
+"f": "103.m4a",
+"t": "Take a controlled step.",
+"d": 1.66
+},
+{
+"n": 104,
+"f": "104.m4a",
+"t": "Keep yuh balance.",
+"d": 1.38
+},
+{
+"n": 105,
+"f": "105.m4a",
+"t": "Lower yuhself steadily.",
+"d": 1.7
+},
+{
+"n": 106,
+"f": "106.m4a",
+"t": "Switch legs.",
+"d": 1.24
+},
+{
+"n": 107,
+"f": "107.m4a",
+"t": "Pull toward yuh upper chest.",
+"d": 2.11
+},
+{
+"n": 108,
+"f": "108.m4a",
+"t": "Keep yuh shoulders down.",
+"d": 1.7
+},
+{
+"n": 109,
+"f": "109.m4a",
+"t": "Control di weight going back up.",
+"d": 2.11
+},
+{
+"n": 110,
+"f": "110.m4a",
+"t": "No swinging.",
+"d": 1.03
+},
+{
+"n": 111,
+"f": "111.m4a",
+"t": "Keep yuh body straight.",
+"d": 1.63
+},
+{
+"n": 112,
+"f": "112.m4a",
+"t": "Brace yuh core.",
+"d": 1.25
+},
+{
+"n": 113,
+"f": "113.m4a",
+"t": "Keep breathing.",
+"d": 1.16
+},
+{
+"n": 114,
+"f": "114.m4a",
+"t": "Hold it steady.",
+"d": 1.12
+},
+{
+"n": 115,
+"f": "115.m4a",
+"t": "And that's it! Yuh put in some good work today. Hydrate, recover, and big up yuhself!",
+"d": 6.09
+},
+{
+"n": 116,
+"f": "116.m4a",
+"t": "Another workout inna di books! Remember, consistency over everything. Respect!",
+"d": 6.41
+},
+{
+"n": 117,
+"f": "117.m4a",
+"t": "That's how we do it! Go recover properly. Mi see yuh next session!",
+"d": 4.5
+}
+]

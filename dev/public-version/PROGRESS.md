@@ -72,6 +72,7 @@ Status values: `todo`, `in progress`, `done`.
 - Both smoke tests pass; `smoke-public.py` covers the meal planner (coach writes a plan, client ticks and logs, own plan and targets, plan survives a workout-plan save).
 - **Known:** a phone still on the old cached version (`gymp-v3`) that saves a workout-plan edit will drop the meal plan from the row, until that phone has reopened the app twice. Emoji remain outside the Workout and Fuel screens. Nothing tried on a real phone or with two real accounts yet.
 - **Owner setup done (16 Nov):** Gmail SMTP sender, and the Confirm signup and Reset password email templates reworded to say Spott. Not yet checked with a real sign-up or reset email.
+- **Coach Bigz (16 Nov, gymp-v7):** owner's 117-clip voice pack split into `public/voice/bigz/NNN.m4a` (check page: `dev/public-version/voice-check.html`). `public/bigz.js` plays them on the rep pacer, rest timer and milestones; one switch (pacer button and Settings), off by default. Clips not wired yet: 8 partly, 10 and 106 (switch sides/legs), 81 (uncomfortable), 82 (finishing early). Meal notes (gymp-v6) went in the same day. Not yet heard on a real phone.
 
 ### 16 Nov 2026 — UI refresh and start-from-scratch on branch `spott-ui` (gymp-v4) (merged later the same day, see above)
 
