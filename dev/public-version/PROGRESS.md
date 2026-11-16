@@ -62,7 +62,18 @@ Status values: `todo`, `in progress`, `done`.
 
 (newest first)
 
-### 16 Nov 2026 — UI refresh and start-from-scratch on branch `spott-ui` (gymp-v4); NOT merged, NOT pushed
+### 16 Nov 2026 (later) — meal planner added; UI refresh, start-from-scratch and meal planner merged into `main` and pushed (gymp-v4)
+
+- **Fuel tab is now a meal planner** (`public/meals.js`, loaded after `trainer.js`): four macro rings (calories, protein, carbs, fat), a Log food sheet, the meal plan with a tick per food, and an "Also eaten" list. Water, steps and cardio cards are unchanged; the calories and protein quick-add cards are gone. Carbs and fat goals were added to the Goals card.
+- **Where the meal plan lives:** in the person's `app_routines` row, as a trailing `{ meals: {...} }` element of the `routine` array (`mealsOf` / `packRoutine` / `cleanMeals` in `core.js`). `cleanRoutine` drops it from the workout days, so it is never mistaken for a day. **No SQL was needed**: the coach's existing right to edit that row covers it. Every write of the routine goes through `packRoutine` (own saves in `app.js` and `onboard.js`, coach saves in `trainer.js` and `meals.js`); a new write path must do the same or it will erase the meal plan.
+- **What was eaten** is in `S.fuel[date]`: totals `cal`, `protein`, `carbs`, `fat` plus `log` (up to 40 entries; a ticked plan food carries a key `k`).
+- **Coach:** the client view has a Meal plan card (today's macros, targets, the plan) and an editor with daily targets. Targets a coach set apply only while that coach is still linked (`tb` in the plan). The client gets the usual "updated your plan" note.
+- **Bug review fixes:** the Coach tab is cleared on sign-out; a coach can start a plan for a client who has none; removing a day also clears that day's exercise-count settings; a coach's meal-plan saves are queued so two quick saves cannot trip the "changed while you were editing" check.
+- Both smoke tests pass; `smoke-public.py` covers the meal planner (coach writes a plan, client ticks and logs, own plan and targets, plan survives a workout-plan save).
+- **Known:** a phone still on the old cached version (`gymp-v3`) that saves a workout-plan edit will drop the meal plan from the row, until that phone has reopened the app twice. Emoji remain outside the Workout and Fuel screens. Nothing tried on a real phone or with two real accounts yet.
+- **Still open (owner):** Gmail SMTP sender and Spott wording in the email templates.
+
+### 16 Nov 2026 — UI refresh and start-from-scratch on branch `spott-ui` (gymp-v4) (merged later the same day, see above)
 
 Owner picked a look from mockups (`dev/public-version/mockups/`, `refined-v4.html` is the last one). Built on branch `spott-ui`:
 

@@ -373,7 +373,31 @@ with sync_playwright() as p:
     until(lambda: ph() == 'no' and not A.is_visible('#trPhOn') and not A.is_visible('#trPhAsk'), 'Stop sharing makes the photos private again')
     signin('coach@example.com'); openClient()
     until(lambda: 'Private' in A.inner_text('#trPhotos') and A.locator('#trPhotos img').count() == 0 and A.locator('#trPhotos [data-trphotoask]').count() == 1, 'the coach is back to the Ask button')
-    signin('test@example.com'); openCo()
+    # meal plan: the coach writes it from the client view, with daily targets
+    until(lambda: 'No meal plan yet' in A.inner_text('#trMeals') and 'Nothing logged today' in A.inner_text('#trMeals'), 'client view has a meal plan card')
+    A.click('[data-mledit="client"]'); has('#sheetin', 'Test’s meal plan'); A.fill('[data-mlt="cal"]', '2200'); A.fill('[data-mlt="p"]', '160'); A.click('[data-mladd]')
+    until(lambda: A.input_value('[data-mln="0"]') == 'Breakfast' and A.input_value('[data-mlt="cal"]') == '2200', 'a meal is added and the targets typed before it are kept')
+    A.click('[data-mliadd="0"]'); A.fill('#mfN', 'Eggs on toast'); A.fill('#mf_p', '20'); A.fill('#mf_c', '30'); A.fill('#mf_f', '10'); A.click('[data-mlsave]')
+    until(lambda: 'Eggs on toast' in A.inner_text('#sheetin') and '290 kcal' in A.inner_text('#sheetin'), 'calories are worked out from the macros when left blank')
+    A.click('[data-mldone]')
+    mp = lambda: [x for x in plan()['routine'] if 'meals' in x]
+    until(lambda: len(mp()) == 1 and mp()[0]['meals']['t']['cal'] == 2200 and mp()[0]['meals']['by'] == coach_id and mp()[0]['meals']['meals'][0]['items'][0]['cal'] == 290 and plan()['updated_by'] == coach_id, 'the meal plan is saved in the client row')
+    assert len([x for x in plan()['routine'] if 'slots' in x]) == A.evaluate("TR.vr.routine.length"), 'the workout days are untouched'
+    until(lambda: 'Eggs on toast' in A.inner_text('#trMeals') and '2,200 kcal' in A.inner_text('#trMeals'), 'and shows on the client view'); shot('25-coach-meal-plan')
+    # the client sees it on Fuel, ticks a food, and logs something extra
+    signin('test@example.com'); nd = A.evaluate("ROUTINE.length"); go('fuel')
+    until(lambda: 'Written by your coach' in A.inner_text('#mlPlan') and 'Targets set by your coach' in A.inner_text('#mlRings') and '2,200' in A.inner_text('#mlRings'), 'the client sees the coach’s meal plan and targets')
+    assert nd == len([x for x in plan()['routine'] if 'slots' in x]) and A.evaluate("DAYS.length") == nd, 'the meal plan is not mistaken for a workout day'
+    A.click('[data-mlate="0:0"]'); until(lambda: A.evaluate("fuelOf(fuelDate).cal") == 290 and A.evaluate("fuelOf(fuelDate).protein") == 20 and A.locator('.mlitem.on').count() == 1, 'ticking a food adds its macros')
+    A.click('[data-mllog]'); A.fill('#mfN', 'Protein shake'); A.fill('#mf_cal', '150'); A.fill('#mf_p', '25'); A.click('[data-mlsave="log"]')
+    until(lambda: A.evaluate("fuelOf(fuelDate).cal") == 440 and A.evaluate("fuelOf(fuelDate).protein") == 45 and 'Protein shake' in A.inner_text('#mlLog'), 'logging a food adds to the day'); shot('26-fuel')
+    A.click('[data-mlate="0:0"]'); until(lambda: A.evaluate("fuelOf(fuelDate).cal") == 150 and A.locator('.mlitem.on').count() == 0, 'unticking takes it off again')
+    A.click('[data-mlun]'); until(lambda: A.evaluate("fuelOf(fuelDate).cal") == 0 and not A.is_visible('#mlLog'), 'and a logged food can be removed')
+    reload(); go('fuel'); until(lambda: 'Eggs on toast' in A.inner_text('#mlPlan') and A.evaluate("ROUTINE.length") == nd, 'the meal plan survives a reload')
+    # editing the workout plan keeps the meal plan
+    A.click('#menuBtn'); A.click('#hmenu [data-edopen]'); A.fill('#edTitle', 'Renamed day'); A.click('#sx') if False else A.click('[data-edday="0"]')
+    until(lambda: len(mp()) == 1 and plan()['updated_by'] == test_id and any(d.get('title') == 'Renamed day' for d in plan()['routine']), 'saving the workout plan keeps the meal plan in the row'); A.click('#sx')
+    openCo()
     A.click('[data-trrm]'); A.click('[data-trrmyes]')
     until(lambda: tr() == [] and 'Add your coach' in A.inner_text('#trCard'), 'removing the coach deletes the link')
     openF(); seg('chats'); cnt('#chConvs .cvrow', 2, 'the coach chat goes with it')
@@ -445,6 +469,11 @@ with sync_playwright() as p:
     A.click('.excmin'); until(lambda: A.is_visible('.excount .exstep') and A.is_visible('[data-wuopen]') and A.is_visible('.exchide'), 'tapping it opens the card again')
     A.click('.exchide'); until(lambda: A.is_visible('.excmin'), 'and Hide folds it')
     A.click('#menuBtn'); A.click('#hmenu [data-edopen]'); A.click('[data-eddayrm]'); has('#toast', 'already has logged workouts'); A.click('#sx')
+    # no coach: build your own meal plan and set your own targets
+    go('fuel'); has('#mlPlan', 'No meal plan yet'); A.click('[data-mledit]'); assert not A.is_visible('[data-mlt="cal"]'), 'your own targets live under Goals'
+    A.click('[data-mladd]'); A.click('[data-mladd]'); A.fill('[data-mln="1"]', 'Second breakfast'); A.click('[data-mliadd="1"]'); A.fill('#mfN', 'Porridge'); A.fill('#mf_cal', '300'); A.click('[data-mlsave]'); A.click('[data-mldone]')
+    until(lambda: A.evaluate("MEALS.meals.map(m => m.n).join()") == 'Breakfast,Second breakfast' and A.evaluate("MEALS.meals[1].items[0].cal") == 300 and 'Porridge' in A.inner_text('#mlPlan') and 'coach' not in A.inner_text('#mlPlan'), 'own meal plan is saved, with the renamed meal')
+    A.fill('[data-goal="carbs"]', '250'); A.press('[data-goal="carbs"]', 'Tab'); until(lambda: A.evaluate("mealTargets().c") == 250 and '/ 250' in A.inner_text('#mlRings'), 'own carb target shows on the ring')
     assert not errs, errs
     # offline (milestone 6): the service worker caches every file the page loads, and the app opens with no network
     import re

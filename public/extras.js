@@ -1016,7 +1016,9 @@ document.addEventListener('click', async e => { if (appOff()) return;
   if (d.eddayrm !== undefined) { // day indexes are what logs hang on, so a day can only go while nothing is logged on it or after it
     const R0 = edBase(), last = edDay === R0.length - 1;
     if (ED_FOR ? !(last && !R0[edDay].slots.length) : dayHasLogs(edDay)) return toast(ED_FOR ? 'Only an empty last day can be removed from a client’s plan' : 'This day already has logged workouts, so it stays. You can rename it, move it or empty it.', 4500);
-    if (!ED_FOR) { const sw = S.settings.swaps; for (const k in sw) if (+k.split('-')[0] >= edDay) delete sw[k]; touchSettings(); if (cur >= edDay) cur = 0; }
+    if (!ED_FOR) { const sw = S.settings.swaps; for (const k in sw) if (+k.split('-')[0] >= edDay) delete sw[k];
+      for (const f of ['exCount', 'exCountDef', 'exSkip', 'exSkipDef']) { const M = S.settings[f] || {}; for (const k in M) if (+String(k).split(':').pop() >= edDay) delete M[k]; } // per-day settings of the days that shift
+      touchSettings(); if (cur >= edDay) cur = 0; }
     mutRoutine(R => R.splice(edDay, 1)); edDay = 0; toast('Day removed'); return editRoutine();
   }
   if (d.edmv) { saveTitle(); const [si, dir] = d.edmv.split(':').map(Number), j = si + dir; mutRoutine(R => { const sl = R[edDay].slots; [sl[si], sl[j]] = [sl[j], sl[si]]; }); remapSwaps(edDay, s => s === si ? j : s === j ? si : s); save(); return editRoutine(); }

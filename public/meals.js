@@ -8,8 +8,9 @@ const MEAL_NAMES = ['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Pre-workout', 'Pos
 const r1 = v => Math.max(0, Math.round(num(v) * 10) / 10);
 const macLine = i => `${r1(i.cal).toLocaleString()} kcal · ${r1(i.p)}p ${r1(i.c)}c ${r1(i.f)}f`;
 const mealSum = items => items.reduce((a, i) => ({ cal: a.cal + num(i.cal), p: a.p + num(i.p), c: a.c + num(i.c), f: a.f + num(i.f) }), { cal: 0, p: 0, c: 0, f: 0 });
-const blankMeals = () => ({ t: { cal: 0, p: 0, c: 0, f: 0 }, meals: [], by: '', at: 0 });
-const mealTargets = () => { const g = goals(), t = (MEALS && MEALS.t) || {}; return { cal: t.cal || num(g.cal), p: t.p || num(g.protein), c: t.c || num(g.carbs), f: t.f || num(g.fat) }; };
+const blankMeals = () => ({ t: { cal: 0, p: 0, c: 0, f: 0 }, meals: [], by: '', tb: '', at: 0 });
+const coachTargets = () => { const c = typeof trCoach === 'function' ? trCoach() : null; return !!(MEALS && MEALS.tb && c && c.r.status === 'accepted' && c.p.id === MEALS.tb && MACROS.some(([k]) => MEALS.t[k])); }; // only while that coach is still mine
+const mealTargets = () => { const g = goals(), t = coachTargets() ? MEALS.t : {}; return { cal: t.cal || num(g.cal), p: t.p || num(g.protein), c: t.c || num(g.carbs), f: t.f || num(g.fat) }; };
 const fromCoach = () => !!(MEALS && MEALS.by && MEALS.by !== uid());
 const ateKey = (mi, ii, it) => mi + ':' + ii + ':' + it.n;
 
@@ -30,7 +31,7 @@ function unlogFood(d, i) {
 function mealsTopHtml() {
   const f = fuelOf(fuelDate), T = mealTargets(), M = MEALS && MEALS.meals.length ? MEALS : null, log = f.log || [];
   let h = `<div class="card" id="mlRings"><div class="frings">${ring(num(f.cal), T.cal, 'Calories', '', 'cal')}${ring(num(f.protein), T.p, 'Protein', 'g', 'protein')}${ring(num(f.carbs), T.c, 'Carbs', 'g', 'carbs')}${ring(num(f.fat), T.f, 'Fat', 'g', 'fat')}</div>
-    ${fromCoach() && MACROS.some(([k]) => MEALS.t[k]) ? '<div class="muted" style="margin-top:8px;text-align:center">Targets set by your coach</div>' : ''}
+    ${coachTargets() ? '<div class="muted" style="margin-top:8px;text-align:center">Targets set by your coach</div>' : ''}
     <button class="btn acc" data-mllog>＋ Log food</button></div>`;
   if (M) h += `<div class="card" id="mlPlan"><h3>Meal plan</h3>${fromCoach() ? '<div class="muted" style="margin:-4px 0 8px">Written by your coach. Tick each food as you eat it.</div>' : ''}
     ${M.meals.map((m, mi) => { const s = mealSum(m.items); return `<div class="mlmeal"><div class="mlh"><b>${esc(m.n)}</b><span>${m.items.length ? macLine(s) : 'empty'}</span></div>
@@ -66,10 +67,15 @@ function mealsEdit() {
     ${M.meals.length ? '' : '<div class="muted" style="margin:10px 0">No meals yet. Add the first one.</div>'}
     ${M.meals.length < 8 ? '<button class="btn acc" data-mladd>＋ Add a meal</button>' : ''}<button class="btn ghost" data-mldone>Done</button>`);
 }
-async function mealsCommit() {
-  const m = cleanMeals({ ...MLW, by: uid(), at: Date.now() }); MLW = clone(m);
+let mlQueue = Promise.resolve(); // a coach's saves go one at a time, so a save never trips over the one before it
+function mealsCommit() {
+  const m = cleanMeals({ ...MLW, by: uid(), at: Date.now(), ...(ML_FOR ? { tb: uid() } : {}) }); MLW = clone(m);
   if (!ML_FOR) { MEALS = m; saveRoutine(ROUTINE || []); return; } // rides along with the routine row; re-renders
   const e = ML_FOR, v = TR.vr; if (!v || TR.view !== e.id) return; v.meals = m;
+  mlQueue = mlQueue.then(() => mealsPush(e, v, m), () => { });
+}
+async function mealsPush(e, v, m) {
+  if (TR.vr !== v) return;
   if (!sb || !navigator.onLine) return toast('You’re offline. That change wasn’t saved.', 3500);
   const cur = await sb.from('app_routines').select('updated_at').eq('user_id', e.id).maybeSingle().then(r => r, x => ({ error: x }));
   if (!cur.error && cur.data && v.at && cur.data.updated_at !== v.at) { ML_FOR = null; closeSheet(); toast(`${e.name} changed their plan while you were editing. Here is the latest: make your change again.`, 5000); return trOpenClient(e.id); }
