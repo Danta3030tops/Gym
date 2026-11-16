@@ -52,7 +52,7 @@ function renderFriends() {
     h += `<div class="card" id="frList"><h3>Your friends</h3>${acc.length ? acc.map(({ r, p }) => `<div class="edrow frow" data-frview="${r.id}">${frAv(p)}${frWho(p)}<span class="frchev">›</span></div>`).join('')
       : `<div class="muted">${!FR.loaded && off ? 'You’re offline. Your friends show up here once you’re connected.' : 'No friends yet. Add someone by their username and they’ll get a request to accept.'}</div>`}
       <button class="btn acc" data-frnew>＋ Add a friend</button></div>`;
-    h += coachCardHtml();
+    if (ME.role === 'trainer') h += coachCardHtml(); // everyone else has the Coach tab
     if (out.length) h += `<div class="card" id="frSent"><h3>Sent</h3>${out.map(({ r, p }) => `<div class="edrow frow">${frAv(p)}${frWho(p)}<button class="chip" data-frcancel="${r.id}">Cancel</button></div>`).join('')}<div class="muted" style="margin-top:8px">Waiting for them to accept.</div></div>`;
     h += `<div class="foot">Your username is <b>@${esc(ME.username)}</b>. Share it so friends can add you.</div>`;
   }
@@ -88,8 +88,7 @@ function boardHtml() {
   const rows = [{ p: ME, st: lbStats(summaryOf(S, PROF)), me: true, has: true }, ...acc.map(p => ({ p, st: lbStats(LB.sums[p.id]), has: !!LB.sums[p.id] }))];
   rows.sort((a, b) => b.st[k] - a.st[k] || b.st.sets - a.st.sets || frName(a.p).localeCompare(frName(b.p)));
   let rank = 0, prev = null;
-  return `<div class="lbm">${LB_METRICS.map(([key, t]) => `<button class="chip ${key === k ? 'acc' : ''}" data-lbm="${key}">${t}</button>`).join('')}</div>
-    <div class="card" id="lb">${rows.map((x, i) => {
+  return `<div class="card" id="lb"><div class="lbhead"><span>Ranked by</span><select class="lbsel" id="lbSel" aria-label="Rank the leaderboard by">${LB_METRICS.map(([key, t]) => `<option value="${key}" ${key === k ? 'selected' : ''}>${t}</option>`).join('')}</select></div>${rows.map((x, i) => {
       if (x.st[k] !== prev) { rank = i + 1; prev = x.st[k]; }
       const sub = !x.has ? 'Nothing shared yet' : x.st.today ? '🔥 Trained today' : x.st.lastT ? 'Last trained ' + frAgo(x.st.lastT) : 'No workouts yet';
       return `<div class="edrow frow lbrow${x.me ? ' me' : ''}"><i class="lbrank">${rank === 1 && x.st[k] > 0 ? '🥇' : rank}</i>${frAv(x.p)}<div class="edn"><b>${x.me ? 'You' : esc(frName(x.p))}</b><span>${sub}</span></div>
@@ -226,3 +225,5 @@ function stopFriends() {
   Object.assign(LB, { sums: {}, at: 0 }); Object.assign(NT, { rows: [], max: 0 });
   const b = $('frBadge'); if (b) b.hidden = true; const el = $('friends'); if (el) el.innerHTML = '';
 }
+
+document.addEventListener('change', e => { if (e.target.id !== 'lbSel' || appOff()) return; LB.metric = e.target.value; renderFriends(); });

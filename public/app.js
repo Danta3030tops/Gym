@@ -31,7 +31,8 @@ const LWS = () => 'gymp.lastWeekSeen.' + uid();
 /* the week is the person's own training days: each routine day has wd, 1 = Monday … 7 = Sunday */
 const wdOf = d => (d.getDay() + 6) % 7 + 1;
 const todayExact = () => DAYS.findIndex(d => d.wd === wdOf(new Date()));
-const todayIdx = () => { const t = wdOf(new Date()); let i = DAYS.findIndex(d => d.wd === t); if (i < 0) i = DAYS.findIndex(d => d.wd > t); return Math.max(0, i); };
+const todayIdx = () => { const t = wdOf(new Date()); let i = DAYS.findIndex(d => d.wd === t); if (i < 0) i = dayOrder().find(j => DAYS[j].wd > t) ?? -1; return Math.max(0, i); };
+const dayOrder = (R = DAYS) => R.map((_, i) => i).sort((a, b) => R[a].wd - R[b].wd || a - b); // days are shown in weekday order; their index never changes, because logs are keyed by it
 const isTrainingDay = d => DAYS.some(x => x.wd === wdOf(d));
 const dayDate = (wk, di) => addDays(parseDk(wk), ((DAYS[di] || {}).wd || di + 1) - 1);
 let curWeek = weekKeyOf(new Date()), cur = 0;
@@ -73,7 +74,7 @@ function sessions(id) {
   }
   return out.sort((a, b) => a.t - b.t);
 }
-const dayDone = (wk, di) => DAYS[di].slots.every((sl, si) => setsOf(wk, di, exId(exOf(di, si))).filter(Boolean).length >= sl.sets);
+const dayDone = (wk, di) => DAYS[di].slots.length > 0 && DAYS[di].slots.every((sl, si) => setsOf(wk, di, exId(exOf(di, si))).filter(Boolean).length >= sl.sets);
 const dayAny = (wk, di) => { const d = (S.logs[wk] || {})[di]; return !!d && Object.values(d).some(e => (e.sets || []).some(Boolean)); };
 const unit = () => S.settings.unit;
 const inc = () => unit() === 'kg' ? 2.5 : 5;
@@ -213,7 +214,7 @@ async function keepAwake() { if (!S.settings.wake || !('wakeLock' in navigator) 
 /* ================= header ================= */
 function renderHeader() {
   const s = parseDk(curWeek), e = addDays(s, 6);
-  $('wkpill').textContent = s.getMonth() === e.getMonth() ? `${fmtD(s)}–${e.getDate()}` : `${fmtD(s)} – ${fmtD(e)}`;
+  $('hmWeek').textContent = $('wkpill').textContent = s.getMonth() === e.getMonth() ? `${fmtD(s)}–${e.getDate()}` : `${fmtD(s)} – ${fmtD(e)}`;
 }
 
 /* ================= WORKOUT ================= */
@@ -221,28 +222,33 @@ function renderWorkout() {
   if (!DAYS.length) { // a coach who skipped the plan
     for (const id of ['days', 'newweek', 'excount', 'nudge']) if ($(id)) $(id).innerHTML = '';
     $('weekline').textContent = ''; $('dtitle').textContent = 'Workout'; $('ddate').textContent = ''; $('dprog').textContent = ''; $('dbar').style.width = '0%';
-    $('list').innerHTML = `<div class="card"><h3>No workout plan yet</h3><div class="muted">Answer a few questions and get a weekly routine built around your goal, your days and your equipment.</div><button class="btn acc" data-buildplan>Build my plan</button></div>`;
+    $('list').innerHTML = `<div class="card"><h3>No workout plan yet</h3><div class="muted">Answer a few questions and get a weekly routine built around your goal, your days and your equipment. Or start with an empty week and add everything yourself.</div><button class="btn acc" data-buildplan>Build my plan</button><button class="btn ghost" data-edblank>Start from scratch</button></div>`;
     return;
   }
   const today = todayExact();
-  $('days').innerHTML = DAYS.map((d, i) => {
-    const date = dayDate(curWeek, i);
+  $('days').innerHTML = dayOrder().map(i => {
+    const d = DAYS[i], date = dayDate(curWeek, i);
     return `<button class="${i === cur ? 'on' : ''} ${i === today ? 'today' : ''}" data-day="${i}">${dayDone(curWeek, i) ? '<span class="dot"></span>' : ''}${esc(d.d)}<small>${date.getDate()} · ${esc(String(d.title).split(' ')[0])}</small></button>`;
   }).join('');
   const done = DAYS.filter((_, i) => dayDone(curWeek, i)).length;
-  $('weekline').textContent = `This week: ${done} / ${DAYS.length} days complete${isDeload(curWeek) ? ' · 🧘 deload' : ''}`;
+  $('weekline').textContent = `This week: ${done} / ${DAYS.length} days complete${isDeload(curWeek) ? ' · deload' : ''}`;
 
   // new week banner
   const lastSeen = localStorage.getItem(LWS());
   const prevKey = dk(addDays(parseDk(curWeek), -7));
   if (lastSeen && lastSeen !== curWeek && S.logs[prevKey]) {
     const st = weekStats(prevKey);
-    $('newweek').innerHTML = `<div class="banner">🔄 <b>New week, fresh sheet.</b> Last week (${st.days}/${DAYS.length} days, ${st.sets} sets, ${st.vol.toLocaleString()} ${unit()} moved) is saved in History. <button class="chip" data-dismiss style="margin-top:8px">Got it</button></div>`;
+    $('newweek').innerHTML = `<div class="banner"><b>New week, fresh sheet.</b> Last week (${st.days}/${DAYS.length} days, ${st.sets} sets, ${st.vol.toLocaleString()} ${unit()} moved) is saved in History. <button class="chip" data-dismiss style="margin-top:8px">Got it</button></div>`;
   } else { $('newweek').innerHTML = ''; if (lastSeen !== curWeek) localStorage.setItem(LWS(), curWeek); }
 
   const D = DAYS[cur], date = dayDate(curWeek, cur);
   $('dtitle').textContent = D.title;
   $('ddate').textContent = fmtD(date, { weekday: 'long', month: 'short', day: 'numeric' });
+  if (!D.slots.length) { // a day from a blank plan with nothing on it yet
+    if ($('excount')) $('excount').innerHTML = ''; $('dprog').textContent = ''; $('dbar').style.width = '0%';
+    $('list').innerHTML = `<div class="card" id="emptyDay"><h3>Nothing planned yet</h3><div class="muted">Name this day after what you train, like “Chest and back”, then add your exercises. If you have a coach, they can fill it in for you.</div><button class="btn acc" data-edaddhere>＋ Add exercise</button><button class="btn ghost" data-edopen>Name this day</button></div>`;
+    return;
+  }
   if ($('excount')) $('excount').innerHTML = typeof excountHtml === 'function' ? excountHtml() : '';
   let tot = 0, dn = 0;
   $('list').innerHTML = D.slots.map((sl, si) => {
@@ -273,9 +279,10 @@ function renderWorkout() {
       <div class="top"><div class="info"><div class="num">EXERCISE ${si + 1}${sl.bonus ? ' · BONUS' : ''}${S.settings.swaps[slotKey(cur, si)] ? ' · SWAPPED' : ''}</div>
        <div class="name">${esc(ex.n)}</div>
        <div class="meta"><span><b>${safeN(sl.sets)} × ${esc(sl.reps)}</b></span><span>Rest ${fmtT(prefOf(id).rest || sl.rest)}${prefOf(id).rest ? ' ★' : ''}</span><span>Tempo ${P[ex.pat].tempo.join('-')}</span></div></div>
-       <button class="thumb" data-form="${si}"><div data-anim="${ss ? ssPat(ss[0], ex.pat) + '|' + ssPat(ss[1], ex.pat) : ex.pat}"></div><div class="lbl">FORM</div></button></div>
-      <div class="chips"><button class="chip acc" data-pace="${si}">▶ ${sl.time ? 'Start timer' : 'Pace set'}</button><button class="chip" data-swap="${si}">↻ Swap</button><button class="chip" data-exhist="${si}">📈 Progress</button>${extraChips(sl, ex, si)}</div>
-      <div class="target">🎯 Target <input inputmode="decimal" data-tgt="${si}" value="${esc(tgt)}" placeholder="—"> ${unit()}${sug}</div>
+       <button class="thumb" data-form="${si}"><div data-anim="${ss ? ssPat(ss[0], ex.pat) + '|' + ssPat(ss[1], ex.pat) : ex.pat}"></div><div class="lbl">FORM</div></button>
+       <button class="exmore" data-exmore aria-label="More options for this exercise">···</button></div>
+      <div class="chips exchips"><button class="chip acc" data-pace="${si}">${sl.time ? 'Start timer' : 'Pace set'}</button><button class="chip" data-swap="${si}">Swap</button><button class="chip" data-exhist="${si}">Progress</button>${extraChips(sl, ex, si)}</div>
+      <div class="target">Target <input inputmode="decimal" data-tgt="${si}" value="${esc(tgt)}" placeholder="—"> ${unit()}${sug}</div>
       <div class="sets">${ss ? `<div class="sslegend"><span><b class="sstag">A</b>${esc(ss[0])}</span><span><b class="sstag b">B</b>${esc(ss[1])}</span></div>` : ''}<div class="sethdr ${ss ? 'ss' : ''}"><span>Set</span><span>Weight</span><span>${sl.time ? 'Secs' : 'Reps'}</span><span></span></div>${rows}</div>
       ${last ? `<div class="last">Last time (${fmtD(new Date(last.t), { weekday: 'short', month: 'short', day: 'numeric' })}): ${last.sets.map(s => fmtSet(last.timed, s)).join(', ')}</div>` : ''}
       ${noteHtml(si, id, last)}
@@ -715,11 +722,11 @@ let syncT = null, lastSync = 0, syncing = false, syncAgain = false;
 function setSync(state, text) { const el = $('sync'); el.className = 'sync ' + state; el.querySelector('span').textContent = text; }
 function scheduleSync() { clearTimeout(syncT); syncT = setTimeout(sync, 1500); }
 const syncAll = () => sync();
-const routineRow = (id, routine) => ({ user_id: id, routine, updated_by: id, updated_at: new Date().toISOString(), note: '' });
+const routineRow = (id, routine) => ({ user_id: id, routine: packRoutine(routine, MEALS), updated_by: id, updated_at: new Date().toISOString(), note: '' });
 const routineDirty = id => 'gymp.routineDirty.' + id; // set while this phone holds routine edits the server hasn't got yet
 /* the routine lives in its own table (app_routines) so a trainer can edit it */
 async function saveRoutine(routine) {
-  const id = uid(); ROUTINE = routine; cacheSet('gymp.routine.' + id, { routine }); localStorage.setItem(routineDirty(id), '1');
+  const id = uid(); ROUTINE = routine; cacheSet('gymp.routine.' + id, { routine: packRoutine(routine, MEALS) }); localStorage.setItem(routineDirty(id), '1');
   if (typeof applyRoutine === 'function') applyRoutine(); if (cur >= DAYS.length) cur = todayIdx(); renderAll();
   if (!sb || !navigator.onLine) return false;
   const { error } = await sb.from('app_routines').upsert(routineRow(id, routine)).then(r => r, e => ({ error: e }));
@@ -741,8 +748,9 @@ async function sync() {
     if (localStorage.getItem(routineDirty(id))) { const r = await sb.from('app_routines').upsert(routineRow(id, ROUTINE)); if (!r.error) localStorage.removeItem(routineDirty(id)); }
     else { // pick up edits made elsewhere (another phone, or a trainer)
       const r = await sb.from('app_routines').select('routine,updated_by').eq('user_id', id).maybeSingle();
-      const got = r.data ? cleanRoutine(r.data.routine) : null;
-      if (mine() && !r.error && r.data && JSON.stringify(got) !== JSON.stringify(ROUTINE)) { ROUTINE = got; cacheSet('gymp.routine.' + id, { routine: ROUTINE });
+      const got = r.data ? cleanRoutine(r.data.routine) : null, gotM = r.data ? mealsOf(r.data.routine) : null;
+      if (mine() && !r.error && r.data && JSON.stringify(gotM) !== JSON.stringify(MEALS)) { MEALS = gotM; cacheSet('gymp.routine.' + id, { routine: packRoutine(got, MEALS) }); } // a meal plan written elsewhere (another phone, or a coach)
+      if (mine() && !r.error && r.data && JSON.stringify(got) !== JSON.stringify(ROUTINE)) { ROUTINE = got; cacheSet('gymp.routine.' + id, { routine: packRoutine(ROUTINE, MEALS) });
         if (r.data.updated_by && r.data.updated_by !== id) { Object.assign(S.settings, { swaps: {}, exSkip: {}, exSkipDef: {}, u: Date.now() }); persist(); } // a coach moved things around: my per-slot swaps and removals no longer line up
       }
     }
@@ -796,15 +804,23 @@ function renderAll(quiet) {
   if (tab === 'body' && !(quiet && document.activeElement && document.activeElement.matches('input,select'))) renderBody();
   if (tab === 'friends' && !quiet && typeof renderFriends === 'function') renderFriends();
   if (tab === 'clients' && !quiet && typeof renderClients === 'function') renderClients();
+  if (tab === 'coach' && !quiet && typeof renderCoachTab === 'function') renderCoachTab();
   if (tab === 'more' && !quiet) renderMore();
 }
+/* header menu (Body, Fuel, Edit plan, Settings) and the ··· button on exercise cards */
+document.addEventListener('click', e => {
+  const m = $('hmenu'), open = e.target.closest('#menuBtn') ? m.hidden : false;
+  m.hidden = !open; $('menuBtn').setAttribute('aria-expanded', open); document.body.classList.toggle('hmopen', open);
+  const x = e.target.closest('[data-exmore]'); if (x) x.closest('.card').classList.toggle('more');
+});
 function showTab(t) {
-  const ORD = ['workout', 'history', 'body', 'fuel', 'friends', 'clients', 'more'], from = ORD.indexOf(tab), to = ORD.indexOf(t);
+  const ORD = ['workout', 'history', 'friends', 'coach', 'clients', 'body', 'fuel', 'more'], from = ORD.indexOf(tab), to = ORD.indexOf(t);
   if (t === 'workout' && tab !== 'workout') window.__stagger = true;
   setTimeout(() => { const sec = $('t-' + t); if (!sec) return; sec.classList.remove('enter-l', 'enter-r', 'enter-f'); void sec.offsetWidth; sec.classList.add(from < 0 || from === to ? 'enter-f' : to > from ? 'enter-r' : 'enter-l'); if (typeof movePill === 'function') movePill(); }, 0);
   tab = t; document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
   document.querySelectorAll('.tab').forEach(s => s.classList.toggle('on', s.id === 't-' + t));
-  $('htitle').innerHTML = esc(PROFILES[PROF].label) + ' <span>' + { workout: 'Split', history: 'Log', body: 'Body', fuel: 'Fuel', friends: 'Friends', clients: 'Clients', more: 'App' }[t] + '</span>';
+  $('htitle').textContent = { workout: 'Workout', history: 'History', body: 'Body', fuel: 'Fuel', friends: 'Friends', coach: 'Coach', clients: 'Clients', more: 'Settings' }[t];
+  $('menuBtn').classList.toggle('on', ['body', 'fuel', 'more'].includes(t));
   renderAll(); window.scrollTo(0, 0);
 }
 

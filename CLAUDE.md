@@ -100,7 +100,7 @@ Things that bit before:
 
 ## Public version (`public/`)
 
-A second app for anyone to sign up, built from this one, lives in `public/` (branch `public-version` until the owner merges it). It has its own backend tables (`app_*`), service worker (`public/sw.js`, cache `gymp-v*`) and smoke test (`dev/tests/smoke-public.py` with `dev/tests/mock-public.js`). It loads `data.js`, `data-qxeen.js`, `figures.js`, `library.js` from the repo root read-only, so changes to those four files affect both apps. Read `dev/public-version/PROGRESS.md` before working on it.
+A second app for anyone to sign up, built from this one, lives in `public/`. It has its own backend tables (`app_*`), service worker (`public/sw.js`, cache `gymp-v*`) and smoke test (`dev/tests/smoke-public.py` with `dev/tests/mock-public.js`). It loads `data.js`, `data-qxeen.js`, `figures.js`, `library.js` from the repo root read-only, so changes to those four files affect both apps. Read `dev/public-version/PROGRESS.md` before working on it. The meal plan is stored as a trailing `{ meals }` element of the `routine` array in `app_routines`: always write that row through `packRoutine()` or the meal plan is lost.
 
 | File in `public/` | What's in it |
 |---|---|
@@ -110,6 +110,7 @@ A second app for anyone to sign up, built from this one, lives in `public/` (bra
 | `chat.js` | 1-on-1 and group chats |
 | `challenges.js` | weekly challenge with a friend |
 | `trainer.js` | coach and client link, Clients tab, editing a client's plan |
+| `meals.js` | meal planner on the Fuel tab: macro tracking, meal plan, coach edits a client's meal plan |
 
 ## Don't
 

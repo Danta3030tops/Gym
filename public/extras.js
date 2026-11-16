@@ -35,7 +35,7 @@ function applyRoutine() {
 const EXC_MIN = 4, EXC_MAX = 10;
 function exCountFor(set, wk, di, baseLen) {
   const c = ((set || {}).exCount || {})[wk + ':' + di] ?? ((set || {}).exCountDef || {})[di];
-  return Math.max(EXC_MIN, Math.min(EXC_MAX, c ?? baseLen));
+  return c == null ? Math.min(EXC_MAX, baseLen) : Math.max(EXC_MIN, Math.min(EXC_MAX, c)); // a short hand-built day stays as short as it was made
 }
 const TIMED_RE = /plank|hold|dead hang|wall sit|hollow/i;
 function bonusSlots(day, need) {
@@ -220,8 +220,8 @@ const isBarbell = ex => /barbell|smith|bench press|back squat|hip thrust|good mo
 function extraChips(sl, ex, si) {
   if (sl.time) return '';
   let h = '';
-  if (si === 0 || sl.rest >= 120) h += `<button class="chip" data-warm="${si}">🔥 Warm-up</button>`;
-  if (isBarbell(ex)) h += `<button class="chip" data-plates="${si}">🏋️ Plates</button>`;
+  if (si === 0 || sl.rest >= 120) h += `<button class="chip" data-warm="${si}">Warm-up sets</button>`;
+  if (isBarbell(ex)) h += `<button class="chip" data-plates="${si}">Plates</button>`;
   return h;
 }
 function noteHtml(si, id, last) {
@@ -341,8 +341,8 @@ function renderNudges() {
   const me = summaryOf(S, PROF), lines = [], g = goals(), ti = todayExact();
   if (isDeload(curWeek)) lines.push(`<div class="banner">🧘 <b>Deload week.</b> Half the sets at about 60% weight, so your joints and nervous system recover and you come back stronger. <button class="chip" data-deload="off">End deload</button></div>`);
   else { const n = consecutiveTrainingWeeks(); if (n >= 6) lines.push(`<div class="banner">📉 <b>${n} straight weeks of training.</b> A lighter deload week now helps you keep progressing. <button class="chip" data-deload="on">Make this a deload week</button></div>`); }
-  if (!me.todayTitle && ti >= 0) lines.push(`<div class="nud">📅 Today is <b>${esc(DAYS[ti].title)}</b>. Let's get it.</div>`);
-  if (me.dayStreak || me.weekStreak) lines.push(`<div class="streaks"><span>🔥 <b>${me.dayStreak}</b> day streak</span><span>📆 <b>${me.weekStreak}</b> week streak <small>(${g.weekDays}+ days/wk)</small></span></div>`);
+  if (!me.todayTitle && ti >= 0) lines.push(`<div class="nud">Today is <b>${esc(DAYS[ti].title)}</b>. Let's get it.</div>`);
+  if (me.dayStreak || me.weekStreak) lines.push(`<div class="streaks"><span><b>${me.dayStreak}</b> day streak</span><span><b>${me.weekStreak}</b> week streak <small>(${g.weekDays}+ days/wk)</small></span></div>`);
   el.innerHTML = lines.join('');
 }
 function renderPRs() {
@@ -537,11 +537,11 @@ function renderFuel() {
   const wk = weekKeyOf(d), wkEnd = dk(addDays(parseDk(wk), 6));
   const wCardio = workoutCardioMin(wk, wkEnd); let cardioWeek = wCardio;
   for (let i = 0; i < 7; i++) cardioWeek += num(fuelOf(dk(addDays(parseDk(wk), i))).cardio);
-  let h = `<div class="dayhead"><div><h2>Fuel</h2><div class="sub">Calories, protein, water, steps & cardio</div></div></div>
+  let h = `<div class="dayhead"><div><h2>Fuel</h2><div class="sub">Meal plan, macros, water, steps and cardio</div></div></div>
     <div class="fdate"><button class="cbtn" data-fday="-1">‹</button><b>${isToday ? 'Today' : fmtD(d, { weekday: 'long', month: 'short', day: 'numeric' })}</b><button class="cbtn" data-fday="1" ${isToday ? 'disabled' : ''}>›</button></div>
-    <div class="card"><div class="frings">${ring(num(f.cal), g.cal, 'Calories', '', 'cal')}${ring(num(f.protein), g.protein, 'Protein', 'g', 'protein')}${ring(num(f.water), g.water, 'Water', 'glasses', 'water')}${ring(num(f.steps), g.steps, 'Steps', '', 'steps')}</div></div>`;
+    ${mealsTopHtml()}`;
   const q = (k, lab, unitL, adds) => `<div class="card fq"><div class="fqh"><b>${lab}</b><input inputmode="decimal" data-fset="${k}" value="${num(f[k]) || ''}" placeholder="0"><span class="muted">${unitL}</span></div><div class="chips">${adds.map(a => `<button class="chip" data-fadd="${k}:${a}">${a > 0 ? '+' : ''}${a}</button>`).join('')}</div></div>`;
-  h += q('cal', '🍽 Calories', 'kcal', [100, 250, 500, -100]) + q('protein', '🥩 Protein', 'g', [10, 25, 40, -10]) + q('water', '💧 Water', 'glasses (8 oz)', [1, 2, -1]) + q('steps', '👟 Steps', 'steps', [1000, 2500, 5000]) + q('cardio', '🏃 Extra cardio', 'min', [10, 20, 30, -10]);
+  h += q('water', 'Water', 'glasses (8 oz)', [1, 2, -1]) + q('steps', 'Steps', 'steps', [1000, 2500, 5000]) + q('cardio', 'Extra cardio', 'min', [10, 20, 30, -10]);
   h += `<div class="card"><h3>Cardio this week</h3><div class="fbar"><i style="width:${Math.min(100, cardioWeek / (g.cardio || 1) * 100)}%"></i></div><div class="muted" style="margin-top:6px"><b style="color:var(--txt)">${cardioWeek}</b> / ${g.cardio} min${wCardio ? ` · includes ${wCardio} min from your workouts` : ''}</div></div>`;
   // 7-day averages
   const days7 = Array.from({ length: 7 }, (_, i) => dk(addDays(d, -i))).filter(x => (S.fuel || {})[x]);
@@ -552,11 +552,13 @@ function renderFuel() {
   h += `<div class="card"><h3>Goals</h3><div class="grid2">
     <label class="fld">Calories / day<input inputmode="numeric" data-goal="cal" value="${g.cal || ''}" placeholder="use calculator"></label>
     <label class="fld">Protein g / day<input inputmode="numeric" data-goal="protein" value="${g.protein || ''}" placeholder="use calculator"></label>
+    <label class="fld">Carbs g / day<input inputmode="numeric" data-goal="carbs" value="${g.carbs || ''}" placeholder="optional"></label>
+    <label class="fld">Fat g / day<input inputmode="numeric" data-goal="fat" value="${g.fat || ''}" placeholder="optional"></label>
     <label class="fld">Water glasses / day<input inputmode="numeric" data-goal="water" value="${g.water}"></label>
     <label class="fld">Steps / day<input inputmode="numeric" data-goal="steps" value="${g.steps}"></label>
     <label class="fld">Cardio min / week<input inputmode="numeric" data-goal="cardio" value="${g.cardio}"></label>
     <label class="fld">Training days / week<input inputmode="numeric" data-goal="weekDays" value="${g.weekDays}"></label></div>
-    <button class="btn" data-calc>🧮 Calculate my calories & protein</button></div>`;
+    <button class="btn" data-calc>Calculate my calories and protein</button></div>`;
   $('fuel').innerHTML = h;
 }
 function calcSheet() {
@@ -595,15 +597,23 @@ function calcGo() {
 let edDay = 0;
 let ED_FOR = null; // set while a coach edits a client's plan: { id, name, routine, noted } (see trainer.js); null = my own plan
 const edBase = () => (ED_FOR ? ED_FOR.routine : baseRoutine());
+const freeWd = R => [1, 2, 3, 4, 5, 6, 7].find(w => !R.some(d => d.wd === w));
+const blankDay = (R, wd) => ({ d: WD_NAMES[wd], wd, title: 'Day ' + (R.length + 1), slots: [] });
+const dayHasLogs = from => Object.values(S.logs || {}).some(w => Object.keys(w || {}).some(di => +di >= from && Object.values(w[di] || {}).some(e => (e.sets || []).some(Boolean))));
 function editRoutine() {
-  const R = edBase(), D = R[edDay];
+  const R = edBase(); if (edDay >= R.length) edDay = 0; const D = R[edDay];
+  if (!D) return openSheet(`<h3>${ED_FOR ? esc(ED_FOR.name) + ' has no plan yet' : 'No plan yet'}</h3><div class="sub">${ED_FOR ? 'Start an empty week for them and add the days and exercises yourself.' : 'Let the app build one from a few questions, or start with an empty week and add everything yourself.'}</div>
+    ${ED_FOR ? '' : '<button class="btn acc" data-buildplan>Build my plan</button>'}<button class="btn ${ED_FOR ? 'acc' : 'ghost'}" data-edblank>Start from scratch</button>`);
   openSheet(`<h3>${ED_FOR ? 'Edit ' + esc(ED_FOR.name) + '’s plan' : 'Edit routine'}</h3><div class="sub">${ED_FOR ? 'Every change is saved to their plan straight away.' : 'Your history is kept per exercise name, so renaming or reordering never loses it.'}</div>
-    <div class="days" style="margin:0 0 10px">${R.map((d, i) => `<button class="${i === edDay ? 'on' : ''}" data-edday="${i}">${esc(d.d)}</button>`).join('')}</div>
-    <label class="fld">Day name<input id="edTitle" value="${esc(D.title)}"></label>
+    <div class="days" style="margin:0 0 10px">${dayOrder(R).map(i => `<button class="${i === edDay ? 'on' : ''}" data-edday="${i}">${esc(R[i].d)}</button>`).join('')}${R.length < 7 ? '<button data-eddayadd aria-label="Add a training day">＋</button>' : ''}</div>
+    <div class="grid2"><label class="fld">Day name<input id="edTitle" value="${esc(D.title)}" maxlength="60" placeholder="e.g. Chest and back"></label>
+    <label class="fld">Trained on<select id="edWd">${[1, 2, 3, 4, 5, 6, 7].map(w => `<option value="${w}" ${w === D.wd ? 'selected' : ''} ${w !== D.wd && R.some(d => d.wd === w) ? 'disabled' : ''}>${WD_NAMES[w]}</option>`).join('')}</select></label></div>
+    ${D.slots.length ? '' : '<div class="muted" style="margin-top:10px">No exercises on this day yet.</div>'}
     <div style="margin-top:10px">${D.slots.map((sl, si) => `<div class="edrow"><div class="edn"><b>${esc(sl.opts[0].n)}</b><span>${safeN(sl.sets)} × ${esc(sl.reps)} · rest ${fmtT(safeN(sl.rest))}${sl.opts.length > 1 ? ` · ${sl.opts.length - 1} swaps` : ''}</span></div>
       <button class="cbtn" data-edmv="${si}:-1" ${si === 0 ? 'disabled' : ''}>↑</button><button class="cbtn" data-edmv="${si}:1" ${si === D.slots.length - 1 ? 'disabled' : ''}>↓</button><button class="cbtn" data-ededit="${si}">✎</button><button class="cbtn" data-eddel="${si}">✕</button></div>`).join('')}</div>
     <button class="btn acc" data-ededit="new">＋ Add exercise</button>
-    ${!ED_FOR && S.settings.plan ? '<button class="btn ghost" data-edreset>Rebuild from my setup answers</button>' : ''}`);
+    ${R.length > 1 ? '<button class="btn ghost" data-eddayrm>Remove this day</button>' : ''}
+    ${ED_FOR ? '' : S.settings.plan ? '<button class="btn ghost" data-edreset>Rebuild from my setup answers</button>' : '<button class="btn ghost" data-buildplan>Let the app build my plan</button>'}`);
 }
 function mutRoutine(fn) {
   if (ED_FOR) { const R = clone(ED_FOR.routine); fn(R); ED_FOR.routine = R; trSaveRoutine(); return; } // a coach editing a client: saved to the client's row
@@ -920,7 +930,7 @@ function renderSess(force) {
   const key = act ? `${s.id}|${s.state}|${s.dur}|${s.who}|${s.end}|${s.left}` : `idle|${tab}`;
   if (!force && key === sessKey) return sessTick();
   sessKey = key;
-  if (!act) { el.innerHTML = tab === 'workout' ? `<button class="sess-idle" data-sessopen>⏱ Set a session time limit</button>` : ''; return; }
+  if (!act) { el.innerHTML = ''; return; } // idle: the session timer is started from the header menu
   const by = s.by === PROF ? 'you' : whoName(s.by);
   el.innerHTML = `<div class="sess ${s.state}"><svg class="ss-ring" viewBox="0 0 40 40"><circle cx="20" cy="20" r="16" class="bg"/><circle cx="20" cy="20" r="16" class="fg" data-ssring/></svg>
     <div class="ss-t"><b data-sstime>${fmtHMS(sessLeft(s))}</b><span data-sssub></span></div>
@@ -1000,8 +1010,19 @@ document.addEventListener('click', async e => { if (appOff()) return;
   // routine editor
   if (d.edopen !== undefined) { ED_FOR = null; edDay = cur; return editRoutine(); }
   if (d.edday) { saveTitle(); edDay = +d.edday; return editRoutine(); }
+  if (d.edaddhere !== undefined) { ED_FOR = null; edDay = cur; return editSlot('new'); }
+  if (d.edblank !== undefined) { mutRoutine(R => { if (!R.length) R.push(blankDay(R, 1)); }); edDay = 0; return editRoutine(); }
+  if (d.eddayadd !== undefined) { saveTitle(); const R0 = edBase(), wd = freeWd(R0); if (!wd || R0.length >= 7) return; mutRoutine(R => R.push(blankDay(R, wd))); edDay = edBase().length - 1; return editRoutine(); }
+  if (d.eddayrm !== undefined) { // day indexes are what logs hang on, so a day can only go while nothing is logged on it or after it
+    const R0 = edBase(), last = edDay === R0.length - 1;
+    if (ED_FOR ? !(last && !R0[edDay].slots.length) : dayHasLogs(edDay)) return toast(ED_FOR ? 'Only an empty last day can be removed from a client’s plan' : 'This day already has logged workouts, so it stays. You can rename it, move it or empty it.', 4500);
+    if (!ED_FOR) { const sw = S.settings.swaps; for (const k in sw) if (+k.split('-')[0] >= edDay) delete sw[k];
+      for (const f of ['exCount', 'exCountDef', 'exSkip', 'exSkipDef']) { const M = S.settings[f] || {}; for (const k in M) if (+String(k).split(':').pop() >= edDay) delete M[k]; } // per-day settings of the days that shift
+      touchSettings(); if (cur >= edDay) cur = 0; }
+    mutRoutine(R => R.splice(edDay, 1)); edDay = 0; toast('Day removed'); return editRoutine();
+  }
   if (d.edmv) { saveTitle(); const [si, dir] = d.edmv.split(':').map(Number), j = si + dir; mutRoutine(R => { const sl = R[edDay].slots; [sl[si], sl[j]] = [sl[j], sl[si]]; }); remapSwaps(edDay, s => s === si ? j : s === j ? si : s); save(); return editRoutine(); }
-  if (d.eddel) { saveTitle(); const si = +d.eddel; if (edBase()[edDay].slots.length <= 1) return toast('A day needs at least one exercise'); mutRoutine(R => R[edDay].slots.splice(si, 1)); remapSwaps(edDay, s => s === si ? null : s > si ? s - 1 : s); save(); toast('Removed'); return editRoutine(); }
+  if (d.eddel) { saveTitle(); const si = +d.eddel; mutRoutine(R => R[edDay].slots.splice(si, 1)); remapSwaps(edDay, s => s === si ? null : s > si ? s - 1 : s); save(); toast('Removed'); return editRoutine(); }
   if (d.ededit) { saveTitle(); return editSlot(d.ededit === 'new' ? 'new' : +d.ededit); }
   if (d.edsave) return saveSlot(d.edsave === 'new' ? 'new' : +d.edsave);
   if (d.edback !== undefined) return editRoutine();
@@ -1015,6 +1036,7 @@ document.addEventListener('click', async e => { if (appOff()) return;
 function saveTitle() { const el = $('edTitle'); if (!el) return; const v = el.value.trim(); if (v && v !== edBase()[edDay].title) mutRoutine(R => { R[edDay].title = v; }); }
 document.addEventListener('change', e => { if (appOff()) return;
   const d = e.target.dataset;
+  if (e.target.id === 'edWd') { saveTitle(); const w = +e.target.value; mutRoutine(R => { R[edDay].wd = w; R[edDay].d = WD_NAMES[w]; }); return editRoutine(); }
   if (d.note !== undefined) { const si = +d.note, ex = exOf(cur, si), en = ensureEntry(curWeek, cur, ex); en.note = e.target.value.trim(); en.u = Date.now(); save(); return; }
   if (d.fset) { setFuel(fuelDate, d.fset, e.target.value); renderFuel(); return; }
   if (d.goal) { S.settings.goals = { ...(S.settings.goals || {}), [d.goal]: Math.max(0, Math.round(num(e.target.value))) || undefined }; touchSettings(); renderFuel(); return; }

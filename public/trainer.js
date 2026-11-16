@@ -32,10 +32,16 @@ async function loadTrainers() {
 function trPaint() {
   const b = $('trBadge'), n = trBadgeN(); if (b) { b.hidden = !n; b.textContent = n > 9 ? '9+' : n; }
   if (appOff()) return;
-  if (tab === 'clients') renderClients(); else if (tab === 'friends' && FR.seg === 'people' && !CH.open) renderFriends();
+  if (tab === 'clients') renderClients(); else if (tab === 'coach') renderCoachTab(); else if (tab === 'friends' && FR.seg === 'people' && !CH.open) renderFriends();
 }
 
 /* ---------- client side: the "Your coach" card (called by renderFriends) ---------- */
+/* the Coach tab: everyone who is not a coach themselves */
+function renderCoachTab() {
+  const el = $('coach'); if (!el) return;
+  el.innerHTML = coachCardHtml() + `<div class="foot">${trCoach() ? 'Plan changes from your coach show up under Friends, in New for you.' : 'No coach? You can still build and edit your own plan from the menu.'}</div>`;
+  if (Date.now() - TR.at > 5000 && typeof loadTrainers === 'function') loadTrainers();
+}
 function coachCardHtml() {
   const c = trCoach();
   if (!c) return `<div class="card" id="trCard"><h3>Your coach</h3><div class="muted">Working with a trainer? Add them and they can follow your training, edit your plan and message you.</div><button class="btn" data-tradd>＋ Add your coach</button></div>`;
@@ -119,7 +125,7 @@ async function trOpenClient(cid) {
   if (!sb || !navigator.onLine) { TR.vr.err = true; return renderClients(); }
   const [rt, st, pb] = await Promise.all([sb.from('app_routines').select('*').eq('user_id', cid).maybeSingle(), sb.from('app_state').select('data').eq('user_id', cid).maybeSingle(), sb.from('app_public').select('*').eq('user_id', cid).maybeSingle()].map(q => q.then(r => r, e => ({ error: e }))));
   if (TR.view !== cid || appOff()) return;
-  if (rt.error) TR.vr.err = true; else Object.assign(TR.vr, { routine: cleanRoutine(rt.data && rt.data.routine) || [], at: (rt.data && rt.data.updated_at) || null, st: (st.data && st.data.data) || null, loaded: true });
+  if (rt.error) TR.vr.err = true; else Object.assign(TR.vr, { routine: cleanRoutine(rt.data && rt.data.routine) || [], meals: mealsOf(rt.data && rt.data.routine), at: (rt.data && rt.data.updated_at) || null, st: (st.data && st.data.data) || null, loaded: true });
   if (pb.data) LB.sums[cid] = pb.data.data || {};
   renderClients();
 }
@@ -143,15 +149,15 @@ function clientViewHtml() {
   else {
     const ses = trSessions(v.st, v.routine);
     h += `<div class="card" id="trPlan"><h3>Plan</h3>${v.routine.length ? v.routine.map(d => `<div class="pv"><div class="pv-h"><b>${esc(d.title)}</b><span>${esc(d.d || '')} · ${d.slots.length} exercises</span></div>${d.slots.map(sl => `<div class="pv-x"><b>${esc(sl.opts[0].n)}</b><span>${esc(String(sl.sets))} × ${esc(sl.reps)}</span></div>`).join('')}</div>`).join('') + `<button class="btn acc" data-tredit>✏️ Edit their plan</button><div class="muted" style="margin-top:8px">Changes apply straight away and ${esc(frName(p).split(' ')[0])} gets a notification.</div>`
-      : `<div class="muted">${esc(frName(p).split(' ')[0])} hasn’t built a plan yet. They can do that from their Workout tab.</div>`}</div>
+      : `<div class="muted">${esc(frName(p).split(' ')[0])} hasn’t got a plan yet. They can build one from their Workout tab, or you can write it for them.</div><button class="btn acc" data-tredit>Start their plan</button>`}</div>
       <div class="card" id="trLog"><h3>Recent sessions</h3>${ses.length ? ses.map(s => `<div class="hrow"><span>${fmtD(new Date(s.t), { weekday: 'short', month: 'short', day: 'numeric' })}</span><b style="flex:1">${esc(s.title)}</b><b class="acc2">${s.sets} sets</b></div>`).join('') : '<div class="muted">Nothing logged yet.</div>'}</div>`;
   }
   return h + (v.loaded ? clientPhotosHtml(p, row, v) : '') + (row ? `<div class="foot"><button class="chip" data-trrm="${row.id}" style="color:#ff453a">Remove client</button></div>` : '');
 }
 /* edit a client's plan with the routine editor (extras.js reads ED_FOR) */
 function trEdit() {
-  const p = TR.profs[TR.view]; if (!p || !TR.vr || !TR.vr.loaded || !TR.vr.routine.length) return;
-  ED_FOR = { id: p.id, name: frName(p).split(' ')[0], routine: clone(TR.vr.routine), at: TR.vr.at, noted: false }; edDay = 0; editRoutine();
+  const p = TR.profs[TR.view]; if (!p || !TR.vr || !TR.vr.loaded) return;
+  ED_FOR = { id: p.id, name: frName(p).split(' ')[0], routine: clone(TR.vr.routine), meals: TR.vr.meals, at: TR.vr.at, noted: false }; edDay = 0; editRoutine();
 }
 /* called by mutRoutine in extras.js after every change a coach makes */
 async function trSaveRoutine() {
@@ -161,7 +167,7 @@ async function trSaveRoutine() {
   const cur = await sb.from('app_routines').select('updated_at').eq('user_id', e.id).maybeSingle().then(r => r, x => ({ error: x }));
   if (!cur.error && cur.data && e.at && cur.data.updated_at !== e.at) { ED_FOR = null; closeSheet(); toast(`${e.name} changed their plan while you were editing. Here is the latest: make your change again.`, 5000); return trOpenClient(e.id); }
   const at = new Date().toISOString();
-  const { error } = await sb.from('app_routines').upsert({ user_id: e.id, routine: e.routine, updated_by: uid(), updated_at: at, note: '' }).then(r => r, x => ({ error: x }));
+  const { error } = await sb.from('app_routines').upsert({ user_id: e.id, routine: packRoutine(e.routine, TR.vr && TR.view === e.id ? TR.vr.meals : e.meals), updated_by: uid(), updated_at: at, note: '' }).then(r => r, x => ({ error: x }));
   if (error) return toast('Couldn’t save that change. Check your connection.', 3500);
   e.at = at; if (TR.vr && TR.view === e.id) TR.vr.at = at;
   if (!e.noted) { e.noted = true; sb.from('app_notes').insert({ user_id: e.id, from_id: uid(), kind: 'routine', body: '', data: {}, read: false }).then(() => { }, () => { }); } // one notification per editing session
@@ -225,11 +231,11 @@ renderClients = function () { _renderClients(); if (!appOff() && sb) trHydratePh
 function startTrainer() {
   const c = cacheGet('gymp.trainers.' + uid()) || {};
   Object.assign(TR, { rows: c.rows || [], profs: c.profs || {}, loaded: !!c.rows, busy: false, at: 0, sumAt: 0, seg: 'clients', view: null, vr: null });
-  $('navClients').hidden = ME.role !== 'trainer'; if (typeof movePill === 'function') movePill();
+  $('navClients').hidden = ME.role !== 'trainer'; $('navCoach').hidden = ME.role === 'trainer'; if (tab === 'coach' && ME.role === 'trainer') showTab('workout'); if (typeof movePill === 'function') movePill();
   trPaint();
 }
 function stopTrainer() {
   Object.assign(TR, { rows: [], profs: {}, loaded: false, busy: false, at: 0, sumAt: 0, seg: 'clients', view: null, vr: null });
   for (const k in trPhotoUrls) { URL.revokeObjectURL(trPhotoUrls[k]); delete trPhotoUrls[k]; }
-  ED_FOR = null; $('navClients').hidden = true; const b = $('trBadge'); if (b) b.hidden = true; const el = $('clients'); if (el) el.innerHTML = '';
+  ED_FOR = null; $('navClients').hidden = true; $('navCoach').hidden = false; const b = $('trBadge'); if (b) b.hidden = true; const el = $('clients'); if (el) el.innerHTML = ''; const co = $('coach'); if (co) co.innerHTML = '';
 }

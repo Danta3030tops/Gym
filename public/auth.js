@@ -131,7 +131,7 @@ async function enter() {
     const b = await sb.from('app_routines').select('routine').eq('user_id', uid).maybeSingle(); if (b.error) throw b.error; rt = b.data;
   } catch (e) { offline = true; prof = cacheGet('gymp.me.' + uid); const c = cacheGet('gymp.routine.' + uid); rt = c ? { routine: c.routine } : null; }
   if (!prof) return showAuth('in', { text: offline ? 'Can’t reach the server. Check your connection and try again.' : 'Your profile is missing. Sign in again, or create a new account.' });
-  ME = prof; ROUTINE = rt ? cleanRoutine(rt.routine) : null; S = loadLocal(uid);
+  ME = prof; ROUTINE = rt ? cleanRoutine(rt.routine) : null; MEALS = rt ? mealsOf(rt.routine) : null; S = loadLocal(uid);
   if (!offline) { cacheSet('gymp.me.' + uid, prof); if (rt) cacheSet('gymp.routine.' + uid, { routine: rt.routine }); }
   applyTheme(prof.color);
   $('auth').classList.remove('show');
@@ -140,7 +140,7 @@ async function enter() {
 /* hand over to the app (public/app.js) */
 function showHome() { $('onb').classList.remove('show'); $('auth').classList.remove('show'); startApp(); }
 document.addEventListener('click', async e => {
-  if (e.target.closest('#signOut')) { stopApp(); await sb.auth.signOut().catch(() => { }); session = null; ME = null; ROUTINE = null; S = blankState(); showAuth('in'); }
+  if (e.target.closest('#signOut')) { stopApp(); await sb.auth.signOut().catch(() => { }); session = null; ME = null; ROUTINE = null; MEALS = null; S = blankState(); showAuth('in'); }
 });
 
 (async function initAuth() {
@@ -150,7 +150,7 @@ document.addEventListener('click', async e => {
   if (!sb) return showAuth('in');
   sb.auth.onAuthStateChange((ev, s) => {
     if (ev === 'PASSWORD_RECOVERY') { session = s; showAuth('newpw'); }
-    else if (ev === 'SIGNED_OUT') { session = null; if (ME) { stopApp(); ME = null; ROUTINE = null; S = blankState(); showAuth('in'); } }
+    else if (ev === 'SIGNED_OUT') { session = null; if (ME) { stopApp(); ME = null; ROUTINE = null; MEALS = null; S = blankState(); showAuth('in'); } }
     else if (s) session = s; // token refreshes
   });
   const { data } = await sb.auth.getSession().catch(() => ({ data: {} }));
