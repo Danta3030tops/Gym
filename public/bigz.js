@@ -90,8 +90,9 @@ pvRep = function (rep, ph, cls) {
   const P0 = P[PC.pat].ph, left = PC.target ? PC.target - rep : null;
   if (ph === P0[0]) {
     if (rep === 0) { if (bzPlay(21, 'cut')) bzPlay(bzCue(PC.ex), 'q'); else if (!bzReady()) _bzSay(ph, true); return; }
+    // the recording says "Two!" twice and never "Three!" (clip 024 is a second "Two!"), so rep three borrows the count-in "Three." (018)
     if (rep > 20) { if (!bzReady()) _bzSay(String(rep), true); return; } // past twenty he lets the beeps count
-    if (!bzPlay(21 + rep, 'cut')) { if (!bzReady()) _bzSay(left === 1 ? `${rep}. Last one` : String(rep), true); return; }
+    if (!bzPlay(rep === 3 ? 18 : 21 + rep, 'cut')) { if (!bzReady()) _bzSay(left === 1 ? `${rep}. Last one` : String(rep), true); return; }
     if (left === 2 && PC.target >= 6) bzPlay(43, 'q'); /* on a short set "Two! Two more!" just sounds like he said two twice */ else if (left === 1 && PC.target >= 3) bzPlay(44, 'q'); else if (PC.target >= 6 && rep === Math.round(PC.target / 2)) bzPlay(42, 'q');
   } else if (cls === 'phase up' && rep === 0 && bzPush(PC.ex)) bzPlay(4, 'lo');
 };
