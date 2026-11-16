@@ -341,8 +341,8 @@ function renderNudges() {
   const me = summaryOf(S, PROF), lines = [], g = goals(), ti = todayExact();
   if (isDeload(curWeek)) lines.push(`<div class="banner">🧘 <b>Deload week.</b> Half the sets at about 60% weight, so your joints and nervous system recover and you come back stronger. <button class="chip" data-deload="off">End deload</button></div>`);
   else { const n = consecutiveTrainingWeeks(); if (n >= 6) lines.push(`<div class="banner">📉 <b>${n} straight weeks of training.</b> A lighter deload week now helps you keep progressing. <button class="chip" data-deload="on">Make this a deload week</button></div>`); }
-  if (!me.todayTitle && ti >= 0) lines.push(`<div class="nud">📅 Today is <b>${esc(DAYS[ti].title)}</b>. Let's get it.</div>`);
-  if (me.dayStreak || me.weekStreak) lines.push(`<div class="streaks"><span>🔥 <b>${me.dayStreak}</b> day streak</span><span>📆 <b>${me.weekStreak}</b> week streak <small>(${g.weekDays}+ days/wk)</small></span></div>`);
+  if (!me.todayTitle && ti >= 0) lines.push(`<div class="nud">Today is <b>${esc(DAYS[ti].title)}</b>. Let's get it.</div>`);
+  if (me.dayStreak || me.weekStreak) lines.push(`<div class="streaks"><span><b>${me.dayStreak}</b> day streak</span><span><b>${me.weekStreak}</b> week streak <small>(${g.weekDays}+ days/wk)</small></span></div>`);
   el.innerHTML = lines.join('');
 }
 function renderPRs() {
@@ -928,7 +928,7 @@ function renderSess(force) {
   const key = act ? `${s.id}|${s.state}|${s.dur}|${s.who}|${s.end}|${s.left}` : `idle|${tab}`;
   if (!force && key === sessKey) return sessTick();
   sessKey = key;
-  if (!act) { el.innerHTML = tab === 'workout' ? `<button class="sess-idle" data-sessopen>⏱ Set a session time limit</button>` : ''; return; }
+  if (!act) { el.innerHTML = ''; return; } // idle: the session timer is started from the header menu
   const by = s.by === PROF ? 'you' : whoName(s.by);
   el.innerHTML = `<div class="sess ${s.state}"><svg class="ss-ring" viewBox="0 0 40 40"><circle cx="20" cy="20" r="16" class="bg"/><circle cx="20" cy="20" r="16" class="fg" data-ssring/></svg>
     <div class="ss-t"><b data-sstime>${fmtHMS(sessLeft(s))}</b><span data-sssub></span></div>

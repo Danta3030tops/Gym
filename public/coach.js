@@ -352,7 +352,7 @@ document.addEventListener('click', e => { const t = e.target.closest('[data-exco
 const _excountHtml = excountHtml;
 excountHtml = function () {
   const D = DAYS[cur], key = curWeek + ':' + cur, started = D.slots.some((sl, si) => doneToday(exOf(cur, si)));
-  if (started && EXC_OPEN !== key) return `<button class="excmin" data-excopen="${key}"><span>${D.slots.length} exercises today${wuDone() ? ' · warmed up' : ''}</span><i>Change ›</i></button>`; // folded once the first set is in
+  if (started && EXC_OPEN !== key) return `<button class="excmin" data-excopen="${key}"><span>${D.slots.length} exercise${D.slots.length === 1 ? '' : 's'} today${wuDone() ? ' · warmed up' : ''}</span><i>Change ›</i></button>`; // folded once the first set is in
   return _excountHtml().replace(/<\/div>$/, '') + `<button class="wurow ${wuDone() ? 'done' : ''}" data-wuopen><span>${wuDone() ? 'Warmed up' : '5-min warm-up before you start'}</span><i>${wuDone() ? 'Again' : 'Start'} ›</i></button>${started ? '<button class="exchide" data-excopen="">Hide</button>' : ''}</div>`;
 };
 const _renderWorkout = renderWorkout;

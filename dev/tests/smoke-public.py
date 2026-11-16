@@ -19,7 +19,7 @@ with sync_playwright() as p:
         route.abort()
     ctx.route(URL.split('/public')[0] + '/**', serve)
     errs = []; A = ctx.new_page(); A.on('pageerror', lambda e: errs.append(str(e))); A.set_default_timeout(10000)
-    shot = lambda n: A.screenshot(path=os.path.join(here, f'last-run-public-{n}.png'))
+    shot = lambda n: (A.wait_for_timeout(450), A.screenshot(path=os.path.join(here, f'last-run-public-{n}.png')))  # the pause lets tab and card animations finish
     db = lambda: A.evaluate("JSON.parse(localStorage.getItem('mockp.db'))")
     def until(c, msg='condition not met', timeout=8000, page=None):  # wait for a JS expression (str) or a python callable to turn true; AssertionError(msg) on timeout
         pg = page or A
@@ -109,6 +109,8 @@ with sync_playwright() as p:
     assert me['display_name'] == 'Test Person' and me['color'] == '#0a84ff' and me['role'] == 'user'
     assert len(d['t']['app_routines'][0]['routine']) == 3 and d['t']['app_state'][0]['data']['settings']['unit'] == 'kg' and d['t']['app_state'][0]['data']['settings']['plan']['equip'] == 'home'
     shot('6-home')
+    A.click('#menuBtn'); until(lambda: A.is_visible('#hmenu [data-tab="body"]') and A.is_visible('#hmenu [data-edopen]') and A.is_visible('#hmenu [data-sessopen]'), 'the header menu opens'); shot('6b-menu')
+    A.click('#menuBtn'); until(lambda: not A.is_visible('#hmenu'), 'and closes')
 
     # session survives a reload; sign out; username now taken; sign back in
     # log a set, check it lands in the state blob and the cloud copy, visit every tab
@@ -413,6 +415,37 @@ with sync_playwright() as p:
     has('#auErr', 'reset link')
     assert not errs, errs
 
+    # start from scratch: a fourth person skips the built plan and gets an empty week to fill in by hand
+    A.click('.au-go[data-aumode="in"], .au-link[data-aumode="in"]'); A.click('[data-aumode="up"]')
+    A.fill('#auUser', 'blank_bo'); A.fill('#auEmail', 'bo@example.com'); A.fill('#auPass', 'longenough1'); A.click('#auGo')
+    A.fill('#obName', 'Bo Blank'); nx('#onb [data-obnext]'); A.click('[data-mode="blank"]'); A.click('#onb [data-obnext]')
+    until(lambda: A.is_visible('#obBlank') and A.locator('#onb .wd.on').count() == 4, 'choosing an empty plan goes straight to picking days')
+    A.click('#obBack'); until(lambda: A.is_visible('[data-mode="auto"]'), 'back returns to the choice'); A.click('#onb [data-obnext]')
+    A.click('#onb [data-wd="2"]'); A.click('#onb [data-wd="4"]'); A.click('#onb [data-unit="kg"]'); shot('22-setup-blank'); A.click('#obBlank')
+    until(lambda: A.is_visible('.wrap') and len(T('app_profiles')) == 4, 'fourth account is set up')
+    bo = [r for r in T('app_routines') if r['user_id'] == T('app_profiles')[3]['id']][0]['routine']
+    assert [d['wd'] for d in bo] == [1, 5] and all(d['slots'] == [] for d in bo), 'the plan is two empty days'
+    assert A.evaluate("S.settings.plan") is None and A.evaluate("S.settings.unit") == 'kg', 'no setup answers are stored for an empty plan'
+    until(lambda: A.is_visible('#emptyDay') and A.locator('#days button').count() == 2 and not A.is_visible('.excount'), 'an empty day says so, with no exercise counter'); shot('23-empty-day')
+    A.click('[data-edaddhere]'); A.fill('#esN', 'Leg Press'); A.click('[data-edsave]')
+    until(lambda: A.evaluate("ROUTINE[cur].slots.length") == 1, 'the exercise is added to the day'); A.click('#sx')
+    cnt('#list .card', 1, 'a hand-built day is not padded out to four exercises')
+    # the editor: name the day, add a third day, move it, remove it
+    A.click('#menuBtn'); A.click('#hmenu [data-edopen]'); A.fill('#edTitle', 'Legs and glutes'); A.click('[data-eddayadd]')
+    until(lambda: A.evaluate("ROUTINE.length") == 3 and A.evaluate("ROUTINE[cur].title") == 'Legs and glutes' and A.evaluate("ROUTINE[2].slots.length") == 0, 'a third, empty day is added and the name is kept')
+    A.select_option('#edWd', '3'); until(lambda: A.evaluate("ROUTINE[2].wd") == 3 and A.evaluate("ROUTINE[2].d") == 'Wed', 'the new day moves to Wednesday')
+    A.click('#sx'); until(lambda: [x.split('\n')[0] for x in A.locator('#days button').all_inner_texts()] == ['Mon', 'Wed', 'Fri'] if A.evaluate("cur") == 1 else A.inner_text('#days').replace('\n', ' ').index('Wed') < A.inner_text('#days').replace('\n', ' ').index('Fri'), 'days show in weekday order')
+    A.click('#menuBtn'); A.click('#hmenu [data-edopen]'); A.click('[data-edday="2"]'); A.click('[data-eddayrm]')
+    until(lambda: A.evaluate("ROUTINE.length") == 2, 'an unused day can be removed'); A.click('#sx')
+    # the exercise count and warm-up fold away after the first set, and the options sit behind the ··· button
+    go('workout'); A.click('#days button >> nth=0'); until(lambda: A.is_visible('.excount .exstep') and A.is_visible('[data-wuopen]'), 'counter and warm-up show before the first set')
+    assert not A.is_visible('[data-swap="0"]'); A.click('[data-exmore]'); until(lambda: A.is_visible('[data-swap="0"]') and A.is_visible('[data-pace="0"]'), 'the ··· button shows the options')
+    A.fill('[data-w="0:0"]', '60'); A.fill('[data-r="0:0"]', '10'); A.click('[data-chk="0:0"]')
+    until(lambda: A.is_visible('.excmin') and not A.is_visible('.excount') and '1 exercise today' in A.inner_text('.excmin'), 'the card folds once a set is logged'); A.click('#rskip'); shot('24-folded')
+    A.click('.excmin'); until(lambda: A.is_visible('.excount .exstep') and A.is_visible('[data-wuopen]') and A.is_visible('.exchide'), 'tapping it opens the card again')
+    A.click('.exchide'); until(lambda: A.is_visible('.excmin'), 'and Hide folds it')
+    A.click('#menuBtn'); A.click('#hmenu [data-edopen]'); A.click('[data-eddayrm]'); has('#toast', 'already has logged workouts'); A.click('#sx')
+    assert not errs, errs
     # offline (milestone 6): the service worker caches every file the page loads, and the app opens with no network
     import re
     html = open(os.path.join(here, '../../public/index.html')).read(); sw = open(os.path.join(here, '../../public/sw.js')).read()

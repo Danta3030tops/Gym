@@ -62,6 +62,21 @@ Status values: `todo`, `in progress`, `done`.
 
 (newest first)
 
+### 16 Nov 2026 — UI refresh and start-from-scratch on branch `spott-ui` (gymp-v4); NOT merged, NOT pushed
+
+Owner picked a look from mockups (`dev/public-version/mockups/`, `refined-v4.html` is the last one). Built on branch `spott-ui`:
+
+- **Tabs:** Workout, History, Friends, and Coach (Clients for coaches). Body, Fuel, Session timer, Edit plan and Settings are in a header menu (`#menuBtn` / `#hmenu` in `index.html`, opened by a small listener above `showTab` in `app.js`). The week range moved into that menu.
+- **Coach tab** (`renderCoachTab` in `trainer.js`): the "Your coach" card moved here from Friends → People for everyone who is not a coach; coaches keep it in People.
+- **Workout:** exercise options (Pace, Swap, Progress, Warm-up sets, Plates) sit behind a ··· button on each card. The Exercises-today counter and the warm-up row fold into one slim row once the first set of the day is logged (`excountHtml` wrapper in `coach.js`, `EXC_OPEN`); tapping it opens it again.
+- **Start from scratch:** setup has a new step ("Build me a plan" / "Start from scratch"). Scratch asks only for training days and units, then saves days with no exercises and `settings.plan = null`. An empty day shows "Nothing planned yet" with Add exercise.
+- **Plan editor:** add a day (＋ in the day row), move a day to another weekday, remove a day, empty days allowed, and it works when there is no plan at all. Day indexes never shift (logs are keyed by them): a new day is appended and days are *shown* in weekday order (`dayOrder` in `app.js`); a day can only be removed while nothing is logged on it or on a later day.
+- `exCountFor` no longer pads a short day up to four exercises unless the person set a count themselves.
+- Leaderboard filter is a dropdown (`#lbSel`). Background is a vertical wash of the person's colour. Workout-screen emoji removed.
+- Tests: `smoke-public.py` updated for the new navigation and extended (start from scratch, day editing, folding card, menu). Both smoke tests pass.
+- **Not done:** emoji remain in Friends, Coach, notes, History and Settings; Friends and History keep their old layouts (only the tab bar, menu and background changed there); a coach cannot yet remove a client's day unless it is the last one and empty; nothing tried on a real phone or the real database.
+- **Pick up here:** owner to look at the screenshots, then merge `spott-ui` into `main` and push (their OK needed).
+
 ### 15 Nov 2026 (later) — couple app no longer wipes Spott's offline cache (gym-v21)
 
 - Root `sw.js`: on activate it only deletes caches starting `gym-v` (it used to delete every cache but its own, including `gymp-*`). Owner approved touching the root file for this. `VERSION` is `gym-v21`.

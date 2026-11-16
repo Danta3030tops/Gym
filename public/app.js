@@ -231,14 +231,14 @@ function renderWorkout() {
     return `<button class="${i === cur ? 'on' : ''} ${i === today ? 'today' : ''}" data-day="${i}">${dayDone(curWeek, i) ? '<span class="dot"></span>' : ''}${esc(d.d)}<small>${date.getDate()} · ${esc(String(d.title).split(' ')[0])}</small></button>`;
   }).join('');
   const done = DAYS.filter((_, i) => dayDone(curWeek, i)).length;
-  $('weekline').textContent = `This week: ${done} / ${DAYS.length} days complete${isDeload(curWeek) ? ' · 🧘 deload' : ''}`;
+  $('weekline').textContent = `This week: ${done} / ${DAYS.length} days complete${isDeload(curWeek) ? ' · deload' : ''}`;
 
   // new week banner
   const lastSeen = localStorage.getItem(LWS());
   const prevKey = dk(addDays(parseDk(curWeek), -7));
   if (lastSeen && lastSeen !== curWeek && S.logs[prevKey]) {
     const st = weekStats(prevKey);
-    $('newweek').innerHTML = `<div class="banner">🔄 <b>New week, fresh sheet.</b> Last week (${st.days}/${DAYS.length} days, ${st.sets} sets, ${st.vol.toLocaleString()} ${unit()} moved) is saved in History. <button class="chip" data-dismiss style="margin-top:8px">Got it</button></div>`;
+    $('newweek').innerHTML = `<div class="banner"><b>New week, fresh sheet.</b> Last week (${st.days}/${DAYS.length} days, ${st.sets} sets, ${st.vol.toLocaleString()} ${unit()} moved) is saved in History. <button class="chip" data-dismiss style="margin-top:8px">Got it</button></div>`;
   } else { $('newweek').innerHTML = ''; if (lastSeen !== curWeek) localStorage.setItem(LWS(), curWeek); }
 
   const D = DAYS[cur], date = dayDate(curWeek, cur);
