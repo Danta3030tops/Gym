@@ -347,9 +347,13 @@ function wuFinish() {
 function wuClose() { WU = null; const el = $('wu'); if (el) el.remove(); }
 
 /* ---------------- workout tab: warm-up row + finish link ---------------- */
+let EXC_OPEN = null; // 'week:day' the person re-opened the folded card for
+document.addEventListener('click', e => { const t = e.target.closest('[data-excopen]'); if (!t || appOff()) return; EXC_OPEN = t.dataset.excopen || null; $('excount').innerHTML = excountHtml(); });
 const _excountHtml = excountHtml;
 excountHtml = function () {
-  return _excountHtml().replace(/<\/div>$/, '') + `<button class="wurow ${wuDone() ? 'done' : ''}" data-wuopen><span>${wuDone() ? '✅ Warmed up' : '🔥 5-min warm-up for today'}</span><i>${wuDone() ? 'again' : 'Start'} ›</i></button></div>`;
+  const D = DAYS[cur], key = curWeek + ':' + cur, started = D.slots.some((sl, si) => doneToday(exOf(cur, si)));
+  if (started && EXC_OPEN !== key) return `<button class="excmin" data-excopen="${key}"><span>${D.slots.length} exercises today${wuDone() ? ' · warmed up' : ''}</span><i>Change ›</i></button>`; // folded once the first set is in
+  return _excountHtml().replace(/<\/div>$/, '') + `<button class="wurow ${wuDone() ? 'done' : ''}" data-wuopen><span>${wuDone() ? 'Warmed up' : '5-min warm-up before you start'}</span><i>${wuDone() ? 'Again' : 'Start'} ›</i></button>${started ? '<button class="exchide" data-excopen="">Hide</button>' : ''}</div>`;
 };
 const _renderWorkout = renderWorkout;
 renderWorkout = function () {

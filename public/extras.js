@@ -35,7 +35,7 @@ function applyRoutine() {
 const EXC_MIN = 4, EXC_MAX = 10;
 function exCountFor(set, wk, di, baseLen) {
   const c = ((set || {}).exCount || {})[wk + ':' + di] ?? ((set || {}).exCountDef || {})[di];
-  return Math.max(EXC_MIN, Math.min(EXC_MAX, c ?? baseLen));
+  return c == null ? Math.min(EXC_MAX, baseLen) : Math.max(EXC_MIN, Math.min(EXC_MAX, c)); // a short hand-built day stays as short as it was made
 }
 const TIMED_RE = /plank|hold|dead hang|wall sit|hollow/i;
 function bonusSlots(day, need) {
@@ -220,8 +220,8 @@ const isBarbell = ex => /barbell|smith|bench press|back squat|hip thrust|good mo
 function extraChips(sl, ex, si) {
   if (sl.time) return '';
   let h = '';
-  if (si === 0 || sl.rest >= 120) h += `<button class="chip" data-warm="${si}">🔥 Warm-up</button>`;
-  if (isBarbell(ex)) h += `<button class="chip" data-plates="${si}">🏋️ Plates</button>`;
+  if (si === 0 || sl.rest >= 120) h += `<button class="chip" data-warm="${si}">Warm-up sets</button>`;
+  if (isBarbell(ex)) h += `<button class="chip" data-plates="${si}">Plates</button>`;
   return h;
 }
 function noteHtml(si, id, last) {
@@ -595,15 +595,23 @@ function calcGo() {
 let edDay = 0;
 let ED_FOR = null; // set while a coach edits a client's plan: { id, name, routine, noted } (see trainer.js); null = my own plan
 const edBase = () => (ED_FOR ? ED_FOR.routine : baseRoutine());
+const freeWd = R => [1, 2, 3, 4, 5, 6, 7].find(w => !R.some(d => d.wd === w));
+const blankDay = (R, wd) => ({ d: WD_NAMES[wd], wd, title: 'Day ' + (R.length + 1), slots: [] });
+const dayHasLogs = from => Object.values(S.logs || {}).some(w => Object.keys(w || {}).some(di => +di >= from && Object.values(w[di] || {}).some(e => (e.sets || []).some(Boolean))));
 function editRoutine() {
-  const R = edBase(), D = R[edDay];
+  const R = edBase(); if (edDay >= R.length) edDay = 0; const D = R[edDay];
+  if (!D) return openSheet(`<h3>${ED_FOR ? esc(ED_FOR.name) + ' has no plan yet' : 'No plan yet'}</h3><div class="sub">${ED_FOR ? 'Start an empty week for them and add the days and exercises yourself.' : 'Let the app build one from a few questions, or start with an empty week and add everything yourself.'}</div>
+    ${ED_FOR ? '' : '<button class="btn acc" data-buildplan>Build my plan</button>'}<button class="btn ${ED_FOR ? 'acc' : 'ghost'}" data-edblank>Start from scratch</button>`);
   openSheet(`<h3>${ED_FOR ? 'Edit ' + esc(ED_FOR.name) + '’s plan' : 'Edit routine'}</h3><div class="sub">${ED_FOR ? 'Every change is saved to their plan straight away.' : 'Your history is kept per exercise name, so renaming or reordering never loses it.'}</div>
-    <div class="days" style="margin:0 0 10px">${R.map((d, i) => `<button class="${i === edDay ? 'on' : ''}" data-edday="${i}">${esc(d.d)}</button>`).join('')}</div>
-    <label class="fld">Day name<input id="edTitle" value="${esc(D.title)}"></label>
+    <div class="days" style="margin:0 0 10px">${dayOrder(R).map(i => `<button class="${i === edDay ? 'on' : ''}" data-edday="${i}">${esc(R[i].d)}</button>`).join('')}${R.length < 7 ? '<button data-eddayadd aria-label="Add a training day">＋</button>' : ''}</div>
+    <div class="grid2"><label class="fld">Day name<input id="edTitle" value="${esc(D.title)}" maxlength="60" placeholder="e.g. Chest and back"></label>
+    <label class="fld">Trained on<select id="edWd">${[1, 2, 3, 4, 5, 6, 7].map(w => `<option value="${w}" ${w === D.wd ? 'selected' : ''} ${w !== D.wd && R.some(d => d.wd === w) ? 'disabled' : ''}>${WD_NAMES[w]}</option>`).join('')}</select></label></div>
+    ${D.slots.length ? '' : '<div class="muted" style="margin-top:10px">No exercises on this day yet.</div>'}
     <div style="margin-top:10px">${D.slots.map((sl, si) => `<div class="edrow"><div class="edn"><b>${esc(sl.opts[0].n)}</b><span>${safeN(sl.sets)} × ${esc(sl.reps)} · rest ${fmtT(safeN(sl.rest))}${sl.opts.length > 1 ? ` · ${sl.opts.length - 1} swaps` : ''}</span></div>
       <button class="cbtn" data-edmv="${si}:-1" ${si === 0 ? 'disabled' : ''}>↑</button><button class="cbtn" data-edmv="${si}:1" ${si === D.slots.length - 1 ? 'disabled' : ''}>↓</button><button class="cbtn" data-ededit="${si}">✎</button><button class="cbtn" data-eddel="${si}">✕</button></div>`).join('')}</div>
     <button class="btn acc" data-ededit="new">＋ Add exercise</button>
-    ${!ED_FOR && S.settings.plan ? '<button class="btn ghost" data-edreset>Rebuild from my setup answers</button>' : ''}`);
+    ${R.length > 1 ? '<button class="btn ghost" data-eddayrm>Remove this day</button>' : ''}
+    ${ED_FOR ? '' : S.settings.plan ? '<button class="btn ghost" data-edreset>Rebuild from my setup answers</button>' : '<button class="btn ghost" data-buildplan>Let the app build my plan</button>'}`);
 }
 function mutRoutine(fn) {
   if (ED_FOR) { const R = clone(ED_FOR.routine); fn(R); ED_FOR.routine = R; trSaveRoutine(); return; } // a coach editing a client: saved to the client's row
@@ -1000,8 +1008,17 @@ document.addEventListener('click', async e => { if (appOff()) return;
   // routine editor
   if (d.edopen !== undefined) { ED_FOR = null; edDay = cur; return editRoutine(); }
   if (d.edday) { saveTitle(); edDay = +d.edday; return editRoutine(); }
+  if (d.edaddhere !== undefined) { ED_FOR = null; edDay = cur; return editSlot('new'); }
+  if (d.edblank !== undefined) { mutRoutine(R => { if (!R.length) R.push(blankDay(R, 1)); }); edDay = 0; return editRoutine(); }
+  if (d.eddayadd !== undefined) { saveTitle(); const R0 = edBase(), wd = freeWd(R0); if (!wd || R0.length >= 7) return; mutRoutine(R => R.push(blankDay(R, wd))); edDay = edBase().length - 1; return editRoutine(); }
+  if (d.eddayrm !== undefined) { // day indexes are what logs hang on, so a day can only go while nothing is logged on it or after it
+    const R0 = edBase(), last = edDay === R0.length - 1;
+    if (ED_FOR ? !(last && !R0[edDay].slots.length) : dayHasLogs(edDay)) return toast(ED_FOR ? 'Only an empty last day can be removed from a client’s plan' : 'This day already has logged workouts, so it stays. You can rename it, move it or empty it.', 4500);
+    if (!ED_FOR) { const sw = S.settings.swaps; for (const k in sw) if (+k.split('-')[0] >= edDay) delete sw[k]; touchSettings(); if (cur >= edDay) cur = 0; }
+    mutRoutine(R => R.splice(edDay, 1)); edDay = 0; toast('Day removed'); return editRoutine();
+  }
   if (d.edmv) { saveTitle(); const [si, dir] = d.edmv.split(':').map(Number), j = si + dir; mutRoutine(R => { const sl = R[edDay].slots; [sl[si], sl[j]] = [sl[j], sl[si]]; }); remapSwaps(edDay, s => s === si ? j : s === j ? si : s); save(); return editRoutine(); }
-  if (d.eddel) { saveTitle(); const si = +d.eddel; if (edBase()[edDay].slots.length <= 1) return toast('A day needs at least one exercise'); mutRoutine(R => R[edDay].slots.splice(si, 1)); remapSwaps(edDay, s => s === si ? null : s > si ? s - 1 : s); save(); toast('Removed'); return editRoutine(); }
+  if (d.eddel) { saveTitle(); const si = +d.eddel; mutRoutine(R => R[edDay].slots.splice(si, 1)); remapSwaps(edDay, s => s === si ? null : s > si ? s - 1 : s); save(); toast('Removed'); return editRoutine(); }
   if (d.ededit) { saveTitle(); return editSlot(d.ededit === 'new' ? 'new' : +d.ededit); }
   if (d.edsave) return saveSlot(d.edsave === 'new' ? 'new' : +d.edsave);
   if (d.edback !== undefined) return editRoutine();
@@ -1015,6 +1032,7 @@ document.addEventListener('click', async e => { if (appOff()) return;
 function saveTitle() { const el = $('edTitle'); if (!el) return; const v = el.value.trim(); if (v && v !== edBase()[edDay].title) mutRoutine(R => { R[edDay].title = v; }); }
 document.addEventListener('change', e => { if (appOff()) return;
   const d = e.target.dataset;
+  if (e.target.id === 'edWd') { saveTitle(); const w = +e.target.value; mutRoutine(R => { R[edDay].wd = w; R[edDay].d = WD_NAMES[w]; }); return editRoutine(); }
   if (d.note !== undefined) { const si = +d.note, ex = exOf(cur, si), en = ensureEntry(curWeek, cur, ex); en.note = e.target.value.trim(); en.u = Date.now(); save(); return; }
   if (d.fset) { setFuel(fuelDate, d.fset, e.target.value); renderFuel(); return; }
   if (d.goal) { S.settings.goals = { ...(S.settings.goals || {}), [d.goal]: Math.max(0, Math.round(num(e.target.value))) || undefined }; touchSettings(); renderFuel(); return; }

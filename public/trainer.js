@@ -32,10 +32,16 @@ async function loadTrainers() {
 function trPaint() {
   const b = $('trBadge'), n = trBadgeN(); if (b) { b.hidden = !n; b.textContent = n > 9 ? '9+' : n; }
   if (appOff()) return;
-  if (tab === 'clients') renderClients(); else if (tab === 'friends' && FR.seg === 'people' && !CH.open) renderFriends();
+  if (tab === 'clients') renderClients(); else if (tab === 'coach') renderCoachTab(); else if (tab === 'friends' && FR.seg === 'people' && !CH.open) renderFriends();
 }
 
 /* ---------- client side: the "Your coach" card (called by renderFriends) ---------- */
+/* the Coach tab: everyone who is not a coach themselves */
+function renderCoachTab() {
+  const el = $('coach'); if (!el) return;
+  el.innerHTML = coachCardHtml() + `<div class="foot">${trCoach() ? 'Plan changes from your coach show up under Friends, in New for you.' : 'No coach? You can still build and edit your own plan from the menu.'}</div>`;
+  if (Date.now() - TR.at > 5000 && typeof loadTrainers === 'function') loadTrainers();
+}
 function coachCardHtml() {
   const c = trCoach();
   if (!c) return `<div class="card" id="trCard"><h3>Your coach</h3><div class="muted">Working with a trainer? Add them and they can follow your training, edit your plan and message you.</div><button class="btn" data-tradd>＋ Add your coach</button></div>`;
@@ -225,11 +231,11 @@ renderClients = function () { _renderClients(); if (!appOff() && sb) trHydratePh
 function startTrainer() {
   const c = cacheGet('gymp.trainers.' + uid()) || {};
   Object.assign(TR, { rows: c.rows || [], profs: c.profs || {}, loaded: !!c.rows, busy: false, at: 0, sumAt: 0, seg: 'clients', view: null, vr: null });
-  $('navClients').hidden = ME.role !== 'trainer'; if (typeof movePill === 'function') movePill();
+  $('navClients').hidden = ME.role !== 'trainer'; $('navCoach').hidden = ME.role === 'trainer'; if (tab === 'coach' && ME.role === 'trainer') showTab('workout'); if (typeof movePill === 'function') movePill();
   trPaint();
 }
 function stopTrainer() {
   Object.assign(TR, { rows: [], profs: {}, loaded: false, busy: false, at: 0, sumAt: 0, seg: 'clients', view: null, vr: null });
   for (const k in trPhotoUrls) { URL.revokeObjectURL(trPhotoUrls[k]); delete trPhotoUrls[k]; }
-  ED_FOR = null; $('navClients').hidden = true; const b = $('trBadge'); if (b) b.hidden = true; const el = $('clients'); if (el) el.innerHTML = '';
+  ED_FOR = null; $('navClients').hidden = true; $('navCoach').hidden = false; const b = $('trBadge'); if (b) b.hidden = true; const el = $('clients'); if (el) el.innerHTML = ''; const co = $('coach'); if (co) co.innerHTML = '';
 }

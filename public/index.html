@@ -736,13 +736,41 @@ body:not(:has(#rest.show)) #effort{bottom:calc(var(--nav) + var(--sb) + 24px)}
 .wunext{font-size:13px;color:var(--mut);margin:14px 0 auto}
 #wu .pbtns{display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:8px;width:100%;max-width:420px}
 #wu .pbtns button{padding:14px;border-radius:16px;border:0;background:var(--fill,var(--card2));color:inherit;font:inherit;font-weight:700}#wu .pbtns .main{background:var(--acc);color:var(--onacc,#000)}
+
+/* ============ Spott refresh: calmer screens, four tabs, a menu for the rest ============ */
+body::before{background:linear-gradient(180deg,color-mix(in srgb,var(--acc) 30%,var(--bg)) 0,color-mix(in srgb,var(--acc) 13%,var(--bg)) 30%,var(--bg) 64%)}
+[data-mode=light] body::before{opacity:1;background:linear-gradient(180deg,color-mix(in srgb,var(--acc) 26%,var(--bg)) 0,color-mix(in srgb,var(--acc) 9%,var(--bg)) 30%,var(--bg) 64%)}
+h1 span{color:inherit}
+#wkpill{display:none}
+.hbtn{width:38px;height:38px;border-radius:50%;background:var(--fill);color:var(--txt);display:flex;align-items:center;justify-content:center;flex:none;padding:0;border:0}
+.hbtn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.hbtn.on,body.hmopen .hbtn{background:var(--txt);color:var(--bg)}
+#hmenu{position:fixed;z-index:40;top:calc(var(--st) + 62px);right:max(14px,calc(50% - 266px));width:min(270px,calc(100vw - 28px));border-radius:24px;overflow:hidden;background:var(--glass);-webkit-backdrop-filter:blur(40px) saturate(180%);backdrop-filter:blur(40px) saturate(180%);border:1px solid var(--glass-b);box-shadow:var(--lift);transform-origin:top right;animation:hmin .22s var(--spring,ease)}
+#hmenu[hidden]{display:none}
+@keyframes hmin{from{opacity:0;transform:scale(.9)}}
+#hmenu button,.hmwk{display:flex;align-items:center;justify-content:space-between;width:100%;height:50px;padding:0 18px;border:0;border-top:1px solid var(--line);background:none;color:inherit;font:inherit;font-size:17px;text-align:left}
+#hmenu button:active{transform:none;background:var(--fill)}
+#hmenu button.gap{border-top:8px solid rgba(0,0,0,.16)}
+#hmenu svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.900;stroke-linecap:round;stroke-linejoin:round}
+.hmwk{border-top:0;height:44px;font-size:13px;color:var(--mut)}.hmwk b{font-weight:600;color:var(--txt)}
+body.out #hmenu,body.out .hbtn{display:none}
+/* exercise card: options live behind the ··· button */
+.exmore{flex:none;align-self:flex-start;width:34px;height:34px;border-radius:50%;border:0;padding:0;background:var(--fill);color:var(--txt);font-size:18px;font-weight:700;line-height:1;letter-spacing:1px}
+.card .exchips{display:none}.card.more .exchips{display:flex}.card.more .exmore{background:var(--txt);color:var(--bg)}
+/* exercise count and warm-up fold away once the first set is logged */
+.excmin{display:flex;align-items:center;justify-content:space-between;width:100%;margin:12px 0 4px;padding:11px 16px;border-radius:18px;border:0;background:var(--fill);color:inherit;font:inherit;font-size:14px;font-weight:600;text-align:left}
+.excmin i{font-style:normal;color:var(--mut);font-weight:600;font-size:13px}
+.exchide{flex-basis:100%;margin-top:8px;padding:8px 0 0;border:0;border-top:1px solid var(--line);background:none;color:var(--mut);font:inherit;font-size:13px;font-weight:600}
+.excount{flex-wrap:wrap}
+.lbsel{appearance:none;-webkit-appearance:none;border:0;background:none;color:var(--acc2,var(--acc));font:inherit;font-size:14px;font-weight:700;text-align:right;padding:4px 0}
+.lbhead{display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--mut);padding-bottom:6px;margin-bottom:2px;border-bottom:1px solid var(--line)}
 </style>
 </head>
 <body class="out">
 <div class="wrap">
   <header>
     <div><h1 id="htitle">Spott</h1><div class="sync" id="sync"><i></i><span>Signed in</span></div></div>
-    <div class="row"><div class="pill" id="wkpill"></div></div>
+    <div class="row"><div class="pill" id="wkpill"></div><button class="hbtn" id="menuBtn" aria-label="Menu" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14M5 12h14M5 16h14"/></svg></button></div>
   </header>
 
   <!-- WORKOUT -->
@@ -754,7 +782,7 @@ body:not(:has(#rest.show)) #effort{bottom:calc(var(--nav) + var(--sb) + 24px)}
     <div class="bar"><i id="dbar"></i></div>
     <div id="excount"></div>
     <div id="list"></div>
-    <div class="foot">Tap the figure for form tips · ↻ swaps the exercise · ▶ paces your reps<br>A rest timer starts when you tick off a set. A fresh week starts every Monday, and last week moves to History.</div>
+    <div class="foot">Tap the figure for form tips. The ··· button on an exercise has pacing, swaps and progress.<br>A rest timer starts when you tick off a set. A fresh week starts every Monday, and last week moves to History.</div>
   </section>
 
   <!-- HISTORY -->
@@ -768,6 +796,9 @@ body:not(:has(#rest.show)) #effort{bottom:calc(var(--nav) + var(--sb) + 24px)}
 
   <!-- FRIENDS -->
   <section class="tab" id="t-friends"><div id="friends"></div></section>
+
+  <!-- COACH (everyone who is not a coach) -->
+  <section class="tab" id="t-coach"><div id="coach"></div></section>
 
   <!-- CLIENTS (coaches only) -->
   <section class="tab" id="t-clients"><div id="clients"></div></section>
@@ -785,12 +816,18 @@ body:not(:has(#rest.show)) #effort{bottom:calc(var(--nav) + var(--sb) + 24px)}
 <nav>
   <button data-tab="workout" class="on"><svg viewBox="0 0 24 24"><path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12"/></svg>Workout</button>
   <button data-tab="history"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>History</button>
-  <button data-tab="body"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2.5"/><path d="M12 8v7M7 10l5 1 5-1M9 22l3-7 3 7"/></svg>Body</button>
-  <button data-tab="fuel"><svg viewBox="0 0 24 24"><path d="M12 2s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/><path d="M9 14a3 3 0 0 0 3 3"/></svg>Fuel</button>
   <button data-tab="friends"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.900 1.900 6.500 5.500M16 5.200a3 3 0 0 1 0 5.700M18 14.800c2 .7 3.200 2.400 3.600 5.200"/></svg>Friends<i class="nbadge" id="frBadge" hidden></i></button>
+  <button data-tab="coach" id="navCoach"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c.7-3.800 3.500-5.800 7-5.800s6.300 2 7 5.800"/><path d="M17.500 3.500l1 1.600 1.800.4-1.200 1.400.2 1.800-1.800-.7-1.700.700.2-1.800-1.200-1.400 1.800-.4z" stroke-width="1.300"/></svg>Coach</button>
   <button data-tab="clients" id="navClients" hidden><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3"/></svg>Clients<i class="nbadge" id="trBadge" hidden></i></button>
-  <button data-tab="more"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>More</button>
 </nav>
+<div id="hmenu" hidden>
+  <div class="hmwk"><span>This week</span><b id="hmWeek"></b></div>
+  <button data-tab="body">Body<svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2.5"/><path d="M12 8v7M7 10l5 1 5-1M9 22l3-7 3 7"/></svg></button>
+  <button data-tab="fuel">Fuel<svg viewBox="0 0 24 24"><path d="M12 2s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/><path d="M9 14a3 3 0 0 0 3 3"/></svg></button>
+  <button class="gap" data-edopen>Edit plan<svg viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg></button>
+  <button class="gap" data-tab="more">Settings<svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg></button>
+</div>
+
 
 <div class="ov" id="ov"></div>
 <div class="sheet" id="sheet"><div class="grab"></div><button class="xbtn" id="sx">✕</button><div class="in" id="sheetin"></div></div>
