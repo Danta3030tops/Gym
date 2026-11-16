@@ -5,7 +5,7 @@ A self-hosted PWA gym tracker for two people. Plain HTML/CSS/JS, no build step, 
 - **Live:** https://danta3030tops.github.io/Gym/ (capital G matters)
 - **Repo:** `Danta3030tops/Gym`, branch `main`, served by GitHub Pages from the repo root
 - **Backend:** Supabase project `xszyjrrrqpcciofrrfiu` (URL and publishable key are in `config.js`; the key is meant to be public, Row Level Security protects the data)
-- **Current version:** `gym-v20` (see `sw.js`)
+- **Current version:** `gym-v21` (see `sw.js`)
 
 ## Deploying
 

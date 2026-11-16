@@ -1,6 +1,6 @@
 // Offline support: app files are cached so it opens at the gym with no signal.
 // Bump VERSION whenever you change app files so phones pick up the update.
-const VERSION = 'gym-v20';
+const VERSION = 'gym-v21';
 const SHELL = ['./', './index.html', './app.js', './extras.js', './chat.js', './coach.js', './motion.js', './data.js', './data-qxeen.js', './figures.js', './library.js', './config.js', './manifest.webmanifest',
   './icon-192.png', './icon-512.png', './apple-touch-icon.png', './maskable-512.png'];
 const CDN = ['cdn.jsdelivr.net', 'cdnjs.cloudflare.com', 'fonts.googleapis.com', 'fonts.gstatic.com'];
@@ -10,7 +10,7 @@ self.addEventListener('install', e => {
 .then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim()));
+  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith('gym-v') && k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim()));
 });
 self.addEventListener('fetch', e => {
   const req = e.request; if (req.method !== 'GET') return;

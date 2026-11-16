@@ -41,7 +41,7 @@ The build against the mock backend is finished. Nothing has been pushed or merge
 6. Answer the open questions above when convenient; each has a working default.
 
 Known rough edges:
-- The couple app's service worker (`/sw.js`) deletes every cache except its own when its version changes, including the public app's cache. The public app simply re-downloads its files the next time it is opened with a connection. Fixing that properly means a one-line change in the root `sw.js` (only delete caches starting `gym-v`), which these sessions were not allowed to touch.
+- (Fixed in `gym-v21`.) The couple app's service worker used to delete Spott's cache whenever its own version changed; it now only deletes caches starting `gym-v`.
 - Remember to bump `VERSION` in `public/sw.js` whenever a file in `public/` changes (same rule as the couple app), and add any new file to `SHELL` there (the smoke test fails if a script is missing from it).
 - Realtime (live updates without reopening the app) is written but has never run against a real project; the mock has no realtime.
 
@@ -61,6 +61,13 @@ Status values: `todo`, `in progress`, `done`.
 ## Session log
 
 (newest first)
+
+### 15 Nov 2026 (later) — couple app no longer wipes Spott's offline cache (gym-v21)
+
+- Root `sw.js`: on activate it only deletes caches starting `gym-v` (it used to delete every cache but its own, including `gymp-*`). Owner approved touching the root file for this. `VERSION` is `gym-v21`.
+- Both smoke tests pass. Checked in a real browser with service workers on: after the new worker activates, `gym-v20` is gone and `gymp-v3` is kept.
+- Playwright's Python package was not installed on this Mac any more (the browser was); tests ran from a throwaway venv.
+- **Still open:** Gmail SMTP sender and Spott wording in the email templates (owner); first try with two real accounts.
 
 ### 15 Nov 2026 (late) — the public app is now "Spott"; merged into `main` and pushed
 
