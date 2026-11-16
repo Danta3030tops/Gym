@@ -67,3 +67,5 @@ function cleanMeals(m) {
 }
 const mealsOf = raw => { const e = Array.isArray(raw) ? raw.find(x => x && x.meals && !Array.isArray(x.slots)) : null; return e ? cleanMeals(e.meals) : null; };
 const packRoutine = (routine, meals) => meals ? [...(routine || []), { meals }] : routine;
+// the database hands a time back as "…+00:00" where the app wrote "…Z": compare the moments, not the text
+const sameAt = (a, b) => a === b || Date.parse(a) === Date.parse(b);

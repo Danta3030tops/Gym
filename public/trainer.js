@@ -165,7 +165,7 @@ async function trSaveRoutine() {
   if (!sb || !navigator.onLine) return toast('You’re offline. That change wasn’t saved.', 3500);
   // don't save over a change the client made while this coach had the plan open
   const cur = await sb.from('app_routines').select('updated_at').eq('user_id', e.id).maybeSingle().then(r => r, x => ({ error: x }));
-  if (!cur.error && cur.data && e.at && cur.data.updated_at !== e.at) { ED_FOR = null; closeSheet(); toast(`${e.name} changed their plan while you were editing. Here is the latest: make your change again.`, 5000); return trOpenClient(e.id); }
+  if (!cur.error && cur.data && e.at && !sameAt(cur.data.updated_at, e.at)) { ED_FOR = null; closeSheet(); toast(`${e.name} changed their plan while you were editing. Here is the latest: make your change again.`, 5000); return trOpenClient(e.id); }
   const at = new Date().toISOString();
   const { error } = await sb.from('app_routines').upsert({ user_id: e.id, routine: packRoutine(e.routine, TR.vr && TR.view === e.id ? TR.vr.meals : e.meals), updated_by: uid(), updated_at: at, note: '' }).then(r => r, x => ({ error: x }));
   if (error) return toast('Couldn’t save that change. Check your connection.', 3500);
