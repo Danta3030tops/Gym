@@ -71,7 +71,7 @@ Status values: `todo`, `in progress`, `done`.
 - **Bug review fixes:** the Coach tab is cleared on sign-out; a coach can start a plan for a client who has none; removing a day also clears that day's exercise-count settings; a coach's meal-plan saves are queued so two quick saves cannot trip the "changed while you were editing" check.
 - Both smoke tests pass; `smoke-public.py` covers the meal planner (coach writes a plan, client ticks and logs, own plan and targets, plan survives a workout-plan save).
 - **Known:** a phone still on the old cached version (`gymp-v3`) that saves a workout-plan edit will drop the meal plan from the row, until that phone has reopened the app twice. Emoji remain outside the Workout and Fuel screens. Nothing tried on a real phone or with two real accounts yet.
-- **Still open (owner):** Gmail SMTP sender and Spott wording in the email templates.
+- **Still open (owner):** Spott wording in the email templates. (Gmail SMTP sender: done by the owner, 16 Nov.)
 
 ### 16 Nov 2026 — UI refresh and start-from-scratch on branch `spott-ui` (gymp-v4) (merged later the same day, see above)
 
