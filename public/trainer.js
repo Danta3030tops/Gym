@@ -125,7 +125,7 @@ async function trOpenClient(cid) {
   if (!sb || !navigator.onLine) { TR.vr.err = true; return renderClients(); }
   const [rt, st, pb] = await Promise.all([sb.from('app_routines').select('*').eq('user_id', cid).maybeSingle(), sb.from('app_state').select('data').eq('user_id', cid).maybeSingle(), sb.from('app_public').select('*').eq('user_id', cid).maybeSingle()].map(q => q.then(r => r, e => ({ error: e }))));
   if (TR.view !== cid || appOff()) return;
-  if (rt.error) TR.vr.err = true; else Object.assign(TR.vr, { routine: cleanRoutine(rt.data && rt.data.routine) || [], at: (rt.data && rt.data.updated_at) || null, st: (st.data && st.data.data) || null, loaded: true });
+  if (rt.error) TR.vr.err = true; else Object.assign(TR.vr, { routine: cleanRoutine(rt.data && rt.data.routine) || [], meals: mealsOf(rt.data && rt.data.routine), at: (rt.data && rt.data.updated_at) || null, st: (st.data && st.data.data) || null, loaded: true });
   if (pb.data) LB.sums[cid] = pb.data.data || {};
   renderClients();
 }
@@ -157,7 +157,7 @@ function clientViewHtml() {
 /* edit a client's plan with the routine editor (extras.js reads ED_FOR) */
 function trEdit() {
   const p = TR.profs[TR.view]; if (!p || !TR.vr || !TR.vr.loaded || !TR.vr.routine.length) return;
-  ED_FOR = { id: p.id, name: frName(p).split(' ')[0], routine: clone(TR.vr.routine), at: TR.vr.at, noted: false }; edDay = 0; editRoutine();
+  ED_FOR = { id: p.id, name: frName(p).split(' ')[0], routine: clone(TR.vr.routine), meals: TR.vr.meals, at: TR.vr.at, noted: false }; edDay = 0; editRoutine();
 }
 /* called by mutRoutine in extras.js after every change a coach makes */
 async function trSaveRoutine() {
@@ -167,7 +167,7 @@ async function trSaveRoutine() {
   const cur = await sb.from('app_routines').select('updated_at').eq('user_id', e.id).maybeSingle().then(r => r, x => ({ error: x }));
   if (!cur.error && cur.data && e.at && cur.data.updated_at !== e.at) { ED_FOR = null; closeSheet(); toast(`${e.name} changed their plan while you were editing. Here is the latest: make your change again.`, 5000); return trOpenClient(e.id); }
   const at = new Date().toISOString();
-  const { error } = await sb.from('app_routines').upsert({ user_id: e.id, routine: e.routine, updated_by: uid(), updated_at: at, note: '' }).then(r => r, x => ({ error: x }));
+  const { error } = await sb.from('app_routines').upsert({ user_id: e.id, routine: packRoutine(e.routine, TR.vr && TR.view === e.id ? TR.vr.meals : e.meals), updated_by: uid(), updated_at: at, note: '' }).then(r => r, x => ({ error: x }));
   if (error) return toast('Couldn’t save that change. Check your connection.', 3500);
   e.at = at; if (TR.vr && TR.view === e.id) TR.vr.at = at;
   if (!e.noted) { e.noted = true; sb.from('app_notes').insert({ user_id: e.id, from_id: uid(), kind: 'routine', body: '', data: {}, read: false }).then(() => { }, () => { }); } // one notification per editing session

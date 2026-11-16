@@ -722,11 +722,11 @@ let syncT = null, lastSync = 0, syncing = false, syncAgain = false;
 function setSync(state, text) { const el = $('sync'); el.className = 'sync ' + state; el.querySelector('span').textContent = text; }
 function scheduleSync() { clearTimeout(syncT); syncT = setTimeout(sync, 1500); }
 const syncAll = () => sync();
-const routineRow = (id, routine) => ({ user_id: id, routine, updated_by: id, updated_at: new Date().toISOString(), note: '' });
+const routineRow = (id, routine) => ({ user_id: id, routine: packRoutine(routine, MEALS), updated_by: id, updated_at: new Date().toISOString(), note: '' });
 const routineDirty = id => 'gymp.routineDirty.' + id; // set while this phone holds routine edits the server hasn't got yet
 /* the routine lives in its own table (app_routines) so a trainer can edit it */
 async function saveRoutine(routine) {
-  const id = uid(); ROUTINE = routine; cacheSet('gymp.routine.' + id, { routine }); localStorage.setItem(routineDirty(id), '1');
+  const id = uid(); ROUTINE = routine; cacheSet('gymp.routine.' + id, { routine: packRoutine(routine, MEALS) }); localStorage.setItem(routineDirty(id), '1');
   if (typeof applyRoutine === 'function') applyRoutine(); if (cur >= DAYS.length) cur = todayIdx(); renderAll();
   if (!sb || !navigator.onLine) return false;
   const { error } = await sb.from('app_routines').upsert(routineRow(id, routine)).then(r => r, e => ({ error: e }));
@@ -748,8 +748,9 @@ async function sync() {
     if (localStorage.getItem(routineDirty(id))) { const r = await sb.from('app_routines').upsert(routineRow(id, ROUTINE)); if (!r.error) localStorage.removeItem(routineDirty(id)); }
     else { // pick up edits made elsewhere (another phone, or a trainer)
       const r = await sb.from('app_routines').select('routine,updated_by').eq('user_id', id).maybeSingle();
-      const got = r.data ? cleanRoutine(r.data.routine) : null;
-      if (mine() && !r.error && r.data && JSON.stringify(got) !== JSON.stringify(ROUTINE)) { ROUTINE = got; cacheSet('gymp.routine.' + id, { routine: ROUTINE });
+      const got = r.data ? cleanRoutine(r.data.routine) : null, gotM = r.data ? mealsOf(r.data.routine) : null;
+      if (mine() && !r.error && r.data && JSON.stringify(gotM) !== JSON.stringify(MEALS)) { MEALS = gotM; cacheSet('gymp.routine.' + id, { routine: packRoutine(got, MEALS) }); } // a meal plan written elsewhere (another phone, or a coach)
+      if (mine() && !r.error && r.data && JSON.stringify(got) !== JSON.stringify(ROUTINE)) { ROUTINE = got; cacheSet('gymp.routine.' + id, { routine: packRoutine(ROUTINE, MEALS) });
         if (r.data.updated_by && r.data.updated_by !== id) { Object.assign(S.settings, { swaps: {}, exSkip: {}, exSkipDef: {}, u: Date.now() }); persist(); } // a coach moved things around: my per-slot swaps and removals no longer line up
       }
     }

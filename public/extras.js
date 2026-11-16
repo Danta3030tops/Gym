@@ -537,11 +537,11 @@ function renderFuel() {
   const wk = weekKeyOf(d), wkEnd = dk(addDays(parseDk(wk), 6));
   const wCardio = workoutCardioMin(wk, wkEnd); let cardioWeek = wCardio;
   for (let i = 0; i < 7; i++) cardioWeek += num(fuelOf(dk(addDays(parseDk(wk), i))).cardio);
-  let h = `<div class="dayhead"><div><h2>Fuel</h2><div class="sub">Calories, protein, water, steps & cardio</div></div></div>
+  let h = `<div class="dayhead"><div><h2>Fuel</h2><div class="sub">Meal plan, macros, water, steps and cardio</div></div></div>
     <div class="fdate"><button class="cbtn" data-fday="-1">‹</button><b>${isToday ? 'Today' : fmtD(d, { weekday: 'long', month: 'short', day: 'numeric' })}</b><button class="cbtn" data-fday="1" ${isToday ? 'disabled' : ''}>›</button></div>
-    <div class="card"><div class="frings">${ring(num(f.cal), g.cal, 'Calories', '', 'cal')}${ring(num(f.protein), g.protein, 'Protein', 'g', 'protein')}${ring(num(f.water), g.water, 'Water', 'glasses', 'water')}${ring(num(f.steps), g.steps, 'Steps', '', 'steps')}</div></div>`;
+    ${mealsTopHtml()}`;
   const q = (k, lab, unitL, adds) => `<div class="card fq"><div class="fqh"><b>${lab}</b><input inputmode="decimal" data-fset="${k}" value="${num(f[k]) || ''}" placeholder="0"><span class="muted">${unitL}</span></div><div class="chips">${adds.map(a => `<button class="chip" data-fadd="${k}:${a}">${a > 0 ? '+' : ''}${a}</button>`).join('')}</div></div>`;
-  h += q('cal', '🍽 Calories', 'kcal', [100, 250, 500, -100]) + q('protein', '🥩 Protein', 'g', [10, 25, 40, -10]) + q('water', '💧 Water', 'glasses (8 oz)', [1, 2, -1]) + q('steps', '👟 Steps', 'steps', [1000, 2500, 5000]) + q('cardio', '🏃 Extra cardio', 'min', [10, 20, 30, -10]);
+  h += q('water', 'Water', 'glasses (8 oz)', [1, 2, -1]) + q('steps', 'Steps', 'steps', [1000, 2500, 5000]) + q('cardio', 'Extra cardio', 'min', [10, 20, 30, -10]);
   h += `<div class="card"><h3>Cardio this week</h3><div class="fbar"><i style="width:${Math.min(100, cardioWeek / (g.cardio || 1) * 100)}%"></i></div><div class="muted" style="margin-top:6px"><b style="color:var(--txt)">${cardioWeek}</b> / ${g.cardio} min${wCardio ? ` · includes ${wCardio} min from your workouts` : ''}</div></div>`;
   // 7-day averages
   const days7 = Array.from({ length: 7 }, (_, i) => dk(addDays(d, -i))).filter(x => (S.fuel || {})[x]);
@@ -552,11 +552,13 @@ function renderFuel() {
   h += `<div class="card"><h3>Goals</h3><div class="grid2">
     <label class="fld">Calories / day<input inputmode="numeric" data-goal="cal" value="${g.cal || ''}" placeholder="use calculator"></label>
     <label class="fld">Protein g / day<input inputmode="numeric" data-goal="protein" value="${g.protein || ''}" placeholder="use calculator"></label>
+    <label class="fld">Carbs g / day<input inputmode="numeric" data-goal="carbs" value="${g.carbs || ''}" placeholder="optional"></label>
+    <label class="fld">Fat g / day<input inputmode="numeric" data-goal="fat" value="${g.fat || ''}" placeholder="optional"></label>
     <label class="fld">Water glasses / day<input inputmode="numeric" data-goal="water" value="${g.water}"></label>
     <label class="fld">Steps / day<input inputmode="numeric" data-goal="steps" value="${g.steps}"></label>
     <label class="fld">Cardio min / week<input inputmode="numeric" data-goal="cardio" value="${g.cardio}"></label>
     <label class="fld">Training days / week<input inputmode="numeric" data-goal="weekDays" value="${g.weekDays}"></label></div>
-    <button class="btn" data-calc>🧮 Calculate my calories & protein</button></div>`;
+    <button class="btn" data-calc>Calculate my calories and protein</button></div>`;
   $('fuel').innerHTML = h;
 }
 function calcSheet() {

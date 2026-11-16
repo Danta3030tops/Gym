@@ -69,11 +69,11 @@ async function finishOnboarding(routine, blank) {
   const uid = session.user.id, b = $('obDone'), name = OB.name || ME.username; if (b) { b.disabled = true; b.textContent = 'Saving…'; }
   try {
     const p = await sb.from('app_profiles').update({ display_name: name, color: OB.color }).eq('id', uid); if (p.error) throw p.error;
-    const r = await sb.from('app_routines').upsert({ user_id: uid, routine, updated_by: uid, updated_at: new Date().toISOString(), note: '' }); if (r.error) throw r.error;
+    const r = await sb.from('app_routines').upsert({ user_id: uid, routine: packRoutine(routine, MEALS), updated_by: uid, updated_at: new Date().toISOString(), note: '' }); if (r.error) throw r.error;
     S.settings = { ...S.settings, unit: OB.unit, plan: routine.length && !blank ? obAnswers() : null, u: Date.now() }; saveLocal(uid, S);
     const s = await sb.from('app_state').upsert({ user_id: uid, data: S, updated_at: new Date().toISOString() }); if (s.error) throw s.error;
     ME = { ...ME, display_name: name, color: OB.color }; ROUTINE = routine;
-    cacheSet('gymp.me.' + uid, ME); cacheSet('gymp.routine.' + uid, { routine });
+    cacheSet('gymp.me.' + uid, ME); cacheSet('gymp.routine.' + uid, { routine: packRoutine(routine, MEALS) });
     showHome(); toast(blank ? 'Your empty week is ready' : routine.length ? 'You’re all set' : 'You’re all set, coach');
   } catch (e) { if (b) { b.disabled = false; b.textContent = 'Start training'; } toast('Couldn’t save. Check your connection and try again.', 4000); }
   OB.busy = false;
