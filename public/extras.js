@@ -629,7 +629,7 @@ function remapSwaps(di, mapFn) { // mapFn(oldIndex) → newIndex | null
 }
 function editSlot(si) {
   const isNew = si === 'new', sl = isNew ? { sets: 3, reps: '10–12', rest: 60, opts: [{ n: '', pat: 'squat', cues: [] }] } : edBase()[edDay].slots[si], o = sl.opts[0];
-  openSheet(`<h3>${isNew ? 'Add exercise' : 'Edit exercise'}</h3><div class="sub">${isNew ? edBase()[edDay].title : 'Edits the main exercise. Its swaps stay as they are.'}</div>
+  openSheet(`<h3>${isNew ? 'Add exercise' : 'Edit exercise'}</h3><div class="sub">${isNew ? esc(edBase()[edDay].title) : 'Edits the main exercise. Its swaps stay as they are.'}</div>
     <label class="fld">Exercise name<input id="esN" list="libNames" value="${esc(o.n)}" placeholder="Start typing, e.g. Leg Press"></label><datalist id="libNames">${LIB_ALL.map(x => `<option value="${esc(x.n)}">`).join('')}</datalist>
     <div class="grid2" style="margin-top:8px"><label class="fld">Sets<input id="esS" inputmode="numeric" value="${safeN(sl.sets)}"></label><label class="fld">Reps<input id="esR" value="${esc(sl.reps)}" placeholder="8–10, 15, failure"></label>
     <label class="fld">Rest (sec)<input id="esRest" inputmode="numeric" value="${safeN(sl.rest)}"></label><label class="fld">Timed? (sec)<input id="esT" inputmode="numeric" value="${safeN(sl.time) || ''}" placeholder="blank = reps"></label></div>
@@ -660,7 +660,7 @@ function icsSheet() {
   const r = S.settings.rem || remDef();
   openSheet(`<h3>Reminders</h3><div class="sub">Adds repeating events with alerts to your phone's calendar: one for each gym day, plus a monthly photo check-in. Web apps can't send scheduled notifications on their own, so your calendar does it.</div>
     <label class="fld">Gym time<input type="time" id="rmT" value="${r.time}"></label>
-    <div class="row" style="gap:6px;margin-top:10px;flex-wrap:wrap">${baseRoutine().map((d, i) => `<button class="chip ${remOn(r, i) ? 'on' : ''}" data-rmday="${i}">${d.d}</button>`).join('')}</div>
+    <div class="row" style="gap:6px;margin-top:10px;flex-wrap:wrap">${baseRoutine().map((d, i) => `<button class="chip ${remOn(r, i) ? 'on' : ''}" data-rmday="${i}">${esc(d.d)}</button>`).join('')}</div>
     <div class="hrow" style="margin-top:8px"><span>Photo check-in on the 1st of each month</span><button class="chip ${r.photo ? 'on' : ''}" data-rmphoto>${r.photo ? 'On' : 'Off'}</button></div>
     <button class="btn acc" data-rmgo>📅 Add to calendar</button>
     <div class="muted" style="font-size:12px;margin-top:8px">iPhone: it opens Calendar, tap <b>Add All</b>. Android: open the downloaded file with Google Calendar.</div>`);
@@ -668,13 +668,14 @@ function icsSheet() {
 function buildICS() {
   const r = S.settings.rem, [hh, mm] = r.time.split(':').map(Number), now2 = new Date();
   const stamp2 = now2.toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
+  const icsText = t => String(t ?? '').replace(/[\r\n]+/g, ' ').replace(/[\\;,]/g, '\\$&');
   const fmtL = d => d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + pad(d.getHours()) + pad(d.getMinutes()) + '00';
   const BY = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'], crown = '🏋️';
   const ev = [];
   baseRoutine().forEach((d, i) => {
     if (!remOn(r, i)) return; const w = (d.wd || i + 1) - 1;
     let s = new Date(now2.getFullYear(), now2.getMonth(), now2.getDate(), hh, mm); while ((s.getDay() + 6) % 7 !== w || s < now2) s = addDays(s, 1);
-    ev.push(['BEGIN:VEVENT', `UID:${ME.username}-gym-${i}-${stamp2}@gym`, `DTSTAMP:${stamp2}`, `DTSTART:${fmtL(s)}`, 'DURATION:PT1H15M', `RRULE:FREQ=WEEKLY;BYDAY=${BY[w]}`, `SUMMARY:${crown} Gym: ${d.title}`, `DESCRIPTION:${PROFILES[PROF].label} split · ${d.slots.length} exercises`, 'BEGIN:VALARM', 'ACTION:DISPLAY', 'TRIGGER:-PT30M', `DESCRIPTION:${d.title} in 30 min`, 'END:VALARM', 'END:VEVENT'].join('\r\n'));
+    ev.push(['BEGIN:VEVENT', `UID:${ME.username}-gym-${i}-${stamp2}@gym`, `DTSTAMP:${stamp2}`, `DTSTART:${fmtL(s)}`, 'DURATION:PT1H15M', `RRULE:FREQ=WEEKLY;BYDAY=${BY[w]}`, `SUMMARY:${crown} Gym: ${icsText(d.title)}`, `DESCRIPTION:${PROFILES[PROF].label} split · ${d.slots.length} exercises`, 'BEGIN:VALARM', 'ACTION:DISPLAY', 'TRIGGER:-PT30M', `DESCRIPTION:${icsText(d.title)} in 30 min`, 'END:VALARM', 'END:VEVENT'].join('\r\n'));
   });
   if (r.photo) {
     const s = new Date(now2.getFullYear(), now2.getMonth() + 1, 1, 9, 0);

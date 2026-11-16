@@ -516,7 +516,7 @@ function renderWeeks() {
       const exs = Object.values(W[di]).filter(x => (x.sets || []).some(Boolean)); if (!exs.length) return '';
       const ts = exs.flatMap(x => x.sets.filter(Boolean).map(s => s.t)).filter(Boolean);
       const when = ts.length ? fmtD(new Date(Math.min(...ts)), { weekday: 'short', month: 'short', day: 'numeric' }) : '';
-      return `<div class="wday"><div class="dh">${DAYS[di] ? DAYS[di].d + ' · ' + DAYS[di].title : 'Day ' + (di + 1)} <span>· done ${when}</span></div>` +
+      return `<div class="wday"><div class="dh">${esc(DAYS[di] ? DAYS[di].d + ' · ' + DAYS[di].title : 'Day ' + (di + 1))} <span>· done ${when}</span></div>` +
         exs.map(x => `<div class="wex"><b>${esc(x.n)}</b><span>${x.sets.filter(Boolean).map(s => fmtSet(x.timed, s)).join(', ')}</span></div>`).join('') + `</div>`;
     }).join('');
     return `<div class="wk ${idx === 0 ? 'open' : ''}"><button data-wk>
@@ -673,7 +673,7 @@ function download(name, blob) {
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click();
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
 }
-const csvCell = v => { v = String(v ?? ''); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+const csvCell = v => { v = String(v ?? ''); if (/^[=+\-@\t\r]/.test(v) && isNaN(v)) v = "'" + v; return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
 const csv = rows => rows.map(r => r.map(csvCell).join(',')).join('\n');
 const stamp = () => dk(new Date());
 let JSZipP = null;

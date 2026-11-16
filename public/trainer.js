@@ -133,7 +133,7 @@ async function trOpenClient(cid) {
 function trSessions(st, routine) {
   const out = [];
   for (const wk in (st && st.logs) || {}) for (const di in st.logs[wk]) {
-    let sets = 0, last = 0; for (const id in st.logs[wk][di]) for (const s of st.logs[wk][di][id].sets || []) if (s && s.t) { sets++; last = Math.max(last, s.t); }
+    let sets = 0, last = 0; for (const id in st.logs[wk][di]) for (const s of st.logs[wk][di][id].sets || []) if (s && +s.t > 0 && +s.t < 8.64e15) { sets++; last = Math.max(last, +s.t); }
     if (sets) out.push({ t: last, sets, title: (routine[di] && routine[di].title) || 'Workout' });
   }
   return out.sort((a, b) => b.t - a.t).slice(0, 6);
