@@ -62,7 +62,7 @@ function cleanMeals(m) {
   if (!m || typeof m !== 'object') return null;
   const n = (v, max) => Math.min(max, Math.max(0, Math.round((+v || 0) * 10) / 10)), str = (v, k) => String(v ?? '').slice(0, k);
   const mac = (o, max) => ({ cal: n(o && o.cal, max), p: n(o && o.p, max), c: n(o && o.c, max), f: n(o && o.f, max) });
-  return { t: mac(m.t, 20000), meals: (Array.isArray(m.meals) ? m.meals : []).filter(x => x && typeof x === 'object').slice(0, 8).map(x => ({ n: str(x.n, 40) || 'Meal',
+  return { t: mac(m.t, 20000), meals: (Array.isArray(m.meals) ? m.meals : []).filter(x => x && typeof x === 'object').slice(0, 8).map(x => ({ n: str(x.n, 40) || 'Meal', note: str(x.note, 200).trim(),
     items: (Array.isArray(x.items) ? x.items : []).filter(i => i && typeof i === 'object').slice(0, 20).map(i => ({ n: str(i.n, 60) || 'Food', ...mac(i, 5000) })) })), by: str(m.by, 40), tb: str(m.tb, 40), at: +m.at || 0 };
 }
 const mealsOf = raw => { const e = Array.isArray(raw) ? raw.find(x => x && x.meals && !Array.isArray(x.slots)) : null; return e ? cleanMeals(e.meals) : null; };

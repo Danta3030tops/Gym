@@ -34,7 +34,7 @@ function mealsTopHtml() {
     ${coachTargets() ? '<div class="muted" style="margin-top:8px;text-align:center">Targets set by your coach</div>' : ''}
     <button class="btn acc" data-mllog>＋ Log food</button></div>`;
   if (M) h += `<div class="card" id="mlPlan"><h3>Meal plan</h3>${fromCoach() ? '<div class="muted" style="margin:-4px 0 8px">Written by your coach. Tick each food as you eat it.</div>' : ''}
-    ${M.meals.map((m, mi) => { const s = mealSum(m.items); return `<div class="mlmeal"><div class="mlh"><b>${esc(m.n)}</b><span>${m.items.length ? macLine(s) : 'empty'}</span></div>
+    ${M.meals.map((m, mi) => { const s = mealSum(m.items); return `<div class="mlmeal"><div class="mlh"><b>${esc(m.n)}</b><span>${m.items.length ? macLine(s) : 'empty'}</span></div>${m.note ? `<p class="mlnote">${esc(m.note)}</p>` : ''}
       ${m.items.map((it, ii) => { const on = log.some(x => x.k === ateKey(mi, ii, it)); return `<div class="mlitem ${on ? 'on' : ''}"><div><b>${esc(it.n)}</b><span>${macLine(it)}</span></div><button class="chk" data-mlate="${mi}:${ii}" aria-label="${on ? 'Untick' : 'Tick as eaten'}" aria-pressed="${on}">✓</button></div>`; }).join('')}</div>`; }).join('')}
     <button class="btn ghost" data-mledit>Edit meal plan</button></div>`;
   else h += `<div class="card" id="mlPlan"><h3>No meal plan yet</h3><div class="muted">Plan your meals and tick them off as you eat, or just log food as you go. If you have a coach, they can write your plan for you.</div><button class="btn" data-mledit>Build a meal plan</button></div>`;
@@ -62,6 +62,7 @@ function mealsEdit() {
   openSheet(`<h3>${coach ? 'Edit ' + esc(ML_FOR.name) + '’s meal plan' : 'Meal plan'}</h3><div class="sub">${coach ? 'Every change is saved to their plan straight away.' : 'Every change is saved straight away. Your daily targets are under Goals on the Fuel tab.'}</div>
     ${coach ? `<div class="au-lbl" style="margin:0 0 6px">Daily targets (blank = they set their own)</div><div class="grid2">${MACROS.map(([k, t, u]) => `<label class="fld">${t} (${u})<input inputmode="decimal" data-mlt="${k}" value="${M.t[k] || ''}" placeholder="—"></label>`).join('')}</div>` : ''}
     ${M.meals.map((m, mi) => `<div class="mlmeal ed"><div class="mlh"><input data-mln="${mi}" value="${esc(m.n)}" maxlength="40" aria-label="Meal name"><button class="cbtn" data-mldel="${mi}" aria-label="Remove this meal">✕</button></div>
+      <input class="mlnotein" data-mlnote="${mi}" value="${esc(m.note || '')}" maxlength="200" placeholder="Add a note (optional)" aria-label="Note for this meal">
       ${m.items.map((it, ii) => `<div class="mlitem"><div><b>${esc(it.n)}</b><span>${macLine(it)}</span></div><button class="cbtn" data-mlidel="${mi}:${ii}" aria-label="Remove">✕</button></div>`).join('')}
       <button class="chip" data-mliadd="${mi}">＋ Add food</button></div>`).join('')}
     ${M.meals.length ? '' : '<div class="muted" style="margin:10px 0">No meals yet. Add the first one.</div>'}
@@ -88,6 +89,7 @@ async function mealsPush(e, v, m) {
 const mlSaveInputs = () => { // names typed on the editor sheet are kept when another button redraws it
   if (!MLW) return false; let ch = false;
   document.querySelectorAll('#sheetin [data-mln]').forEach(el => { const m = MLW.meals[+el.dataset.mln], v = el.value.trim(); if (m && v && v !== m.n) { m.n = v; ch = true; } });
+  document.querySelectorAll('#sheetin [data-mlnote]').forEach(el => { const m = MLW.meals[+el.dataset.mlnote], v = el.value.trim(); if (m && v !== (m.note || '')) { m.note = v; ch = true; } });
   document.querySelectorAll('#sheetin [data-mlt]').forEach(el => { const v = r1(el.value); if (v !== num(MLW.t[el.dataset.mlt])) { MLW.t[el.dataset.mlt] = v; ch = true; } });
   return ch;
 };
@@ -129,4 +131,4 @@ document.addEventListener('click', e => {
   if (d.mliadd) return (dirty && mealsCommit(), foodSheet('plan:' + d.mliadd, true));
   if (d.mldone !== undefined) { if (dirty) mealsCommit(); const c = ML_FOR; ML_FOR = null; MLW = null; closeSheet(); if (c && tab === 'clients') renderClients(); else if (tab === 'fuel') renderFuel(); }
 });
-document.addEventListener('change', e => { if (appOff() || !MLW || !e.target.matches('#sheetin [data-mln],#sheetin [data-mlt]')) return; if (mlSaveInputs()) mealsCommit(); });
+document.addEventListener('change', e => { if (appOff() || !MLW || !e.target.matches('#sheetin [data-mln],#sheetin [data-mlnote],#sheetin [data-mlt]')) return; if (mlSaveInputs()) mealsCommit(); });

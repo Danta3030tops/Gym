@@ -377,6 +377,7 @@ with sync_playwright() as p:
     until(lambda: 'No meal plan yet' in A.inner_text('#trMeals') and 'Nothing logged today' in A.inner_text('#trMeals'), 'client view has a meal plan card')
     A.click('[data-mledit="client"]'); has('#sheetin', 'Test’s meal plan'); A.fill('[data-mlt="cal"]', '2200'); A.fill('[data-mlt="p"]', '160'); A.click('[data-mladd]')
     until(lambda: A.input_value('[data-mln="0"]') == 'Breakfast' and A.input_value('[data-mlt="cal"]') == '2200', 'a meal is added and the targets typed before it are kept')
+    A.fill('[data-mlnote="0"]', 'Eat before 9 <b>am</b>'); A.press('[data-mlnote="0"]', 'Tab')
     A.click('[data-mliadd="0"]'); A.fill('#mfN', 'Eggs on toast'); A.fill('#mf_p', '20'); A.fill('#mf_c', '30'); A.fill('#mf_f', '10'); A.click('[data-mlsave]')
     until(lambda: 'Eggs on toast' in A.inner_text('#sheetin') and '290 kcal' in A.inner_text('#sheetin'), 'calories are worked out from the macros when left blank')
     A.click('[data-mldone]')
@@ -386,6 +387,7 @@ with sync_playwright() as p:
     until(lambda: 'Eggs on toast' in A.inner_text('#trMeals') and '2,200 kcal' in A.inner_text('#trMeals'), 'and shows on the client view'); shot('25-coach-meal-plan')
     # the client sees it on Fuel, ticks a food, and logs something extra
     signin('test@example.com'); nd = A.evaluate("ROUTINE.length"); go('fuel')
+    until(lambda: 'Eat before 9 <b>am</b>' in A.inner_text('#mlPlan .mlnote'), 'the client sees the coach’s note on the meal, shown as plain text')
     until(lambda: 'Written by your coach' in A.inner_text('#mlPlan') and 'Targets set by your coach' in A.inner_text('#mlRings') and '2,200' in A.inner_text('#mlRings'), 'the client sees the coach’s meal plan and targets')
     assert nd == len([x for x in plan()['routine'] if 'slots' in x]) and A.evaluate("DAYS.length") == nd, 'the meal plan is not mistaken for a workout day'
     A.click('[data-mlate="0:0"]'); until(lambda: A.evaluate("fuelOf(fuelDate).cal") == 290 and A.evaluate("fuelOf(fuelDate).protein") == 20 and A.locator('.mlitem.on').count() == 1, 'ticking a food adds its macros')
