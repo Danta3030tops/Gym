@@ -92,7 +92,7 @@ pvRep = function (rep, ph, cls) {
     if (rep === 0) { if (bzPlay(21, 'cut')) bzPlay(bzCue(PC.ex), 'q'); else if (!bzReady()) _bzSay(ph, true); return; }
     if (rep > 20) { if (!bzReady()) _bzSay(String(rep), true); return; } // past twenty he lets the beeps count
     if (!bzPlay(21 + rep, 'cut')) { if (!bzReady()) _bzSay(left === 1 ? `${rep}. Last one` : String(rep), true); return; }
-    if (left === 2) bzPlay(43, 'q'); else if (left === 1) bzPlay(44, 'q'); else if (PC.target >= 6 && rep === Math.round(PC.target / 2)) bzPlay(42, 'q');
+    if (left === 2 && PC.target >= 6) bzPlay(43, 'q'); /* on a short set "Two! Two more!" just sounds like he said two twice */ else if (left === 1 && PC.target >= 3) bzPlay(44, 'q'); else if (PC.target >= 6 && rep === Math.round(PC.target / 2)) bzPlay(42, 'q');
   } else if (cls === 'phase up' && rep === 0 && bzPush(PC.ex)) bzPlay(4, 'lo');
 };
 const _bzStop = pvStop; pvStop = function () { _bzStop(); BZ.q.length = 0; bzHalt(); };
@@ -177,6 +177,7 @@ document.addEventListener('pointerdown', () => { // first tap of a visit: clips 
 pvPaint = function () {
   const on = pvOn(), b = $('pvoice'); if (b) { b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); b.textContent = on ? 'Coach Bigz on' : 'Coach Bigz off'; }
   const t = $('bzT'); if (t) { t.classList.toggle('on', on); t.textContent = on ? 'On' : 'Off'; t.setAttribute('aria-pressed', on); }
+  const m = $('hmBz'); if (m) { m.setAttribute('aria-pressed', on); $('hmBzS').textContent = on ? 'On' : 'Off'; $('hmBzS').classList.toggle('on', on); }
 };
 function bzToggle() {
   const on = !pvOn(); localStorage.setItem('gymp.pacerVoice', on ? '1' : '0'); pvPaint();
@@ -185,7 +186,7 @@ function bzToggle() {
   if (!bzPlay(3, 'cut') && p) p.then(() => { if (pvOn() && !BZ.cur) bzPlay(3, 'cut'); });
 }
 $('pvoice').onclick = bzToggle;
-document.addEventListener('click', e => { if (e.target.closest('#bzT')) bzToggle(); });
+document.addEventListener('click', e => { if (e.target.closest('#bzT')) bzToggle(); else if (e.target.closest('#hmBz')) { bzToggle(); toast(pvOn() ? 'Coach Bigz is on' : 'Coach Bigz is off', 1800); } });
 const _bzRenderMore = renderMore;
 renderMore = function () {
   _bzRenderMore(); const at = $('tReset'), row = at && at.closest('.hrow'); if (!row) return;

@@ -751,6 +751,7 @@ h1 span{color:inherit}
 #hmenu button,.hmwk{display:flex;align-items:center;justify-content:space-between;width:100%;height:50px;padding:0 18px;border:0;border-top:1px solid var(--line);background:none;color:inherit;font:inherit;font-size:17px;text-align:left}
 #hmenu button:active{transform:none;background:var(--fill)}
 #hmenu button.gap{border-top:8px solid rgba(0,0,0,.16)}
+#hmBzS{font-size:15px;font-weight:600;color:var(--mut)}#hmBzS.on{color:var(--acc)}
 #hmenu svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.900;stroke-linecap:round;stroke-linejoin:round}
 .hmwk{border-top:0;height:44px;font-size:13px;color:var(--mut)}.hmwk b{font-weight:600;color:var(--txt)}
 body.out #hmenu,body.out .hbtn{display:none}
@@ -836,7 +837,8 @@ body.out #hmenu,body.out .hbtn{display:none}
   <button data-tab="fuel">Fuel<svg viewBox="0 0 24 24"><path d="M12 2s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/><path d="M9 14a3 3 0 0 0 3 3"/></svg></button>
   <button class="gap" data-sessopen>Session timer<svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.500 2M9 2h6"/></svg></button>
   <button data-edopen>Edit plan<svg viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg></button>
-  <button class="gap" data-tab="more">Settings<svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg></button>
+  <button class="gap" id="hmBz" aria-pressed="false">Coach Bigz<b id="hmBzS">Off</b></button>
+  <button data-tab="more">Settings<svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg></button>
 </div>
 
 
