@@ -903,6 +903,20 @@ body.out #hmenu,body.out .hbtn{display:none}
 <script src="onboard.js"></script>
 <script src="people.js"></script>
 <script src="bigz.js"></script>
-<script>if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => { });</script>
+<script>
+// If one of the app's files didn't arrive (weak signal, or an update landing mid-load), parts of the app are missing and
+// sign-in fails with a cryptic error. Notice it here: load again once, and if it's still broken say so plainly.
+(function () {
+  var miss = ['renderWorkout', 'startFriends', 'startChat', 'startTrainer', 'loadChats', 'enter', 'renderFuel', 'mealsTopHtml', 'bzToggle', 'avSheet'].filter(function (n) { return typeof window[n] !== 'function'; });
+  var K = 'gymp.reloaded', was = null; try { was = sessionStorage.getItem(K); } catch (e) { }
+  if (!miss.length) { try { sessionStorage.removeItem(K); } catch (e) { } return; }
+  if (!was) { try { sessionStorage.setItem(K, '1'); location.reload(); return; } catch (e) { } }
+  var d = document.createElement('div'); d.id = 'loadfail';
+  d.style.cssText = 'position:fixed;z-index:999;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:28px;text-align:center;background:#000;color:#fff;font:17px -apple-system,system-ui,sans-serif';
+  d.innerHTML = '<b style="font-size:22px">Spott didn’t finish loading</b><span style="color:#aaa">Part of the app didn’t download. Check your signal, then try again. Nothing you’ve logged is lost.</span><button style="margin-top:8px;padding:14px 26px;border:0;border-radius:14px;background:#f0a43c;color:#111;font:inherit;font-weight:700">Try again</button>';
+  d.querySelector('button').onclick = function () { try { sessionStorage.removeItem(K); } catch (e) { } location.reload(); };
+  document.body.appendChild(d);
+})();
+if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => { });</script>
 </body>
 </html>

@@ -23,9 +23,11 @@ self.addEventListener('fetch', e => {
   // stale-while-revalidate: answer from cache instantly, refresh in the background
   e.respondWith(caches.open(VERSION).then(async c => {
     const hit = await c.match(req, { ignoreSearch: same });
-    const net = fetch(req).then(res => { if (res && (res.ok || res.type === 'opaque')) c.put(req, res.clone()); return res; }).catch(() => null);
+    const grab = () => fetch(req).then(res => { if (res && (res.ok || res.type === 'opaque')) c.put(req, res.clone()); return res; });
+    const net = grab().catch(() => hit ? null : grab().catch(() => null)); // nothing cached to fall back on: one more go before giving up
     if (hit) { e.waitUntil(net); return hit; }
     const res = await net; if (res) return res;
+    const any = await caches.match(req, { ignoreSearch: same }); if (any) return any; // a copy kept by an earlier version beats nothing
     if (req.mode === 'navigate') return c.match('./index.html');
     return new Response('', { status: 504 });
   }));
