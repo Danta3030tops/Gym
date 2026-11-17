@@ -116,6 +116,7 @@
     }
     // the "login" edge function: username or email + password → tokens (see dev/public-version/edge-login/index.ts)
     const functions = { async invoke(name, o) {
+      if (name === 'food-search' && window.__mockFoods) return { data: { items: window.__mockFoods }, error: null };
       if (name !== 'login' || window.__mockNoLogin) return { data: null, error: { message: 'Function not found' } };
       const b = { ...((o && o.body) || {}) }; b.login = String(b.login || '').trim().toLowerCase(); const d = load(), p = (d.t.app_profiles || []).find(x => x.username === b.login);
       const u = d.users.find(x => (p ? x.id === p.id : x.email === b.login) && x.password === b.password);

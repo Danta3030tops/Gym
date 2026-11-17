@@ -425,6 +425,18 @@ with sync_playwright() as p:
     until(lambda: A.evaluate("fuelOf(fuelDate).cal") == 440 and A.evaluate("fuelOf(fuelDate).protein") == 45 and 'Protein shake' in A.inner_text('#mlLog'), 'logging a food adds to the day'); shot('26-fuel')
     A.click('[data-mlate="0:0"]'); until(lambda: A.evaluate("fuelOf(fuelDate).cal") == 150 and A.locator('.mlitem.on').count() == 0, 'unticking takes it off again')
     A.click('[data-mlun]'); until(lambda: A.evaluate("fuelOf(fuelDate).cal") == 0 and not A.is_visible('#mlLog'), 'and a logged food can be removed')
+    # food search: built-in USDA list, portions fill the boxes, Jamaican names, what you've had before, online search
+    A.click('[data-mllog]'); A.fill('#fsQ', 'banana raw'); until(lambda: 'Banana, raw' in A.inner_text('#fsRes'), 'the built-in list finds a food')
+    A.locator('#fsRes [data-fsr^="u:"]', has_text='Banana, raw').first.click(); until(lambda: A.input_value('#mfN') == 'Banana, raw (1 1 linear inch)' or A.input_value('#mfN').startswith('Banana, raw ('), 'picking a food fills the name')
+    A.select_option('#fsPor', label='100 g'); A.fill('#fsAmt', '2'); until(lambda: A.input_value('#mfN') == 'Banana, raw (200 g)' and A.input_value('#mf_cal') == str(round(A.evaluate("FS.sel.k") * 2)), '2 × 100 g works out the numbers')
+    A.click('[data-mlsave="log"]'); until(lambda: 'Banana, raw (200 g)' in A.inner_text('#mlLog'), 'the searched food is logged')
+    A.click('[data-mllog]'); A.fill('#fsQ', 'saltfish'); until(lambda: 'cod, Atlantic, dried and salted' in A.inner_text('#fsRes'), 'Jamaican names find the USDA food')
+    A.fill('#fsQ', 'banana'); until(lambda: 'you’ve had' in A.inner_text('#fsRes').lower() and 'Banana, raw (200 g)' in A.inner_text('#fsRes'), 'foods eaten before come up first')
+    A.fill('#fsQ', 'grace ackee'); A.click('[data-fsonline]'); until(lambda: 'isn’t switched on yet' in A.inner_text('#fsRes'), 'online search says when the function is missing')
+    A.evaluate("window.__mockFoods = [{ n: 'Ackees in salt water', b: 'Grace', cal: 140, p: 4, c: 11, f: 9, sg: 0 }]; FS.online = null"); A.fill('#fsQ', 'grace ackees'); A.click('[data-fsonline]')
+    until(lambda: 'Ackees in salt water · Grace' in A.inner_text('#fsRes') and 'Open Food Facts' in A.inner_text('#fsRes'), 'online results show with the credit')
+    A.locator('[data-fsr="o:0"]').click(); A.fill('#fsAmt', '150'); A.select_option('#fsPor', label='grams'); until(lambda: A.input_value('#mf_cal') == '210', '150 g of a packaged food')
+    A.evaluate("closeSheet()"); A.click('[data-mlun]'); until(lambda: A.evaluate("fuelOf(fuelDate).cal") == 0, 'the searched food can be removed again')
     reload(); go('fuel'); until(lambda: 'Eggs on toast' in A.inner_text('#mlPlan') and A.evaluate("ROUTINE.length") == nd, 'the meal plan survives a reload')
     # editing the workout plan keeps the meal plan
     A.click('#menuBtn'); A.click('#hmenu [data-edopen]'); A.fill('#edTitle', 'Renamed day'); A.click('#sx') if False else A.click('[data-edday="0"]')
