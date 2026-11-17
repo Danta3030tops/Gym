@@ -31,7 +31,7 @@ async function loadChats() {
       if (c.error || all.error) throw c.error || all.error;
       convs = c.data; all.data.forEach(x => { (mem[x.conv_id] = mem[x.conv_id] || []).push(x.user_id); });
       const need = [...new Set(all.data.map(x => x.user_id))].filter(u => u !== id && !FR.profs[u]); // group members who aren't my friends
-      if (need.length) { const p = await sb.from('app_profiles').select('id,username,display_name,role,color').in('id', need); if (p.error) throw p.error; p.data.forEach(x => { profs[x.id] = x; }); }
+      if (need.length) { const p = await sb.from('app_profiles').select(PROF_COLS()).in('id', need); if (p.error) throw p.error; p.data.forEach(x => { profs[x.id] = x; }); }
     }
     if (!session || uid() !== id) return;
     if (CH.open && mine[CH.open] && CH.mine[CH.open] > mine[CH.open]) mine[CH.open] = CH.mine[CH.open]; // I'm reading it right now

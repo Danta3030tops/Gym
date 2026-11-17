@@ -69,3 +69,7 @@ const mealsOf = raw => { const e = Array.isArray(raw) ? raw.find(x => x && x.mea
 const packRoutine = (routine, meals) => meals ? [...(routine || []), { meals }] : routine;
 // the database hands a time back as "…+00:00" where the app wrote "…Z": compare the moments, not the text
 const sameAt = (a, b) => a === b || Date.parse(a) === Date.parse(b);
+/* profile pictures (people.js): the column only exists once supabase-public-update-3.sql has been run, and asking for a missing column fails the whole request */
+const PROF_COLS = () => 'id,username,display_name,role,color' + (typeof ME !== 'undefined' && ME && 'avatar' in ME ? ',avatar' : '');
+const AV_RE = /^[0-9a-f-]{36}\/\d{10,16}\.jpg$/;
+const avUrl = p => p && typeof p.avatar === 'string' && AV_RE.test(p.avatar) && p.avatar.startsWith(p.id + '/') ? String((window.GYM_PUBLIC_CONFIG || {}).supabaseUrl || '').replace(/\/$/, '') + '/storage/v1/object/public/app-avatars/' + p.avatar : ''; // never trust another person's path: it must be a .jpg in their own folder

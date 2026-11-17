@@ -22,7 +22,7 @@ async function loadTrainers() {
     const [a, b] = await Promise.all([sb.from('app_trainers').select('*').eq('client', id), sb.from('app_trainers').select('*').eq('trainer', id)]);
     if (a.error || b.error) throw a.error || b.error;
     const rows = [...a.data, ...b.data], ids = [...new Set(rows.map(r => (r.client === id ? r.trainer : r.client)))], profs = {};
-    if (ids.length) { const p = await sb.from('app_profiles').select('id,username,display_name,role,color').in('id', ids); if (p.error) throw p.error; p.data.forEach(x => { profs[x.id] = x; }); }
+    if (ids.length) { const p = await sb.from('app_profiles').select(PROF_COLS()).in('id', ids); if (p.error) throw p.error; p.data.forEach(x => { profs[x.id] = x; }); }
     if (!session || uid() !== id) return;
     Object.assign(TR, { rows, profs, loaded: true }); cacheSet('gymp.trainers.' + id, { rows, profs });
     if (TR.view && !trIsClient(TR.view)) { TR.view = null; TR.vr = null; }
@@ -66,7 +66,7 @@ async function trAdd() {
   if (trCoach()) return say('You already have a coach. Remove them first to add another.');
   TR.busy = true; say('Looking…');
   try {
-    const p = await sb.from('app_profiles').select('id,username,display_name,role,color').eq('username', u).maybeSingle(); if (p.error) throw p.error;
+    const p = await sb.from('app_profiles').select(PROF_COLS()).eq('username', u).maybeSingle(); if (p.error) throw p.error;
     if (!p.data) say(`No one here is called @${u}.`);
     else if (p.data.role !== 'trainer') say(`@${u} isn’t signed up as a coach.`);
     else {

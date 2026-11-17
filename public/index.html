@@ -664,6 +664,10 @@ body.out .wrap,body.out nav,body.out #rest,body.out #sessBar,body.out #effort{di
 .lbm{display:flex;gap:8px;margin:10px 0;overflow-x:auto;scrollbar-width:none}.lbm::-webkit-scrollbar{display:none}.lbm .chip{flex:none}.lbrank{font-style:normal;font-weight:800;font-size:15px;width:24px;text-align:center;color:var(--mut);flex:none}.lbval{font-size:22px;font-weight:800;min-width:30px;text-align:right;letter-spacing:-.02em}.lbrow.me .edn b{color:var(--acc)}.lbrow .chip{padding:8px 11px;font-size:15px}.nbadge[hidden]{display:none}
 .hello{display:flex;align-items:center;gap:12px;margin:18px 0 6px}
 .hello .lv-av{width:48px;height:48px;font-size:17px;background:linear-gradient(145deg,var(--acc2),var(--acc));color:var(--onacc)}
+.lv-av{position:relative;overflow:hidden}.lv-av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%}
+.avbtn{position:relative;flex:none;padding:0;border:0;background:none;color:inherit;font:inherit;border-radius:50%}.avbtn i{position:absolute;left:50%;bottom:-7px;transform:translateX(-50%);font-style:normal;font-size:10px;font-weight:700;padding:1px 7px;border-radius:9px;background:var(--bg);border:1px solid var(--line);color:var(--mut)}
+.avbig{display:flex;justify-content:center;margin:14px 0 16px}.avbig .lv-av{width:120px;height:120px;font-size:42px}
+.glink{width:100%;box-sizing:border-box;margin:8px 0;padding:11px 12px;border-radius:12px;border:1px solid var(--line);background:var(--fill);color:inherit;font:inherit;font-size:14px}
 .hello b{display:block;font-size:20px;letter-spacing:-.02em}.hello span{font-size:13px;color:var(--mut)}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-delay:0s!important;transition-duration:.01ms!important}}
 /* ================= coach features ================= */
@@ -897,6 +901,7 @@ body.out #hmenu,body.out .hbtn{display:none}
 <script src="meals.js"></script>
 <script src="auth.js"></script>
 <script src="onboard.js"></script>
+<script src="people.js"></script>
 <script src="bigz.js"></script>
 <script>if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => { });</script>
 </body>

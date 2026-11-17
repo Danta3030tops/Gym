@@ -22,7 +22,7 @@
         const profs = d.t.app_profiles = d.t.app_profiles || [];
         if (!USER_RE.test(un) || profs.some(p => p.username === un)) return { data: {}, error: { message: 'Database error saving new user' } };
         const u = { id: uuid(), email, password, meta }; d.users.push(u);
-        profs.push({ id: u.id, username: un, display_name: meta.display_name || un, role: meta.role === 'trainer' ? 'trainer' : 'user', color: meta.color || '#ff9f0a', bio: '', created_at: now() });
+        profs.push({ id: u.id, username: un, display_name: meta.display_name || un, role: meta.role === 'trainer' ? 'trainer' : 'user', color: meta.color || '#ff9f0a', bio: '', avatar: '', created_at: now() });
         save(d);
         if (window.__mockConfirmEmail) return { data: { user: mk(u).user, session: null }, error: null };
         const s = mk(u); setS(s, 'SIGNED_IN'); return { data: { user: s.user, session: s }, error: null };
@@ -45,7 +45,7 @@
       const d = load(), s = getS(), me = s && s.user.id, T = t => (d.t[t] = d.t[t] || []), ok = v => { save(d); return { data: v, error: null }; }, no = msg => ({ data: null, error: { message: msg } });
       const pals = (a, b) => T('app_friends').some(r => r.status === 'accepted' && ((r.requester === a && r.addressee === b) || (r.requester === b && r.addressee === a)));
       const member = (c, u) => T('app_members').some(x => x.conv_id === c && x.user_id === u), join = (c, u) => { if (!member(c, u)) T('app_members').push({ id: d.seq++, conv_id: c, user_id: u, last_read: now() }); };
-      const conv = (kind, title) => { const c = { id: uuid(), kind, title, created_by: me, created_at: now(), last_at: now(), last_text: '' }; T('app_convs').push(c); return c.id; };
+      const conv = (kind, title) => { const c = { id: uuid(), kind, title, created_by: me, created_at: now(), last_at: now(), last_text: '', invite: null }; T('app_convs').push(c); return c.id; };
       if (name === 'app_photos_ask') { const r = T('app_trainers').find(x => x.trainer === me && x.client === args.c && x.status === 'accepted'); if (r && (r.photos || 'no') === 'no') r.photos = 'asked'; return ok(null); }
       if (name === 'app_photos_answer') { const r = T('app_trainers').find(x => x.client === me && x.trainer === args.t && x.status === 'accepted'); if (r) r.photos = args.ok ? 'yes' : 'no'; return ok(null); }
       if (name === 'app_open_chat') {
@@ -65,6 +65,16 @@
       }
       if (name === 'app_group_rename') {
         if (!member(args.c, me)) return no('not allowed'); const c = T('app_convs').find(v => v.id === args.c && v.kind === 'group'); if (c) c.title = String(args.t || '').slice(0, 40); return ok(null);
+      }
+      if (name === 'app_group_link' || name === 'app_group_link_off') {
+        if (!member(args.c, me)) return no('not allowed'); const c = T('app_convs').find(v => v.id === args.c && v.kind === 'group'); if (!c) return no('not a group');
+        if (name === 'app_group_link_off') { c.invite = null; return ok(null); }
+        if (!c.invite || args.fresh) c.invite = uuid().replace(/-/g, ''); return ok(c.invite);
+      }
+      if (name === 'app_group_peek') { const c = me && T('app_convs').find(v => v.invite && v.invite === args.tok && v.kind === 'group'); return ok(c ? [{ id: c.id, title: c.title, members: T('app_members').filter(m => m.conv_id === c.id).length, joined: member(c.id, me) }] : []); }
+      if (name === 'app_group_join') {
+        if (!me) return no('sign in'); const c = T('app_convs').find(v => v.invite && v.invite === args.tok && v.kind === 'group'); if (!c) return no('bad link');
+        if (!member(c.id, me)) join(c.id, me); return ok(c.id);
       }
       return { data: null, error: { message: 'mock: unknown rpc ' + name } };
     }

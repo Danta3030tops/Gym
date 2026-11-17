@@ -4,7 +4,7 @@ Run from the repo root (same setup as smoke.py):
   python3 dev/tests/smoke-public.py
 mock-public.js replaces window.supabase and sets the config, so nothing touches a real database.
 No fixed sleeps: every step waits for what it expects (until / has), so a slow machine only makes it slower, never flaky."""
-import os, time
+import os, time, re, base64
 from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
 here = os.path.dirname(os.path.abspath(__file__)); mock = open(os.path.join(here, 'mock-public.js')).read()
 URL = 'http://localhost:8765/public/'
@@ -114,6 +114,12 @@ with sync_playwright() as p:
 
     # session survives a reload; sign out; username now taken; sign back in
     # log a set, check it lands in the state blob and the cloud copy, visit every tab
+    # profile picture: picked in Settings, shrunk and saved to the profile, and it can be removed
+    png = base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==')
+    go('more'); A.click('#avPick'); has('#sheetin', 'Profile picture'); A.set_input_files('#avInput', {'name': 'me.png', 'mimeType': 'image/png', 'buffer': png})
+    until(lambda: re.match(r'^[0-9a-f-]{36}/\d+\.jpg$', db()['t']['app_profiles'][0]['avatar'] or '') and A.evaluate("avUrl(ME).endsWith('/app-avatars/' + ME.avatar) && ME.avatar.startsWith(ME.id + '/')"), 'the picture is saved to the profile')
+    assert A.evaluate("avUrl({ id: ME.id, avatar: 'x/../../evil.jpg' }) === '' && avUrl({ id: 'someone-else', avatar: ME.avatar }) === ''"), 'a path outside the person’s own folder is never used'
+    A.click('#avPick'); A.click('[data-avrm]'); until(lambda: db()['t']['app_profiles'][0]['avatar'] == '' and A.evaluate("ME.avatar === ''"), 'and it can be removed')
     # Coach Bigz: off by default, switched on in Settings; his clips download and the right ones are queued
     go('more'); has('#more', 'Coach Bigz'); assert A.inner_text('#bzT') == 'Off' and A.text_content('#pvoice') == 'Coach Bigz off', 'Coach Bigz starts off'
     A.click('#bzT'); until("pvOn() && document.querySelector('#bzT').textContent === 'On' && document.querySelector('#pvoice').textContent === 'Coach Bigz on'", 'the Settings switch turns Coach Bigz on')
@@ -277,6 +283,11 @@ with sync_playwright() as p:
     until(lambda: 'Lifters' in A.inner_text('.chead') and '2 people' in A.inner_text('.chead') and [c['kind'] for c in T('app_convs')] == ['dm', 'group'] and len(T('app_members')) == 4, 'group is created')
     say('First!'); A.click('[data-chinfo]'); A.fill('#chRName', 'Squad'); A.click('[data-chrename]')
     until(lambda: 'Squad' in A.inner_text('.chead') and T('app_convs')[1]['title'] == 'Squad', 'group is renamed'); shot('14-group')
+    # invite link: made in the group details, and replacing it kills the old one
+    A.click('[data-chinfo]'); A.click('[data-glon]'); until(lambda: A.is_visible('#glUrl') and T('app_convs')[1]['invite'], 'an invite link is created')
+    tok1 = T('app_convs')[1]['invite']; assert len(tok1) == 32 and A.input_value('#glUrl').endswith('?g=' + tok1), 'the link carries the group’s code'
+    A.click('[data-glnew]'); until(lambda: T('app_convs')[1]['invite'] not in (None, tok1) and A.input_value('#glUrl').endswith(T('app_convs')[1]['invite']), 'replacing the link makes a new code')
+    A.evaluate("closeSheet()")
     reload(); go('friends'); seg('chats')
     until(lambda: A.locator('.cvrow').count() == 2 and A.locator('.cvrow.unread').count() == 0 and 'Squad' in A.locator('.cvrow').nth(0).inner_text(), 'chats list after reload'); shot('15-chats')
     # the other member sees both as unread (plus one unread nudge), reads the group, then leaves it
@@ -285,6 +296,11 @@ with sync_playwright() as p:
     A.click('.cvrow'); until(lambda: 'First!' in A.inner_text('#chList') and 'Test Person' in A.inner_text('.mwho'), 'group messages name the sender')
     A.click('[data-chinfo]'); until(lambda: A.is_visible('[data-chleave]') and A.locator('#sheetin [data-chadd]').count() == 0, 'everyone is already in')
     A.click('[data-chleave]'); until(lambda: len(T('app_members')) == 3 and A.locator('.cvrow').count() == 1 and A.inner_text('#frBadge') == '2', 'leaving the group')
+    # opening an invite link: an old code is refused; a live one asks first, then lands in the group
+    A.goto(URL + '?g=' + tok1); until(lambda: 'no longer works' in A.inner_text('#toast') and '?g=' not in A.url, 'a replaced link is refused and dropped from the address bar', timeout=15000)
+    A.goto(URL + '?g=' + T('app_convs')[1]['invite']); until(lambda: 'Join this group?' in A.inner_text('#sheetin') and 'Squad' in A.inner_text('#sheetin') and '1 person' in A.inner_text('#sheetin'), 'a live link asks before joining', timeout=15000)
+    A.click('[data-gljoin]'); until(lambda: len(T('app_members')) == 4 and 'Squad' in A.inner_text('.chead') and A.evaluate("!localStorage.getItem('gymp.join')"), 'joining by link opens the group')
+    A.click('[data-chinfo]'); A.click('[data-chleave]'); until(lambda: len(T('app_members')) == 3, 'and they can leave again'); go('friends'); seg('chats')
     seg('people')
     # weekly challenge with a friend (milestone 4). coach.kay sets one with test_user, who has trained 1 day this week.
     chal = lambda: [n for n in notes() if n['kind'] == 'challenge']

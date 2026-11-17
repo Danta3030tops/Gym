@@ -8,7 +8,7 @@ const frKey = () => 'gymp.friends.' + uid();
 const frOther = r => r.requester === uid() ? r.addressee : r.requester;
 const frName = p => p ? (p.display_name || p.username) : 'Someone';
 const frColor = p => /^#[0-9a-f]{6}$/i.test((p && p.color) || '') ? p.color : ACCENTS[0][0]; // never trust another person's colour string
-const frAv = p => `<div class="lv-av" style="--pc:${frColor(p)}">${esc(initials(frName(p)))}</div>`;
+const frAv = p => { const u = avUrl(p); return `<div class="lv-av" style="--pc:${frColor(p)}">${esc(initials(frName(p)))}${u ? `<img src="${esc(u)}" alt="" loading="lazy" onerror="this.remove()">` : ''}</div>`; }; // the initials stay underneath, so a picture that fails to load just disappears
 const frWho = p => `<div class="edn"><b>${esc(frName(p))}</b><span>@${esc(p ? p.username : '')}${p && p.role === 'trainer' ? ' · Coach' : ''}</span></div>`;
 const frWith = st => FR.rows.filter(st).map(r => ({ r, p: FR.profs[frOther(r)] })).filter(x => x.p).sort((a, b) => frName(a.p).localeCompare(frName(b.p)));
 const frAccepted = () => frWith(r => r.status === 'accepted');
@@ -26,7 +26,7 @@ async function loadFriends() {
     const [a, b] = await Promise.all([sb.from('app_friends').select('*').eq('requester', id), sb.from('app_friends').select('*').eq('addressee', id)]);
     if (a.error || b.error) throw a.error || b.error;
     const rows = [...a.data, ...b.data], ids = [...new Set(rows.map(r => r.requester === id ? r.addressee : r.requester))], profs = {};
-    if (ids.length) { const p = await sb.from('app_profiles').select('id,username,display_name,role,color').in('id', ids); if (p.error) throw p.error; p.data.forEach(x => { profs[x.id] = x; }); }
+    if (ids.length) { const p = await sb.from('app_profiles').select(PROF_COLS()).in('id', ids); if (p.error) throw p.error; p.data.forEach(x => { profs[x.id] = x; }); }
     if (!session || uid() !== id) return; // signed out, or someone else signed in, while this was loading
     FR.rows = rows; FR.profs = profs; FR.loaded = true; FR.err = false; cacheSet(frKey(), { rows, profs });
   } catch (e) { FR.err = true; }
@@ -140,7 +140,7 @@ async function frAdd() {
   if (!sb || !navigator.onLine) return say('You’re offline. Try again when you’re connected.');
   FR.busy = true; say('Looking…');
   try {
-    const p = await sb.from('app_profiles').select('id,username,display_name,role,color').eq('username', u).maybeSingle(); if (p.error) throw p.error;
+    const p = await sb.from('app_profiles').select(PROF_COLS()).eq('username', u).maybeSingle(); if (p.error) throw p.error;
     if (!p.data) say(`No one here is called @${u}.`);
     else {
       await loadFriends(); if (FR.err) throw new Error('offline'); // fresh list, so a request is never sent twice
