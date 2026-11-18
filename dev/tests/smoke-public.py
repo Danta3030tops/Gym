@@ -65,7 +65,10 @@ with sync_playwright() as p:
     until(lambda: A.input_value('#obName') == 'Test Person', 'picking a colour keeps the typed name')
     until("getComputedStyle(document.documentElement).getPropertyValue('--acc').trim() === '#0a84ff'", 'colour applies live')
     shot('3-setup-profile')
-    nx(); until(lambda: A.is_visible('[data-mode="blank"]') and 'on' in A.get_attribute('[data-mode="auto"]', 'class'), 'setup asks how to start, a built plan is the default'); shot('3b-setup-start')
+    nx(); until(lambda: A.is_visible('[data-coachq="yes"]') and 'training with a coach' in A.inner_text('#obStep'), 'setup asks about a coach first'); shot('3a-setup-coach')
+    A.click('[data-coachq="yes"]'); until(lambda: A.is_visible('#obCoach'), 'yes asks for the coach'); A.fill('#obCoach', 'x'); A.click('#obCoachGo'); has('#toast', 'Usernames are 3 to 20')
+    A.click('#obBack'); until(lambda: A.is_visible('[data-coachq="no"]'), 'back returns to the coach question'); A.click('[data-coachq="no"]')
+    until(lambda: A.is_visible('[data-mode="blank"]') and 'on' in A.get_attribute('[data-mode="auto"]', 'class'), 'setup asks how to start, a built plan is the default'); shot('3b-setup-start')
     nx(); until(lambda: A.is_disabled('[data-obnext]'), 'goal is required')
     A.click('[data-goal="lean"]'); nx()
     # focus: up to two areas
@@ -82,14 +85,16 @@ with sync_playwright() as p:
     assert A.evaluate("OB.wds.join()") == '1,5,7'
     A.click('[data-mins="45"]'); shot('4b-setup-schedule'); nx()
     A.click('[data-equip="home"]'); A.click('[data-level="some"]'); A.click('[data-unit="kg"]'); shot('4c-setup-equipment')
+    nx(); A.click('[data-avoid="knees"]'); A.click('[data-avoid="wrists"]'); A.click('[data-avoid="wrists"]'); shot('4d-setup-avoid')
+    assert A.evaluate("OB.avoid.join()") == 'knees', 'injuries toggle on and off'
     nx()
     assert A.locator('.pv').count() == 3, '3-day plan'
+    assert A.evaluate("OB.routine.every(d => d.slots.filter(s => s.mv).every(s => s.opts.every(o => exMeta(o.n) && ['body','db'].includes(exMeta(o.n).eq) && !exMeta(o.n).st.includes('knees'))))"), 'home kit only, nothing that loads the knees, swap options included'
     assert A.evaluate("OB.routine.map(d => d.d).join()") == 'Mon,Fri,Sun', 'plan lands on the chosen weekdays'
     plan = A.evaluate("OB.routine.map(d => d.slots.map(s => s.opts[0].n))")
-    lifts = [n for d in plan for n in d[:-1]]; assert len(lifts) == len(set(lifts)), 'no exercise repeats across the week'
     assert all(len(d) == 6 for d in plan), '45 min: 5 exercises + cardio finisher per day'
-    assert A.evaluate("OB.routine.every(d => d.slots.every(s => s.opts.length >= 2 && s.opts.every(o => P[o.pat] && fitsEquip(o.n, 'home'))))"), 'every option has a figure and fits home equipment'
-    assert A.evaluate("OB.routine.every(d => d.slots.some(s => LIB.glutes.concat(LIB.arms).some(o => o.n === s.opts[0].n)))"), 'focus areas show up every day'
+    assert A.evaluate("OB.routine.every(d => d.slots.every(s => s.opts.length >= 2 && s.opts.every(o => P[o.pat])))"), 'every option has a figure and something to swap to'
+    assert A.evaluate("OB.routine.some(d => d.slots.some(s => s.mv && s.sets === 4))"), 'focus areas get an extra set'
     # the builder holds up for every combination of answers
     bad = A.evaluate("""(() => { const out = [];
       for (const goal of ['muscle','strength','lean','general']) for (const equip of ['gym','home','body']) for (const mins of [30,45,60]) for (const level of ['new','seasoned']) for (const wds of [[3],[2,6],[1,3,5],[2,4,6,7],[1,2,3,4,5],[1,2,3,5,6,7],[1,2,3,4,5,6,7]]) for (const focus of [[],['glutes','arms'],['back','shoulders']]) {
@@ -109,6 +114,17 @@ with sync_playwright() as p:
     assert me['display_name'] == 'Test Person' and me['color'] == '#0a84ff' and me['role'] == 'user'
     assert len(d['t']['app_routines'][0]['routine']) == 3 and d['t']['app_state'][0]['data']['settings']['unit'] == 'kg' and d['t']['app_state'][0]['data']['settings']['plan']['equip'] == 'home'
     shot('6-home')
+    pl = d['t']['app_state'][0]['data']['settings']['plan']; assert pl['avoid'] == ['knees'] and pl['gen'] == 2 and pl['auto'] is True, f'answers are kept for regenerating: {pl}'
+    # auto progression: last week every set hit the top of the range → the card shows the new target and why
+    A.evaluate("""(() => { const si = DAYS[cur].slots.findIndex(s => !s.time), sl = DAYS[cur].slots[si], ex = exOf(cur, si), id = exId(ex), wk = dk(addDays(parseDk(curWeek), -7));
+      window.__seed = wk; S.logs[wk] = { [cur]: { [id]: { n: ex.n, sets: Array.from({ length: sl.sets }, () => ({ w: 20, r: repTop(sl.reps), t: parseDk(wk).getTime() + 36e5 })), u: Date.now() } } }; renderWorkout(); })()""")
+    until(lambda: 'up to' in A.inner_text('#list') and 'you hit' in A.inner_text('#list'), 'the workout card says the target went up, and why')
+    A.evaluate("delete S.logs[__seed]; save(); renderWorkout()")
+    # Settings: the plan card, and regenerating asks first
+    go('more'); has('#genCard', 'Generated for you'); A.click('#genCard [data-genre]'); has('#sheetin', 'Replace your plan?')
+    before = A.evaluate("JSON.stringify(ROUTINE)"); A.click('[data-genyes]'); has('#toast', 'New plan ready')
+    assert A.evaluate("JSON.stringify(ROUTINE)") == before, 'the same answers give the same plan'
+    go('workout')
     A.click('#menuBtn'); until(lambda: A.is_visible('#hmenu [data-tab="body"]') and A.is_visible('#hmenu [data-edopen]') and A.is_visible('#hmenu [data-sessopen]'), 'the header menu opens'); shot('6b-menu')
     A.click('#menuBtn'); until(lambda: not A.is_visible('#hmenu'), 'and closes')
 
@@ -181,7 +197,7 @@ with sync_playwright() as p:
     A.click(f'[data-eddel="{len(before) - 1}"]')
     until(lambda: len(rt()[di]['slots']) == len(before) - 1 and A.locator('.edrow').count() == len(before) - 1, 'remove is saved to app_routines')
     assert 'routine' not in db()['t']['app_state'][0]['data'], 'the routine stays out of the state blob'
-    A.click('[data-edreset]'); until(lambda: [sl['opts'][0]['n'] for sl in rt()[di]['slots']] == before, 'rebuild restores the plan from the setup answers')
+    A.click('#sheetin [data-genre]'); A.click('[data-genyes]'); until(lambda: [sl['opts'][0]['n'] for sl in rt()[di]['slots']] == before, 'rebuild restores the plan from the setup answers')
     go('workout'); cnt('#list .card', 6)
     until("localStorage.getItem('gymp.routineDirty.' + session.user.id) === null", 'no unsynced routine edits left')
 
@@ -196,7 +212,7 @@ with sync_playwright() as p:
     # ...and can build one later
     A.click('[data-buildplan]'); until(lambda: A.is_visible('#onb.show') and A.is_visible('#onb [data-goal]'), 'plan builder opens')
     A.click('#onb [data-goal="strength"]'); nx('#onb [data-obnext]'); nx('#onb [data-obnext]')
-    A.click('#onb [data-wd="6"]'); nx('#onb [data-obnext]'); nx('#onb [data-obnext]'); A.click('#obDone')
+    A.click('#onb [data-wd="6"]'); nx('#onb [data-obnext]'); nx('#onb [data-obnext]'); nx('#onb [data-obnext]'); A.click('#obDone')
     until(lambda: A.locator('#days button').count() == 5 and A.locator('#list .card').count() == 6, 'coach now has a 5-day plan incl. Saturday')
 
     # friends (milestone 3): add by username, accept / decline / cancel / remove. Signed in as coach.kay here.
@@ -355,7 +371,7 @@ with sync_playwright() as p:
     until(lambda: 'Waiting for Test' in A.inner_text('#trPhotos') and A.locator('#trPhotos [data-trphotoask]').count() == 0, 'no second Ask while waiting')
     # edit their plan with the routine editor: saved to the client's row straight away, one notification per editing session
     n0 = len(plan()['routine'][0]['slots']); first = plan()['routine'][0]['slots'][0]['opts'][0]['n']
-    A.click('[data-tredit]'); until(lambda: 'Test’s plan' in A.inner_text('#sheetin') and A.locator('.edrow').count() == n0 and not A.is_visible('[data-edreset]'), 'client plan editor opens')
+    A.click('[data-tredit]'); until(lambda: 'Test’s plan' in A.inner_text('#sheetin') and A.locator('.edrow').count() == n0 and not A.is_visible('[data-genre]'), 'client plan editor opens')
     A.click('[data-eddel="0"]')
     until(lambda: len(plan()['routine'][0]['slots']) == n0 - 1 and plan()['updated_by'] == coach_id and plan()['routine'][0]['slots'][0]['opts'][0]['n'] != first, 'the edit lands in the client row')
     names = lambda: [sl['opts'][0]['n'] for sl in plan()['routine'][0]['slots']]; nm = names()
@@ -437,6 +453,15 @@ with sync_playwright() as p:
     until(lambda: 'Ackees in salt water · Grace' in A.inner_text('#fsRes') and 'Open Food Facts' in A.inner_text('#fsRes'), 'online results show with the credit')
     A.locator('[data-fsr="o:0"]').click(); A.fill('#fsAmt', '150'); A.select_option('#fsPor', label='grams'); until(lambda: A.input_value('#mf_cal') == '210', '150 g of a packaged food')
     A.evaluate("closeSheet()"); A.click('[data-mlun]'); until(lambda: A.evaluate("fuelOf(fuelDate).cal") == 0, 'the searched food can be removed again')
+    # build your own meal: two ingredients, saved, logged in one tap, then found in food search
+    A.click('[data-mynew]'); A.fill('#myN', 'Usual breakfast'); A.click('[data-myadd]'); A.fill('#fsQ', 'banana raw')
+    A.locator('#fsRes [data-fsr^="u:"]', has_text='Banana, raw').first.click(); A.click('[data-mlsave="mym"]'); until(lambda: 'Banana, raw' in A.inner_text('#sheetin') and A.input_value('#myN') == 'Usual breakfast', 'an ingredient joins the meal and the name is kept')
+    A.click('[data-myadd]'); A.fill('#mfN', 'Peanut butter'); A.fill('#mf_cal', '190'); A.fill('#mf_p', '8'); A.click('[data-mlsave="mym"]'); shot('27-my-meal')
+    A.click('[data-mysave]'); until(lambda: 'Usual breakfast' in A.inner_text('#myMeals') and A.evaluate("S.settings.myMeals.length") == 1 and A.evaluate("S.settings.myMeals[0].items.length") == 2, 'the meal is saved')
+    k = A.evaluate("Math.round(mealSum(S.settings.myMeals[0].items).cal)")
+    A.click('[data-mylog]'); until(lambda: A.evaluate("Math.round(fuelOf(fuelDate).cal)") == k and 'Usual breakfast' in A.inner_text('#mlLog'), 'one tap logs the whole meal')
+    A.click('[data-mllog]'); A.fill('#fsQ', 'usual'); until(lambda: 'my meals' in A.inner_text('#fsRes').lower() and 'Usual breakfast' in A.inner_text('#fsRes'), 'saved meals show in food search'); A.evaluate("closeSheet()")
+    A.click('[data-mlun]'); until(lambda: A.evaluate("fuelOf(fuelDate).cal") == 0, 'and the logged meal can be removed')
     reload(); go('fuel'); until(lambda: 'Eggs on toast' in A.inner_text('#mlPlan') and A.evaluate("ROUTINE.length") == nd, 'the meal plan survives a reload')
     # editing the workout plan keeps the meal plan
     A.click('#menuBtn'); A.click('#hmenu [data-edopen]'); A.fill('#edTitle', 'Renamed day'); A.click('#sx') if False else A.click('[data-edday="0"]')
@@ -451,8 +476,8 @@ with sync_playwright() as p:
     # three accounts (milestone 6): a third person joins, for the leaderboard, group "add a friend", and the non-coach check
     go('more'); A.click('#signOut'); A.click('[data-aumode="up"]')
     A.fill('#auUser', 'sam_lifts'); A.fill('#auEmail', 'sam@example.com'); A.fill('#auPass', 'longenough1'); A.click('#auGo')
-    A.fill('#obName', 'Sam Lee'); nx('#onb [data-obnext]'); nx('#onb [data-obnext]'); A.click('#onb [data-goal="strength"]')
-    for _ in range(4): nx('#onb [data-obnext]')
+    A.fill('#obName', 'Sam Lee'); nx('#onb [data-obnext]'); A.click('[data-coachq="no"]'); nx('#onb [data-obnext]'); A.click('#onb [data-goal="strength"]')
+    for _ in range(5): nx('#onb [data-obnext]')
     A.click('#obDone'); until(lambda: A.is_visible('.wrap') and len(T('app_profiles')) == 3, 'third account is set up')
     openF(); add('coach.kay'); until(lambda: len(fr()) == 2); add('test_user'); until(lambda: len(fr()) == 3 and A.locator('#frSent .frow').count() == 2, 'sam has two pending requests')
     openCo(); A.click('[data-tradd]'); A.fill('#trUser', 'test_user'); A.click('[data-trsend]')
@@ -486,7 +511,7 @@ with sync_playwright() as p:
     # start from scratch: a fourth person skips the built plan and gets an empty week to fill in by hand
     A.click('.au-go[data-aumode="in"], .au-link[data-aumode="in"]'); A.click('[data-aumode="up"]')
     A.fill('#auUser', 'blank_bo'); A.fill('#auEmail', 'bo@example.com'); A.fill('#auPass', 'longenough1'); A.click('#auGo')
-    A.fill('#obName', 'Bo Blank'); nx('#onb [data-obnext]'); A.click('[data-mode="blank"]'); A.click('#onb [data-obnext]')
+    A.fill('#obName', 'Bo Blank'); nx('#onb [data-obnext]'); A.click('[data-coachq="no"]'); A.click('[data-mode="blank"]'); A.click('#onb [data-obnext]')
     until(lambda: A.is_visible('#obBlank') and A.locator('#onb .wd.on').count() == 4, 'choosing an empty plan goes straight to picking days')
     A.click('#obBack'); until(lambda: A.is_visible('[data-mode="auto"]'), 'back returns to the choice'); A.click('#onb [data-obnext]')
     A.click('#onb [data-wd="2"]'); A.click('#onb [data-wd="4"]'); A.click('#onb [data-unit="kg"]'); shot('22-setup-blank'); A.click('#obBlank')
@@ -506,7 +531,7 @@ with sync_playwright() as p:
     A.click('#menuBtn'); A.click('#hmenu [data-edopen]'); A.click('[data-edday="2"]'); A.click('[data-eddayrm]')
     until(lambda: A.evaluate("ROUTINE.length") == 2, 'an unused day can be removed'); A.click('#sx')
     # the exercise count and warm-up fold away after the first set, and the options sit behind the ··· button
-    go('workout'); A.click('#days button >> nth=0'); until(lambda: A.is_visible('.excount .exstep') and A.is_visible('[data-wuopen]'), 'counter and warm-up show before the first set')
+    go('workout'); A.click(f'#days button >> nth={A.evaluate("dayOrder().indexOf(DAYS.findIndex(d => d.slots.length))")}'); until(lambda: A.is_visible('.excount .exstep') and A.is_visible('[data-wuopen]'), 'counter and warm-up show before the first set')
     assert not A.is_visible('[data-swap="0"]'); A.click('[data-exmore]'); until(lambda: A.is_visible('[data-swap="0"]') and A.is_visible('[data-pace="0"]'), 'the ··· button shows the options')
     A.fill('[data-w="0:0"]', '60'); A.fill('[data-r="0:0"]', '10'); A.click('[data-chk="0:0"]')
     until(lambda: A.is_visible('.excmin') and not A.is_visible('.excount') and '1 exercise today' in A.inner_text('.excmin'), 'the card folds once a set is logged'); A.click('#rskip'); shot('24-folded')

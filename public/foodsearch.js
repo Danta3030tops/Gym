@@ -39,6 +39,8 @@ function fsResults() {
   if (!FS.db && q) { box.innerHTML = '<div class="muted fsnote">Loading foods…</div>'; fsLoad().then(() => { if ($('fsRes')) fsResults(); }); return; }
   const hits = q ? fsSearch(q) : [];
   let h = '';
+  const mym = typeof myMeals === 'function' ? myMeals().filter(m => !q || w.every(x => m.n.toLowerCase().includes(x))).slice(0, q ? 4 : 3) : [];
+  if (mym.length) h += `<div class="fshd">My meals</div>` + mym.map(m => `<button class="fsr" data-fsr="m:${esc(m.id)}"><b>${esc(m.n)}</b><span>${m.items.length} ingredient${m.items.length === 1 ? '' : 's'} · ${macLine(mealSum(m.items))}</span></button>`).join('');
   if (rmatch.length) h += `<div class="fshd">${q ? 'You’ve had' : 'Recent'}</div>` + rmatch.map(r => `<button class="fsr" data-fsr="r:${esc(r.n)}"><b>${esc(r.n)}</b><span>${macLine(r)}</span></button>`).join('');
   if (hits.length) h += `<div class="fshd">Foods</div>` + hits.map(it => `<button class="fsr" data-fsr="u:${it.i}"><b>${esc(it.n)}</b><span>${fsKcalLine(it)}</span></button>`).join('');
   if (q && !hits.length && !rmatch.length) h += `<div class="muted fsnote">No match in the built-in list.</div>`;
@@ -65,8 +67,9 @@ function fsPick(key) {
   const [t, v] = [key.slice(0, 1), key.slice(2)];
   if (t === 'u') { const it = FS.db && FS.db[+v]; if (!it) return; FS.sel = { n: it.n, k: it.k, p: it.p, c: it.c, f: it.f, por: it.por }; }
   else if (t === 'o') { const it = FS.online && FS.online.items[+v]; if (!it) return; FS.sel = { ...it }; }
+  else if (t === 'm') { const m = typeof myMeals === 'function' && myMeals().find(x => x.id === v); if (!m) return; const s = mealSum(m.items); FS.sel = { n: m.n, fixed: { cal: s.cal, p: s.p, c: s.c, f: s.f } }; }
   else { const r = fsRecent().find(x => x.n === v); if (!r) return; FS.sel = { n: r.n, fixed: r }; }
-  const s = FS.sel, opts = s.fixed ? [['as before', 0]] : [...s.por, ['100 g', 100], ['grams', 1], ['oz', 28.35]];
+  const s = FS.sel, opts = s.fixed ? [[t === 'm' ? 'whole meal' : 'as before', 0]] : [...s.por, ['100 g', 100], ['grams', 1], ['oz', 28.35]];
   $('fsPick').hidden = false;
   $('fsPick').innerHTML = `<div class="fssel"><b>${esc(s.n)}</b><button class="cbtn" data-fsclear aria-label="Pick a different food">✕</button></div>
     <div class="grid2"><label class="fld">How much<input id="fsAmt" inputmode="decimal" value="1"></label>

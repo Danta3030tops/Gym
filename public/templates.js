@@ -65,7 +65,7 @@ const DOSE = {
 /* ---- setup answers that shape the plan ---- */
 const FOCUS = [['glutes', '🍑', 'Glutes', ['glutes']], ['legs', '🦵', 'Legs', ['quads', 'hamstrings']], ['chest', '🫁', 'Chest', ['chest']], ['back', '🪽', 'Back', ['back']], ['shoulders', '🤸', 'Shoulders', ['shoulders']], ['arms', '💪', 'Arms', ['arms']], ['core', '🎯', 'Core', ['core']]];
 const EQUIP = [['gym', '🏟️', 'Full gym', 'Barbells, machines and cables'], ['home', '🏠', 'Dumbbells at home', 'Dumbbells and a bench'], ['body', '🤸', 'No equipment', 'Bodyweight only, anywhere']];
-const MINS = [[30, '30 min', 4], [45, '45 min', 5], [60, '60+ min', 6]]; // session length → exercises per day
+const MINS = [[30, '30 min', 4], [45, '45 min', 5], [60, '60 min', 6], [90, '90 min', 8]]; // session length → exercises per day
 const DEFAULT_WDS = { 1: [1], 2: [1, 4], 3: [1, 3, 5], 4: [1, 2, 4, 5], 5: [1, 2, 3, 4, 5], 6: [1, 2, 3, 4, 5, 6], 7: [1, 2, 3, 4, 5, 6, 7] };
 const WD_MIN = 1, WD_MAX = 7; // any number of days: the person decides
 /* what each exercise needs, judged from its name */

@@ -613,7 +613,7 @@ function editRoutine() {
       <button class="cbtn" data-edmv="${si}:-1" ${si === 0 ? 'disabled' : ''}>↑</button><button class="cbtn" data-edmv="${si}:1" ${si === D.slots.length - 1 ? 'disabled' : ''}>↓</button><button class="cbtn" data-ededit="${si}">✎</button><button class="cbtn" data-eddel="${si}">✕</button></div>`).join('')}</div>
     <button class="btn acc" data-ededit="new">＋ Add exercise</button>
     ${R.length > 1 ? '<button class="btn ghost" data-eddayrm>Remove this day</button>' : ''}
-    ${ED_FOR ? '' : S.settings.plan ? '<button class="btn ghost" data-edreset>Rebuild from my setup answers</button>' : '<button class="btn ghost" data-buildplan>Let the app build my plan</button>'}`);
+    ${ED_FOR || (typeof hasCoach === 'function' && hasCoach()) ? '' : S.settings.plan ? '<button class="btn ghost" data-genre>Regenerate plan</button>' : '<button class="btn ghost" data-buildplan>Generate a plan for me</button>'}`);
 }
 function mutRoutine(fn) {
   if (ED_FOR) { const R = clone(ED_FOR.routine); fn(R); ED_FOR.routine = R; trSaveRoutine(); return; } // a coach editing a client: saved to the client's row
@@ -1027,7 +1027,7 @@ document.addEventListener('click', async e => { if (appOff()) return;
   if (d.ededit) { saveTitle(); return editSlot(d.ededit === 'new' ? 'new' : +d.ededit); }
   if (d.edsave) return saveSlot(d.edsave === 'new' ? 'new' : +d.edsave);
   if (d.edback !== undefined) return editRoutine();
-  if (d.edreset !== undefined) { S.settings.swaps = {}; touchSettings(); saveRoutine(buildRoutine(S.settings.plan)); closeSheet(); toast('Plan rebuilt from your setup answers'); return; }
+  if (d.edreset !== undefined) return typeof genConfirm === 'function' ? genConfirm() : undefined; // older button name: same confirm-then-regenerate
   // reminders
   if (d.icsopen !== undefined) return icsSheet();
   if (d.rmday) { const r = S.settings.rem = S.settings.rem || remDef(); r.days[+d.rmday] = remOn(r, +d.rmday) ? 0 : 1; t.classList.toggle('on'); return; }

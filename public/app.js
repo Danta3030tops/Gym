@@ -751,7 +751,7 @@ async function sync() {
       const got = r.data ? cleanRoutine(r.data.routine) : null, gotM = r.data ? mealsOf(r.data.routine) : null;
       if (mine() && !r.error && r.data && JSON.stringify(gotM) !== JSON.stringify(MEALS)) { MEALS = gotM; cacheSet('gymp.routine.' + id, { routine: packRoutine(got, MEALS) }); } // a meal plan written elsewhere (another phone, or a coach)
       if (mine() && !r.error && r.data && JSON.stringify(got) !== JSON.stringify(ROUTINE)) { ROUTINE = got; cacheSet('gymp.routine.' + id, { routine: packRoutine(ROUTINE, MEALS) });
-        if (r.data.updated_by && r.data.updated_by !== id) { Object.assign(S.settings, { swaps: {}, exSkip: {}, exSkipDef: {}, u: Date.now() }); persist(); } // a coach moved things around: my per-slot swaps and removals no longer line up
+        if (r.data.updated_by && r.data.updated_by !== id) { Object.assign(S.settings, { swaps: {}, exSkip: {}, exSkipDef: {}, u: Date.now() }); if (S.settings.plan && S.settings.plan.gen) S.settings.plan = { ...S.settings.plan, auto: false }; persist(); } // a coach moved things around: my per-slot swaps and removals no longer line up, and auto progression hands over to the coach
       }
     }
     if (!mine()) { syncing = false; if (syncAgain) { syncAgain = false; sync(); } return; }

@@ -114,6 +114,8 @@ A second app for anyone to sign up, built from this one, lives in `public/`. It 
 | `bigz.js` | Coach Bigz, the recorded voice coach (clips in `public/voice/bigz/`, phrases in its `manifest.json`); loaded last, wraps the pacer voice, rest timer, `logSet`, `afterLog`, `renderMore` |
 | `people.js` | profile pictures (public bucket `app-avatars`, `avUrl()` in `core.js`, `frAv()` in `friends.js`) and group invite links (`?g=<code>`); both stay hidden until `supabase-public-update-3.sql` has been run |
 | `foodsearch.js`, `foods.json` | food search in Log food / Add a food: 5,300 USDA foods (rebuilt by `dev/public-version/foods/build_foods.py`), recent foods, Jamaican names; "search online" uses edge function `food-search` (`dev/public-version/edge-food-search/`) |
+| `exlib.js`, `plan.js`, `autoplan.js` | "Generate a plan for me": exercise library with movement, equipment, difficulty, stress areas and swaps (`exlib.js`); the generator and progression rules as pure functions (`plan.js`, tested by `dev/tests/unit-plan.py`); wiring into the workout card, set logging and Settings (`autoplan.js`). Answers live in `settings.plan` (`gen: 2`, `auto`); a coach's plan edit sets `auto: false` (sync in `app.js`) |
+| `mymeals.js` | build your own meals on the Fuel tab, saved in `settings.myMeals`, shown first in food search |
 
 ## Don't
 

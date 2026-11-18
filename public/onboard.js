@@ -1,17 +1,17 @@
 /* Public Gym app: first-time setup. Name and colour → goal → schedule → plan preview → saved to the account. */
 'use strict';
-const OB = { i: 0, name: '', color: '', goal: '', focus: [], wds: [1, 2, 4, 5], mins: 60, equip: 'gym', level: 'some', unit: 'lb', routine: null, busy: false };
-const OB_STEPS = ['profile', 'start', 'goal', 'focus', 'schedule', 'setup', 'plan', 'blank']; // 'blank' is only reached from 'start', by choosing an empty plan
+const OB = { i: 0, name: '', color: '', goal: '', focus: [], avoid: [], wds: [1, 2, 4, 5], mins: 60, equip: 'gym', level: 'some', unit: 'lb', routine: null, busy: false, coachU: '' };
+const OB_STEPS = ['profile', 'coach', 'start', 'goal', 'focus', 'schedule', 'setup', 'avoid', 'plan', 'blank', 'coachpick']; // 'blank' is only reached from 'start' (an empty plan), 'coachpick' from 'coach' (training with a coach)
 const OB_GOAL = OB_STEPS.indexOf('goal');
-const obAnswers = () => ({ goal: OB.goal, focus: OB.focus, wds: OB.wds, mins: OB.mins, equip: OB.equip, level: OB.level });
+const obAnswers = () => ({ goal: OB.goal, focus: OB.focus, wds: OB.wds, mins: OB.mins, equip: OB.equip, level: OB.level, avoid: OB.avoid, gen: GEN_V, auto: true }); // saved in settings.plan, so the plan can be regenerated
 function startOnboarding(fromStep) {
-  Object.assign(OB, { i: fromStep || 0, first: fromStep || 0, name: ME.display_name && ME.display_name !== ME.username ? ME.display_name : '', color: ME.color || themeColor, goal: '', mode: 'auto', focus: [], wds: [1, 2, 4, 5], mins: 60, equip: 'gym', level: 'some', unit: 'lb', routine: null, busy: false });
+  Object.assign(OB, { i: fromStep || 0, first: fromStep || 0, name: ME.display_name && ME.display_name !== ME.username ? ME.display_name : '', color: ME.color || themeColor, goal: '', mode: 'auto', focus: [], avoid: [], wds: [1, 2, 4, 5], mins: 60, equip: 'gym', level: 'some', unit: 'lb', routine: null, busy: false, coachU: '' });
   document.body.classList.add('out'); $('auth').classList.remove('show'); $('onb').classList.add('show');
   renderOb('fwd');
 }
 function renderOb(dir) {
   const step = OB_STEPS[OB.i], el = $('obStep'), coach = ME.role === 'trainer';
-  $('obDots').innerHTML = (step === 'blank' ? [0, 1, 2] : OB_STEPS.slice(0, -1)).map((_, i) => `<i class="${step === 'blank' || i <= OB.i ? 'on' : ''}"></i>`).join('');
+  $('obDots').innerHTML = (step === 'blank' || step === 'coachpick' ? [0, 1, 2] : OB_STEPS.slice(0, OB_STEPS.indexOf('plan') + 1)).map((_, i) => `<i class="${step === 'blank' || i <= OB.i ? 'on' : ''}"></i>`).join('');
   $('obBack').hidden = OB.i === (OB.first || 0) && !OB.first; $('obBack').textContent = OB.first && OB.i === OB.first ? '✕' : '‹';
   $('obSkip').hidden = !(coach && step === 'goal' && !OB.first); // coaches don't need a plan of their own
   let h = '';
@@ -20,6 +20,12 @@ function renderOb(dir) {
     <div class="au-lbl">Your colour</div>
     <div class="swatches">${ACCENTS.map(([c, n]) => `<button class="sw ${c === OB.color ? 'on' : ''}" data-color="${c}" style="--c:${c}" aria-label="${n}"></button>`).join('')}</div>
     <div class="ob-foot"><button class="au-go" data-obnext>Continue</button></div>`;
+  if (step === 'coach') h = `<h1 class="ob-h">Are you training with a coach?</h1><p class="ob-p">If you have a personal trainer, they can write your plan and see your training here.</p>
+    <div class="pick one"><button class="pk row" data-coachq="yes"><div><b>Yes, add my coach</b><span>Send them a request. Your coach builds your plan once they accept.</span></div></button>
+    <button class="pk row" data-coachq="no"><div><b>Not right now</b><span>Build your own plan, or let the app make one for you. You can add a coach later.</span></div></button></div>`;
+  if (step === 'coachpick') h = `<h1 class="ob-h">Who’s your coach?</h1><p class="ob-p">Type their Spott username. We’ll send them a request; you can start using the app straight away.</p>
+    <div class="grp"><label><span>Username</span><input id="obCoach" autocapitalize="none" autocorrect="off" autocomplete="off" spellcheck="false" maxlength="21" placeholder="coach_username" value="${esc(OB.coachU)}"></label></div>
+    <div class="ob-foot"><button class="au-go" id="obCoachGo">Send request</button></div>`;
   if (step === 'start') h = `<h1 class="ob-h">How do you want to start?</h1><p class="ob-p">You can switch at any time from Edit plan in the menu.</p>
     <div class="pick one"><button class="pk row ${OB.mode === 'auto' ? 'on' : ''}" data-mode="auto"><div><b>Build me a plan</b><span>Answer a few questions and get a weekly routine made for your goal, days and equipment.</span></div></button>
     <button class="pk row ${OB.mode === 'blank' ? 'on' : ''}" data-mode="blank"><div><b>Start from scratch</b><span>An empty week. Name your own days and add your own exercises, or let your coach build it for you.</span></div></button></div>
@@ -48,9 +54,12 @@ function renderOb(dir) {
     <div class="pick one">${LEVELS.map(([k, t, s]) => `<button class="pk ${OB.level === k ? 'on' : ''}" data-level="${k}"><b>${t}</b><span>${s}</span></button>`).join('')}</div>
     <div class="au-lbl">Weights in</div>
     <div class="seg" style="margin:0">${[['lb', 'Pounds (lb)'], ['kg', 'Kilograms (kg)']].map(([k, t]) => `<button class="${OB.unit === k ? 'on' : ''}" data-unit="${k}">${t}</button>`).join('')}</div>
+    <div class="ob-foot"><button class="au-go" data-obnext>Continue</button></div>`;
+  if (step === 'avoid') h = `<h1 class="ob-h">Anything to go easy on?</h1><p class="ob-p">Pick any area that’s injured or sore. Your plan leaves out exercises that load it.</p>
+    <div class="pick">${AVOID.map(([k, t]) => `<button class="pk ${OB.avoid.includes(k) ? 'on' : ''}" data-avoid="${k}" aria-pressed="${OB.avoid.includes(k)}"><b>${t}</b></button>`).join('')}<button class="pk ${OB.avoid.length ? '' : 'on'}" data-avoid="none" aria-pressed="${!OB.avoid.length}"><b>None</b></button></div>
     <div class="ob-foot"><button class="au-go" data-obnext>Build my plan</button></div>`;
   if (step === 'plan') {
-    OB.routine = buildRoutine(obAnswers());
+    OB.routine = generatePlan(obAnswers());
     h = `<h1 class="ob-h">Your plan is ready</h1><p class="ob-p">${OB.routine.length} day${OB.routine.length === 1 ? '' : 's'} a week, built for “${esc((GOALS.find(g => g[0] === OB.goal) || [])[2] || '')}”. Every exercise can be swapped once you’re in.</p>
       ${OB.routine.map(d => `<div class="pv"><div class="pv-h"><b>${esc(d.title)}</b><span>${esc(d.d)} · ${d.slots.length} exercises</span></div>${d.slots.map(sl => `<div class="pv-x"><b>${esc(sl.opts[0].n)}</b><span>${sl.sets} × ${esc(sl.reps)}</span></div>`).join('')}</div>`).join('')}
       <div class="ob-foot"><button class="au-go" id="obDone">Start training</button></div>`;
@@ -60,8 +69,11 @@ function renderOb(dir) {
 function obGo(d) {
   if (OB_STEPS[OB.i] === 'profile') { const n = $('obName').value.trim(); if (d > 0 && !n) { $('obName').focus(); return toast('Add your name first'); } OB.name = n; }
   const step = OB_STEPS[OB.i], at = k => OB_STEPS.indexOf(k);
+  if (step === 'schedule' && d > 0 && (OB.wds.length < GEN_DAYS[0] || OB.wds.length > GEN_DAYS[1])) return toast(`A generated plan is for ${GEN_DAYS[0]} to ${GEN_DAYS[1]} days a week. For ${OB.wds.length}, go back and start from scratch.`, 4500);
   if (step === 'start' && d > 0 && OB.mode === 'blank') OB.i = at('blank'); else if (step === 'blank' && d < 0) OB.i = at('start');
+  else if (step === 'coachpick' && d < 0) OB.i = at('coach');
   else OB.i = Math.max(0, Math.min(at('plan'), OB.i + d));
+  if (OB_STEPS[OB.i] === 'coach' && ME.role === 'trainer') OB.i = Math.max(0, OB.i + (d > 0 ? 1 : -1)); // coaches aren't asked whether they have a coach
   renderOb(d > 0 ? 'fwd' : 'back');
 }
 async function finishOnboarding(routine, blank) {
@@ -75,6 +87,7 @@ async function finishOnboarding(routine, blank) {
     ME = { ...ME, display_name: name, color: OB.color }; ROUTINE = routine;
     cacheSet('gymp.me.' + uid, ME); cacheSet('gymp.routine.' + uid, { routine: packRoutine(routine, MEALS) });
     showHome(); toast(blank ? 'Your empty week is ready' : routine.length ? 'You’re all set' : 'You’re all set, coach');
+    if (OB.coachU) { const u = OB.coachU; OB.coachU = ''; setTimeout(() => { if (typeof trAddSheet !== 'function' || appOff()) return; trAddSheet(); const el = $('trUser'); if (el) { el.value = u; trAdd(); } }, 900); } // send the coach request from the normal add-coach sheet
   } catch (e) { if (b) { b.disabled = false; b.textContent = 'Start training'; } toast('Couldn’t save. Check your connection and try again.', 4000); }
   OB.busy = false;
 }
@@ -85,6 +98,10 @@ $('onb').addEventListener('click', e => {
   if (t.id === 'obDone') return finishOnboarding(OB.routine);
   if (t.id === 'obBlank') return finishOnboarding(OB.wds.map((wd, i) => ({ d: WD_NAMES[wd], wd, title: 'Day ' + (i + 1), slots: [] })), true);
   if (d.mode) { OB.mode = d.mode; return renderOb(''); }
+  if (d.coachq) { OB.i = OB_STEPS.indexOf(d.coachq === 'yes' ? 'coachpick' : 'start'); return renderOb('fwd'); }
+  if (t.id === 'obCoachGo') { const u = ($('obCoach').value || '').trim().toLowerCase().replace(/^@/, ''); if (!USER_RE.test(u)) return toast('Usernames are 3 to 20 letters, numbers, dots or underscores.', 3500);
+    OB.coachU = u; return finishOnboarding(OB.wds.map((wd, i) => ({ d: WD_NAMES[wd], wd, title: 'Day ' + (i + 1), slots: [] })), true); }
+  if (d.avoid) { OB.avoid = d.avoid === 'none' ? [] : OB.avoid.includes(d.avoid) ? OB.avoid.filter(x => x !== d.avoid) : [...OB.avoid, d.avoid]; return renderOb(''); }
   if (d.obnext !== undefined) return obGo(1);
   if (d.color) { OB.color = d.color; OB.name = $('obName').value; applyTheme(d.color); return renderOb(''); }
   if (d.goal) { OB.goal = d.goal; return renderOb(''); }
@@ -95,4 +112,5 @@ $('onb').addEventListener('click', e => {
   if (d.level) { OB.level = d.level; return renderOb(''); }
   if (d.unit) { OB.unit = d.unit; return renderOb(''); }
 });
-document.addEventListener('click', e => { if (e.target.closest('[data-buildplan]') && session) { if (typeof closeSheet === 'function') closeSheet(); startOnboarding(OB_GOAL); OB.name = ME.display_name || ME.username; OB.unit = S.settings.unit || 'lb'; } });
+document.addEventListener('click', e => { if (e.target.closest('[data-buildplan]') && session) { if (typeof closeSheet === 'function') closeSheet(); startOnboarding(OB_GOAL); OB.name = ME.display_name || ME.username; OB.unit = S.settings.unit || 'lb';
+  const p = S.settings.plan; if (p) { Object.assign(OB, { goal: p.goal || '', focus: p.focus || [], avoid: p.avoid || [], wds: p.wds || OB.wds, mins: p.mins || 60, equip: p.equip || 'gym', level: p.level || 'some' }); renderOb(''); } } }); // changing answers starts from the old ones
