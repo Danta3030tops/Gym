@@ -30,11 +30,19 @@ document.body.insertAdjacentHTML('beforeend', `
    ===================================================================== */
 function baseRoutine() { return S.routine || PROFILES[PROF].days; }
 function refreshFigures() { if (S.routine) for (const d of S.routine) for (const sl of d.slots) for (const o of sl.opts) { const l = libFind(o.n); o.pat = l ? l.pat : figFor(o.n, o.pat); } }
-/* routine v2 (more arm work, Desrica's core day): drop old swaps on slots whose exercise changed */
-const ROUTINE_V = 2, ROUTINE_CHG = { king: ['1-1', '1-2', '1-3', '2-0', '2-1', '2-3', '4-3', '4-4', '4-5'], qxeen: ['0-4', '0-5', '2-1', '2-2', '2-3', '2-4', '2-5', '4-4'] };
+/* routine v3 (every day keeps to one muscle group: Dantá push / pull / legs / upper, Desrica's Friday is chest & arms):
+   drop old swaps on slots whose exercise changed, and the removed-exercise picks on days that were rebuilt */
+const ROUTINE_V = 3, ROUTINE_CHG = { king: [0, 1, 2, 3, 4].flatMap(d => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(s => d + '-' + s)), qxeen: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(s => '4-' + s) },
+  ROUTINE_DAYS = { king: [0, 1, 2, 3, 4], qxeen: [4] };
 function migrateRoutine() {
   if ((S.settings.rv || 0) >= ROUTINE_V) return;
-  if (!S.routine) for (const k of ROUTINE_CHG[PROF] || []) delete S.settings.swaps[k];
+  if (!S.routine) {
+    for (const k of ROUTINE_CHG[PROF] || []) delete S.settings.swaps[k];
+    for (const di of ROUTINE_DAYS[PROF] || []) {
+      if (S.settings.exSkipDef) delete S.settings.exSkipDef[di];
+      if (S.settings.exSkip) for (const k of Object.keys(S.settings.exSkip)) if (k.endsWith(':' + di)) delete S.settings.exSkip[k];
+    }
+  }
   S.settings.rv = ROUTINE_V; touchSettings();
 }
 function applyRoutine() {

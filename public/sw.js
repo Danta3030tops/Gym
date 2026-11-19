@@ -1,7 +1,7 @@
 // Public Gym app: offline support. App files are cached so it opens at the gym with no signal.
 // Bump VERSION whenever any file in SHELL changes, so phones pick up the update (close and reopen twice).
 // This worker's scope is public/ only. It keeps its own caches (names starting "gymp-") and never touches the couple app's.
-const VERSION = 'gymp-v14';
+const VERSION = 'gymp-v15';
 const SHELL = ['./', './index.html', './config.js', './core.js', './templates.js', './exlib.js', './plan.js', './autoplan.js', './mymeals.js', './app.js', './extras.js', './coach.js', './motion.js', './friends.js', './chat.js', './challenges.js', './trainer.js', './meals.js', './foodsearch.js', './foods.json', './bigz.js', './people.js', './auth.js', './onboard.js', './manifest.webmanifest',
   '../data.js', '../data-qxeen.js', '../figures.js', '../library.js', './icon-192.png', './icon-512.png', './apple-touch-icon.png', './maskable-512.png'];
 const LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.min.js'; // must match the script tag in index.html

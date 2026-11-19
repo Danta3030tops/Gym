@@ -36,7 +36,7 @@ const DAYS_QXEEN=[
   X('Cable Hip Abduction + Glute Bridge Pulses','abduct',['Superset','Small pulses at the top of the bridge']),
   X('Banded Lateral Walk + Frog Pumps','abduct',['Superset','Stay low on the walks, band above the knees'])]}
 ]},
-{d:'Tue',title:'Upper & Core',slots:[
+{d:'Tue',title:'Back, Shoulders & Core',slots:[
  {sets:3,reps:'10–12',rest:60,opts:[
   X('Lat Pulldown','pullup',['Wide grip, lean back slightly','Pull to your upper chest, elbows down and back','Control on the way up']),
   X('Assisted Pull-Up','pullup',['Use the least help you can','Full range of motion']),
@@ -132,27 +132,26 @@ const DAYS_QXEEN=[
   X('Single-Leg Calf Raise','calf',['Hold something for balance']),
   X('Leg Press Calf Press','calf',['Toes on the edge of the platform'])]}
 ]},
-{d:'Fri',title:'Full Body Burn',slots:[
- {sets:3,reps:'12',rest:45,opts:[
-  X('Dumbbell Thrusters','thruster',['DBs at your shoulders, squeeze down','Drive up and press overhead in one smooth move','Full-body fat burner, so keep the pace up']),
-  X('Goblet Squat to Press','thruster',['One DB at your chest, squeeze, stand and press']),
-  X('Squat + Shoulder Press','thruster',['Do the squat, then the press, as separate moves']),
-  X('Wall Ball','thruster',['Squat, throw the ball to the target, catch it'])]},
- {sets:3,reps:'10 per side',rest:60,opts:[
-  X('Renegade Row','row',['High plank on DBs, feet wide','Row one side, don\'t twist your hips','Core and back in one move']),
-  X('Single-Arm DB Row','row',['Hand and knee on the bench']),
-  X('Plank Row (knees down)','row',['Easier version on the knees']),
-  X('Cable Row','seatedrow',['Steady tempo'])]},
- {sets:3,reps:'10 per leg',rest:45,opts:[
-  X('Reverse Lunge to Knee Drive','lunge',['Step back, lunge, drive the back knee up as you stand','Add a hop for more burn']),
-  X('Reverse Lunge','lunge',['Hold DBs to make it harder']),
-  X('Step-Up to Knee Drive','lunge',['Drive the knee up at the top']),
-  X('Curtsy Lunge','lunge',['Alternate sides'])]},
- {sets:3,reps:'15',rest:30,opts:[
-  X('Kettlebell Swings','swing',['Hips snap, arms just guide','Heart rate up, glutes on fire']),
-  X('Dumbbell Swings','swing',['Both hands on one DB']),
-  X('Jump Squats','squat',['Land soft, straight into the next rep']),
-  X('Glute Bridge (fast)','thrust',['Quick tempo'])]},
+{d:'Fri',title:'Chest & Arms',slots:[
+ {sets:3,reps:'10–12',rest:75,opts:[
+  X('Flat Dumbbell Bench Press','bench',['DBs start over the shoulders','Lower until you feel a deep chest stretch','Press up and slightly together']),
+  X('Flat Barbell Bench Press','bench',['Shoulder blades pinned back and down','Bar touches lower chest, elbows ~45°','Feet planted, drive the bar up and slightly back']),
+  X('Machine Chest Press','bench',['Seat height: handles at mid-chest','Great for pushing near failure safely']),
+  X('Smith Machine Bench','bench',['Bar lines up with lower chest','Same setup as barbell, just more stable'])]},
+ {sets:3,reps:'10–12',rest:60,opts:[
+  X('Incline Dumbbell Press','inclinepress',['After flat pressing, this hits the upper chest','Bench at 30°, lower to the upper chest','Press up and slightly together']),
+  X('Incline Barbell Press','inclinepress',['Bench at 30°, bar touches just under the collarbone']),
+  X('Incline Machine Press','inclinepress',['Push near failure safely']),
+  X('Flat Bench Press','bench',['Controlled descent, explosive press'])]},
+ {sets:3,reps:'12–15',rest:45,opts:[
+  X('Cable Lateral Raise','latraise',['Cable at the bottom, cross-body','Constant tension']),
+  X('DB Lateral Raise','latraise',['Slight bend in the elbows','Lead with your elbows to shoulder height, not higher','Light weight, slow lower. This gives the toned shoulder look']),
+  X('Seated Lateral Raise','latraise',['Removes swinging and cheating']),
+  X('Lean-Away Lateral Raise','latraise',['Hold a pole, lean away, one arm at a time'])]},
+ {sets:3,reps:'12–15',rest:45,opts:[
+  X('Cable Flyes + Tricep Pushdown (rope)','fly',['SUPERSET: flyes, then pushdowns at the next cable','Flyes: soft elbows, hug a tree, squeeze','Pushdowns: elbows pinned, spread the rope at the bottom']),
+  X('Pec Deck + Straight-Bar Pushdown','seatedfly',['Superset','Slow on the way back on the pec deck']),
+  X('Dumbbell Flyes + Tricep Dips','fly',['Superset','Stop the flyes at a comfortable stretch'])]},
  {sets:3,reps:'12',rest:45,opts:[
   X('Bench Dips + DB Curl','dip',['SUPERSET: arm toning pair','Dips: hands on the bench behind you, elbows point back','Curls: elbows pinned, slow on the way down']),
   X('Tricep Pushdown + Bicep Curl','curl',['Superset','Elbows pinned at your sides on both']),

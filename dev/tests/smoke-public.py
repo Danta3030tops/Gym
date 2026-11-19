@@ -83,7 +83,9 @@ with sync_playwright() as p:
     assert A.evaluate("OB.wds.join()") == '1,2,3,4,5,6,7', 'all seven days are allowed'
     for d in [2, 3, 4, 6]: A.click(f'[data-wd="{d}"]')
     assert A.evaluate("OB.wds.join()") == '1,5,7'
-    A.click('[data-mins="45"]'); shot('4b-setup-schedule'); nx()
+    A.click('[data-mins="45"]'); A.click('[data-split="ppl"]'); until(lambda: A.locator('[data-split="ppl"].on').count() == 1, 'a split style can be picked')
+    assert 'Push / Pull / Legs' in A.inner_text('[data-split="auto"]'), 'Pick for me says what it picks for these days'
+    A.click('[data-split="auto"]'); shot('4b-setup-schedule'); nx()
     A.click('[data-equip="home"]'); A.click('[data-level="some"]'); A.click('[data-unit="kg"]'); shot('4c-setup-equipment')
     nx(); A.click('[data-avoid="knees"]'); A.click('[data-avoid="wrists"]'); A.click('[data-avoid="wrists"]'); shot('4d-setup-avoid')
     assert A.evaluate("OB.avoid.join()") == 'knees', 'injuries toggle on and off'
@@ -114,7 +116,7 @@ with sync_playwright() as p:
     assert me['display_name'] == 'Test Person' and me['color'] == '#0a84ff' and me['role'] == 'user'
     assert len(d['t']['app_routines'][0]['routine']) == 3 and d['t']['app_state'][0]['data']['settings']['unit'] == 'kg' and d['t']['app_state'][0]['data']['settings']['plan']['equip'] == 'home'
     shot('6-home')
-    pl = d['t']['app_state'][0]['data']['settings']['plan']; assert pl['avoid'] == ['knees'] and pl['gen'] == 2 and pl['auto'] is True, f'answers are kept for regenerating: {pl}'
+    pl = d['t']['app_state'][0]['data']['settings']['plan']; assert pl['avoid'] == ['knees'] and pl['gen'] == 3 and pl['split'] == 'auto' and pl['auto'] is True, f'answers are kept for regenerating: {pl}'
     # auto progression: last week every set hit the top of the range → the card shows the new target and why
     A.evaluate("""(() => { const si = DAYS[cur].slots.findIndex(s => !s.time), sl = DAYS[cur].slots[si], ex = exOf(cur, si), id = exId(ex), wk = dk(addDays(parseDk(curWeek), -7));
       window.__seed = wk; S.logs[wk] = { [cur]: { [id]: { n: ex.n, sets: Array.from({ length: sl.sets }, () => ({ w: 20, r: repTop(sl.reps), t: parseDk(wk).getTime() + 36e5 })), u: Date.now() } } }; renderWorkout(); })()""")

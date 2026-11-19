@@ -28,7 +28,7 @@ with sync_playwright() as p:
 
     # 1. bodyweight-only beginner, 2 days
     r = J("(() => { const pl = generatePlan({ goal: 'general', level: 'new', equip: 'body', mins: 45, avoid: [], wds: [1, 4] }); return { days: pl.map(d => d.title), eq: [...new Set(U.ex(pl).map(n => exMeta(n).eq))], maxD: Math.max(...U.ex(pl).map(n => exMeta(n).d)), n: pl.map(d => d.slots.length), sets: [...new Set(pl.flatMap(d => d.slots.map(s => s.sets)))], reps: [...new Set(pl.flatMap(d => d.slots.filter(s => !s.time).map(s => s.reps)))] }; })()")
-    check(r['days'] == ['Full Body A', 'Full Body B'], f'bodyweight beginner, 2 days: full body split, got {r["days"]}')
+    check(r['days'] == ['Upper', 'Lower'], f'bodyweight beginner, 2 days: upper / lower, got {r["days"]}')
     check(r['eq'] == ['body'], f'bodyweight beginner: only bodyweight moves, got {r["eq"]}')
     check(r['maxD'] <= 2, f'beginner: nothing harder than difficulty 2, got {r["maxD"]}')
     check(all(4 <= x <= 5 for x in r['n']), f'45 min: up to 5 exercises a day, got {r["n"]}')
@@ -40,10 +40,10 @@ with sync_playwright() as p:
     check(set(r['eq']) <= {'body', 'db'}, f'dumbbells only: no gym kit, got {r["eq"]}')
     check(not r['sh'], f'shoulder injury: nothing that loads the shoulders, got {r["sh"]}')
     check(all(x >= 5 for x in r['n']), f'dumbbells + shoulder injury still fills the days: {r["n"]}')
-    check(set(r['dose']) <= {'3x8–12', '4x8–12'}, f'muscle: 3–4 sets of 8–12, got {r["dose"]}')
+    check(set(r['dose']) <= {'3x8–12', '4x8–12', '3x5–8', '4x5–8', '3x12–15'}, f'muscle: 3–4 sets of 8–12, heavy day 5–8, volume day 12–15, got {r["dose"]}')
 
     # 3. full-gym advanced, 6 days
-    r = J("(() => { const pl = generatePlan({ goal: 'strength', level: 'seasoned', equip: 'gym', mins: 90, avoid: [], wds: [1, 2, 3, 4, 5, 6] }); return { days: pl.map(d => d.title), n: pl.map(d => d.slots.length), main: pl.map(d => d.slots[0].sets + 'x' + d.slots[0].reps), acc: [...new Set(pl.flatMap(d => d.slots.filter(s => s.mv === 'iso').map(s => s.sets + 'x' + s.reps)))], gym: U.ex(pl).some(n => exMeta(n).eq === 'gym'), same: pl[0].slots.map(s => s.opts[0].n).join() === pl[3].slots.map(s => s.opts[0].n).join() }; })()")
+    r = J("(() => { const pl = generatePlan({ goal: 'strength', level: 'seasoned', equip: 'gym', mins: 90, avoid: [], wds: [1, 2, 3, 4, 5, 6] }); return { days: pl.map(d => d.title), n: pl.map(d => d.slots.length), main: pl.map(d => d.slots[0].sets + 'x' + d.slots[0].reps), acc: [...new Set(pl.flatMap(d => d.slots.filter(s => s.mv === 'iso' && !s.time).map(s => s.sets + 'x' + s.reps)))], gym: U.ex(pl).some(n => exMeta(n).eq === 'gym'), same: pl[0].slots.map(s => s.opts[0].n).join() === pl[3].slots.map(s => s.opts[0].n).join() }; })()")
     check(r['days'] == ['Push A', 'Pull A', 'Legs A', 'Push B', 'Pull B', 'Legs B'], f'6 days: push / pull / legs twice, got {r["days"]}')
     check(all(x == 8 for x in r['n']), f'90 min: 8 exercises a day, got {r["n"]}')
     check(all(m == '5x3–6' for m in r['main']), f'strength, advanced: main lifts 5 x 3–6, got {r["main"]}')
@@ -54,7 +54,21 @@ with sync_playwright() as p:
     r = J("generatePlan({ goal: 'muscle', level: 'some', equip: 'gym', mins: 30, wds: [1,2,3,4,5] })[0].slots.map(s => [s.opts[0].n, exMeta(s.opts[0].n).mv, exMeta(s.opts[0].n).m])")
     check(len(r) == 4 and r[0][1] == 'hpush' and 'Incline' in r[1][0] and r[2][1] == 'vpush' and r[3][2] == 'triceps', f'30-min push day: press, incline, shoulder press, triceps; got {r}')
     r = J("[2,3,4,5,6].map(n => generatePlan({ wds: [1,2,3,4,5,6].slice(0, n) }).map(d => d.title).join('/'))")
-    check(r == ['Full Body A/Full Body B', 'Full Body A/Full Body B/Full Body C', 'Upper A/Lower A/Upper B/Lower B', 'Push/Pull/Legs/Upper A/Lower B', 'Push A/Pull A/Legs A/Push B/Pull B/Legs B'], f'splits by days a week: {r}')
+    check(r == ['Upper/Lower', 'Push/Pull/Legs', 'Upper A/Lower A/Upper B/Lower B', 'Push/Pull/Legs/Upper/Lower', 'Push A/Pull A/Legs A/Push B/Pull B/Legs B'], f'splits by days a week: {r}')
+    r = J("['ppl','ul','arnold','bro','fb'].map(st => [3,5].map(n => generatePlan({ split: st, wds: [1,2,3,4,5,6].slice(0, n) }).map(d => d.title).join('/')))")
+    check(r == [['Push/Pull/Legs', 'Push A/Pull A/Legs/Push B/Pull B'], ['Upper A/Lower/Upper B', 'Upper A/Lower A/Upper B/Lower B/Upper C'], ['Chest & Back/Shoulders & Arms/Legs', 'Chest & Back A/Shoulders & Arms A/Legs/Chest & Back B/Shoulders & Arms B'], ['Chest & Triceps/Back & Biceps/Legs & Shoulders', 'Chest/Back/Legs/Shoulders/Arms'], ['Full Body A/Full Body B/Full Body C', 'Full Body A/Full Body B/Full Body C/Full Body D/Full Body E']], f'split styles: {r}')
+    # the point of the rework: every exercise on a day, and every swap choice, trains that day's muscles
+    r = J("""(() => { const bad = []; let plans = 0, days = 0;
+      for (const split of GEN_STYLES.map(x => x[0])) for (const goal of ['muscle', 'strength']) for (const level of ['new', 'seasoned']) for (const equip of ['gym', 'home', 'body'])
+      for (const n of [2, 3, 4, 5, 6]) for (const avoid of [[], ['shoulders'], ['knees'], ['lowerback'], ['wrists'], ['shoulders', 'wrists']]) for (const focus of [[], ['glutes', 'arms']]) {
+        const a = { split, goal, level, equip, mins: 90, avoid, focus, wds: [1, 2, 3, 4, 5, 6].slice(0, n) }, pl = generatePlan(a), keys = genSplit(split, n); plans++;
+        pl.forEach((d, i) => { const z = DAY_T[keys[i]][1]; days++;
+          for (const s of d.slots.filter(s => s.mv)) for (const o of s.opts) { const e = exMeta(o.n); if (e.m !== 'core' && !z.includes(e.m)) bad.push([d.title, o.n, e.m, split, n, equip, avoid.join()]); } }); }
+      return { plans, days, bad: bad.slice(0, 6), nbad: bad.length }; })()""")
+    check(r['nbad'] == 0, f"{r['nbad']} exercises off the day's muscles across {r['plans']} plans, e.g. {r['bad']}")
+    print(f"  {r['plans']} split-style plans ({r['days']} days) all stay on target")
+    r = J("generatePlan({ goal: 'muscle', focus: ['glutes'], wds: [1,2,3,4] }).map(d => d.slots.filter(s => s.opts[0] && exMeta(s.opts[0].n) && exMeta(s.opts[0].n).m === 'glutes').length)")
+    check(r[1] >= 1 and r[3] >= 1 and r[0] == 0 and r[2] == 0, f'a glute focus adds glute work on lower days only: {r}')
 
     # every combination of answers: never equipment they don't have, never an injured area, never too hard; swap options included
     r = J("""(() => { const bad = [], few = []; let plans = 0;

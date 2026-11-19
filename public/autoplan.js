@@ -3,7 +3,7 @@
    because from then on the coach decides the targets. Regenerating the plan switches it back on.
    TODO(pro): gate on hasPro() once the app has a subscription check (see plan.js). */
 'use strict';
-const genOn = () => { const p = S.settings.plan; return !!(p && p.gen >= GEN_V && p.auto !== false); };
+const genOn = () => { const p = S.settings.plan; return !!(p && p.gen >= GEN_AUTO && p.auto !== false); };
 const hasCoach = () => { const c = typeof trCoach === 'function' ? trCoach() : null; return !!(c && c.r && c.r.status === 'accepted'); };
 const EX_BY_ID = Object.fromEntries(EX.map(e => [e.n.toLowerCase().replace(/[^a-z0-9]+/g, '-'), e]));
 const progNotes = () => (S.settings.prog = S.settings.prog || {}); // { [exercise id]: { from, at } }: lifts swapped in for a stalled one
@@ -41,7 +41,7 @@ afterLog = function (si) {
 };
 
 /* regenerate: same answers, fresh plan, after a confirmation */
-function genAnswers() { const p = S.settings.plan || {}; return { goal: p.goal || 'muscle', level: p.level || 'some', equip: p.equip || 'gym', mins: p.mins || 60, avoid: p.avoid || [], focus: p.focus || [], wds: p.wds || [1, 2, 4, 5] }; }
+function genAnswers() { const p = S.settings.plan || {}; return { goal: p.goal || 'muscle', level: p.level || 'some', equip: p.equip || 'gym', mins: p.mins || 60, split: p.split || 'auto', avoid: p.avoid || [], focus: p.focus || [], wds: p.wds || [1, 2, 4, 5] }; }
 function genConfirm() {
   if (hasCoach()) return toast('Your coach looks after your plan.', 3500);
   openSheet(`<h3>Replace your plan?</h3><div class="sub">A new plan is made from your answers. Everything you’ve logged stays, but your current exercises, edits and swaps are replaced.</div>
@@ -66,7 +66,7 @@ const _apRenderMore = renderMore;
 renderMore = function () {
   _apRenderMore(); const at = $('swReset'), card = at && at.closest('.card'); if (!card) return;
   const p = S.settings.plan, coach = hasCoach();
-  const line = coach ? 'Your coach looks after your plan.' : p && p.gen >= GEN_V ? (p.auto === false ? 'Generated for you, then edited by a coach, so targets no longer change on their own.' : 'Generated for you. Targets go up as you hit your reps, and a lift that stalls for 3 weeks is swapped.') : p ? 'Built from your setup answers.' : 'You wrote this plan yourself.';
+  const line = coach ? 'Your coach looks after your plan.' : p && p.gen >= GEN_AUTO ? (p.auto === false ? 'Generated for you, then edited by a coach, so targets no longer change on their own.' : 'Generated for you. Targets go up as you hit your reps, and a lift that stalls for 3 weeks is swapped.' + (p.gen < GEN_V ? '<br><b>New:</b> plans now keep each day to one muscle group. Regenerate to get the new layout; your history stays.' : '')) : p ? 'Built from your setup answers.' : 'You wrote this plan yourself.';
   card.insertAdjacentHTML('afterend', `<div class="card" id="genCard"><h3>Training plan</h3><div class="muted">${line}</div>
     ${coach ? '' : p ? '<div class="grid2"><button class="btn" data-genre>Regenerate plan</button><button class="btn" data-buildplan>Change my answers</button></div>' : '<button class="btn" data-buildplan>Generate a plan for me</button>'}</div>`);
 };

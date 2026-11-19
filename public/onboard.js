@@ -3,9 +3,10 @@
 const OB = { i: 0, name: '', color: '', goal: '', focus: [], avoid: [], wds: [1, 2, 4, 5], mins: 60, equip: 'gym', level: 'some', unit: 'lb', routine: null, busy: false, coachU: '' };
 const OB_STEPS = ['profile', 'coach', 'start', 'goal', 'focus', 'schedule', 'setup', 'avoid', 'plan', 'blank', 'coachpick']; // 'blank' is only reached from 'start' (an empty plan), 'coachpick' from 'coach' (training with a coach)
 const OB_GOAL = OB_STEPS.indexOf('goal');
-const obAnswers = () => ({ goal: OB.goal, focus: OB.focus, wds: OB.wds, mins: OB.mins, equip: OB.equip, level: OB.level, avoid: OB.avoid, gen: GEN_V, auto: true }); // saved in settings.plan, so the plan can be regenerated
+const obAnswers = () => ({ goal: OB.goal, focus: OB.focus, wds: OB.wds, mins: OB.mins, split: OB.split || 'auto', equip: OB.equip, level: OB.level, avoid: OB.avoid, gen: GEN_V, auto: true }); // saved in settings.plan, so the plan can be regenerated
+const splitHint = n => { const k = genSplit('auto', Math.min(6, Math.max(2, n))); return k ? 'For ' + k.length + ' days: ' + [...new Set(k.map(x => DAY_T[x][0]))].join(' / ') : 'The best fit for your days'; };
 function startOnboarding(fromStep) {
-  Object.assign(OB, { i: fromStep || 0, first: fromStep || 0, name: ME.display_name && ME.display_name !== ME.username ? ME.display_name : '', color: ME.color || themeColor, goal: '', mode: 'auto', focus: [], avoid: [], wds: [1, 2, 4, 5], mins: 60, equip: 'gym', level: 'some', unit: 'lb', routine: null, busy: false, coachU: '' });
+  Object.assign(OB, { i: fromStep || 0, first: fromStep || 0, name: ME.display_name && ME.display_name !== ME.username ? ME.display_name : '', color: ME.color || themeColor, goal: '', mode: 'auto', focus: [], avoid: [], wds: [1, 2, 4, 5], mins: 60, split: 'auto', equip: 'gym', level: 'some', unit: 'lb', routine: null, busy: false, coachU: '' });
   document.body.classList.add('out'); $('auth').classList.remove('show'); $('onb').classList.add('show');
   renderOb('fwd');
 }
@@ -47,6 +48,8 @@ function renderOb(dir) {
     <div class="au-hint" id="obDays">${OB.wds.length} day${OB.wds.length === 1 ? '' : 's'} a week${OB.wds.length === 7 ? ' · no rest day, so keep some sessions easy' : ''}</div>
     <div class="au-lbl">How long is a session?</div>
     <div class="dayn">${MINS.map(([m, t, n]) => `<button class="pk ${OB.mins === m ? 'on' : ''}" data-mins="${m}"><b>${t.replace(' min', '')}</b><span>minutes</span></button>`).join('')}</div>
+    <div class="au-lbl">How do you like to split your week?</div>
+    <div class="pick one">${GEN_STYLES.map(([k, t, s]) => `<button class="pk row ${(OB.split || 'auto') === k ? 'on' : ''}" data-split="${k}"><div><b>${t}</b><span>${k === 'auto' ? splitHint(OB.wds.length) : s}</span></div></button>`).join('')}</div>
     <div class="ob-foot"><button class="au-go" data-obnext>Continue</button></div>`;
   if (step === 'setup') h = `<h1 class="ob-h">Where do you train?</h1><p class="ob-p">Your plan only uses equipment you have.</p>
     <div class="pick one">${EQUIP.map(([k, ic, t, s]) => `<button class="pk row ${OB.equip === k ? 'on' : ''}" data-equip="${k}"><i>${ic}</i><div><b>${t}</b><span>${s}</span></div></button>`).join('')}</div>
@@ -108,9 +111,10 @@ $('onb').addEventListener('click', e => {
   if (d.focus) { OB.focus = OB.focus.includes(d.focus) ? OB.focus.filter(x => x !== d.focus) : [...OB.focus, d.focus].slice(-2); return renderOb(''); }
   if (d.wd) { const n = +d.wd, on = OB.wds.includes(n); if (on && OB.wds.length <= WD_MIN) return toast('Pick at least one day'); OB.wds = on ? OB.wds.filter(x => x !== n) : [...OB.wds, n].sort((a, b) => a - b); return renderOb(''); }
   if (d.mins) { OB.mins = +d.mins; return renderOb(''); }
+  if (d.split) { OB.split = d.split; return renderOb(''); }
   if (d.equip) { OB.equip = d.equip; return renderOb(''); }
   if (d.level) { OB.level = d.level; return renderOb(''); }
   if (d.unit) { OB.unit = d.unit; return renderOb(''); }
 });
 document.addEventListener('click', e => { if (e.target.closest('[data-buildplan]') && session) { if (typeof closeSheet === 'function') closeSheet(); startOnboarding(OB_GOAL); OB.name = ME.display_name || ME.username; OB.unit = S.settings.unit || 'lb';
-  const p = S.settings.plan; if (p) { Object.assign(OB, { goal: p.goal || '', focus: p.focus || [], avoid: p.avoid || [], wds: p.wds || OB.wds, mins: p.mins || 60, equip: p.equip || 'gym', level: p.level || 'some' }); renderOb(''); } } }); // changing answers starts from the old ones
+  const p = S.settings.plan; if (p) { Object.assign(OB, { goal: p.goal || '', focus: p.focus || [], avoid: p.avoid || [], wds: p.wds || OB.wds, mins: p.mins || 60, split: p.split || 'auto', equip: p.equip || 'gym', level: p.level || 'some' }); renderOb(''); } } }); // changing answers starts from the old ones

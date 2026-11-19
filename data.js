@@ -28,17 +28,17 @@ for(const k in P){P[k].B={...P[k].A,...P[k].B};}
 /* ---------- routine ---------- */
 const X=(n,pat,cues)=>({n,pat,cues});
 const DAYS_KING=[
-{d:'Mon',title:'Legs & Glutes',slots:[
+{d:'Mon',title:'Legs: Quads',slots:[
  {sets:4,reps:'6–8',rest:150,opts:[
   X('Barbell Back Squat','squat',['Bar on upper traps, brace your core before every rep','Knees track over toes, hit at least parallel','Drive through mid-foot, chest stays up']),
   X('Hack Squat','squat',['Feet mid-platform, shoulder width','Control the descent, go deep','Don\'t slam the knees locked at the top']),
   X('Goblet Squat','squat',['Hold the DB tight at your chest','Elbows inside the knees at the bottom','Sit straight down between your hips']),
   X('Smith Machine Squat','squat',['Feet slightly in front of the bar','Full depth, steady tempo','Good one to train heavy without a spotter'])]},
- {sets:3,reps:'8–10',rest:120,opts:[
-  X('Romanian Deadlift','hinge',['Soft knees, push your hips straight back','Bar slides down your thighs, back flat','Stop when the hamstrings are stretched, then squeeze glutes up']),
-  X('Dumbbell RDL','hinge',['DBs close to your legs the whole time','Hips back, not down','Feel the hamstring stretch, don\'t chase the floor']),
-  X('Good Morning','hinge',['Bar on upper back, slight knee bend','Hinge until the torso is near parallel','Go lighter than you think']),
-  X('Cable Pull-Through','hinge',['Face away from the low pulley, rope between legs','Hips back, then snap them forward','Squeeze glutes hard at the top'])]},
+ {sets:3,reps:'10–12',rest:120,opts:[
+  X('Leg Press','legpress',['Feet shoulder-width in the middle of the platform','Lower until the knees are ~90°, lower back stays on the pad','Press through the whole foot, don\'t lock the knees']),
+  X('Hack Squat','squat',['Feet mid-platform','Go deep, control the descent']),
+  X('Goblet Squat','squat',['Upright torso, elbows inside the knees']),
+  X('Smith Machine Squat','squat',['Feet slightly forward','Full depth'])]},
  {sets:3,reps:'10 per leg',rest:90,opts:[
   X('Walking Lunges','lunge',['Long stride, torso upright','Back knee drops to just above the floor','Push through the front heel']),
   X('Bulgarian Split Squat','lunge',['Rear foot up on a bench','Front foot far enough out that the knee stays over the ankle','Drop straight down, drive up through the front heel']),
@@ -49,80 +49,44 @@ const DAYS_KING=[
   X('Seated Leg Curl','legcurl',['Thigh pad snug, back against the seat','Full curl, slow return','Point toes up for more hamstring']),
   X('Nordic Curl','legcurl',['Anchor your heels under something solid','Lower as slowly as you can','Push off the floor to come back up']),
   X('Stability Ball Leg Curl','legcurl',['Lie on your back, heels on the ball','Lift hips and keep them up','Roll the ball in, then out slowly'])]},
- {sets:3,reps:'10–12',rest:90,opts:[
-  X('Barbell Hip Thrust','thrust',['Upper back on the bench edge, bar padded over hips','Chin tucked, drive hips until the body is flat','Pause and squeeze at the top']),
-  X('Smith Machine Hip Thrust','thrust',['Same setup, more stable bar path','Feet flat, shins vertical at the top']),
-  X('Glute Bridge','thrust',['Shoulders on the floor, weight on the hips','Drive through heels','2 sec squeeze at the top']),
-  X('Single-Leg Hip Thrust','thrust',['Bodyweight or a DB on the hip','Keep the pelvis level','Great for fixing side-to-side imbalance'])]},
  {sets:4,reps:'15',rest:60,opts:[
   X('Standing Calf Raise','calf',['Balls of feet on a step','Full stretch at the bottom','Hold 1 sec at the top, no bouncing']),
   X('Seated Calf Raise','calf',['Hits the soleus (lower calf)','Slow and full range']),
   X('Leg Press Calf Press','calf',['Toes on the bottom edge of the platform','Don\'t lock the knees hard']),
-  X('Single-Leg DB Calf Raise','calf',['Hold a DB on the same side','Balance with your other hand','Slow and controlled'])]}
+  X('Single-Leg DB Calf Raise','calf',['Hold a DB on the same side','Balance with your other hand','Slow and controlled'])]},
+ {sets:3,reps:'10–15',rest:60,opts:[
+  X('Hanging Leg Raises','legraise',['Dead hang, no swinging','Curl your pelvis up, don\'t just lift the legs','Lower slowly for the lower abs']),
+  X('Captain\'s Chair Knee Raise','legraise',['Back against the pad','Knees to chest, curl the hips']),
+  X('Lying Leg Raise','legraise',['Lower back pressed to the floor','Lower until just before the back arches']),
+  X('Reverse Crunch','legraise',['On your back, knees bent','Roll your hips off the floor toward your chest'])]}
 ]},
-{d:'Tue',title:'Upper Body',slots:[
- {sets:4,reps:'8–10',rest:135,opts:[
+{d:'Tue',title:'Push: Chest, Shoulders & Triceps',slots:[
+ {sets:4,reps:'6–8',rest:150,opts:[
   X('Flat Barbell Bench Press','bench',['Shoulder blades pinned back and down','Bar touches lower chest, elbows ~45°','Feet planted, drive the bar up and slightly back']),
   X('Flat Dumbbell Bench Press','bench',['DBs start over the shoulders','Lower until you feel a deep chest stretch','Press up and slightly together']),
   X('Machine Chest Press','bench',['Seat height: handles at mid-chest','Great for pushing near failure safely']),
   X('Smith Machine Bench','bench',['Bar lines up with lower chest','Same setup as barbell, just more stable'])]},
- {sets:3,reps:'8–10',rest:75,opts:[
-  X('Dumbbell Row + Overhead DB Press','row',['SUPERSET: row, then straight into the press. Pull and push muscles rest while the other works, so you save time','Row the DB to your hip, squeeze 1 sec','Press straight up, brace abs, no leaning back']),
-  X('Chest-Supported Row + Seated Dumbbell Press','row',['Superset','Chest on an incline bench for the row','Back on a near-upright bench for the press']),
-  X('Seated Cable Row + Arnold Press','seatedrow',['Superset','Squeeze the shoulder blades on the row','Rotate out as you press'])]},
- {sets:3,reps:'10–12',rest:45,opts:[
-  X('EZ-Bar Curl + Skull Crushers','curl',['SUPERSET: your heavy arm pair. Curls, then straight into skull crushers','Elbows pinned on the curls, no swinging','Lower the skull crushers to just behind your head, elbows pointing up']),
-  X('Barbell Curl + Rope Pushdown','curl',['Superset','Spread the rope at the bottom of the pushdown']),
-  X('Bicep Curls + Tricep Pushdowns','curl',['Superset','Elbows pinned at your sides on both'])]},
- {sets:3,reps:'12',rest:45,opts:[
-  X('Incline DB Curl + Overhead Cable Extension','curl',['SUPERSET: stretch pair. Both moves hit the long heads that build arm size','Incline curl: let the arms hang behind you, curl without moving the elbows','Overhead extension: face away from the cable, full stretch behind your head']),
-  X('Cable Curl + Overhead Tricep Extension','curl',['Superset','Constant tension on both']),
-  X('Hammer Curls + Tricep Pushdown (rope)','curl',['Superset','Palms facing each other on the curls'])]}
-]},
-{d:'Wed',title:'Chest & Legs',slots:[
- {sets:4,reps:'8–10',rest:120,opts:[
-  X('Incline Dumbbell Press','inclinepress',['You bench flat on Tuesday, so today hits the upper chest','Bench at 30°, lower to the upper chest','Press up and slightly together']),
+ {sets:3,reps:'8–10',rest:120,opts:[
+  X('Incline Dumbbell Press','inclinepress',['After flat pressing, this hits the upper chest','Bench at 30°, lower to the upper chest','Press up and slightly together']),
   X('Incline Barbell Press','inclinepress',['Bench at 30°, bar touches just under the collarbone']),
   X('Incline Machine Press','inclinepress',['Push near failure safely']),
   X('Flat Bench Press','bench',['Controlled descent, explosive press'])]},
  {sets:3,reps:'8–10',rest:105,opts:[
-  X('Close-Grip Bench Press','bench',['Hands just inside shoulder width, not touching','Elbows tucked close to your sides','Your heaviest tricep builder, it hits chest too']),
-  X('Chest Dips','dip',['Stay more upright to bias the triceps','Lower until the shoulders are just below the elbows']),
-  X('Diamond Push-Ups','pushup',['Hands together under your chest','Elbows brush your sides']),
-  X('Landmine Press','landmine',['Press up and forward, follow the arc'])]},
- {sets:3,reps:'8–10',rest:120,opts:[
-  X('Leg Press','legpress',['Feet shoulder-width in the middle of the platform','Lower until the knees are ~90°, lower back stays on the pad','Press through the whole foot, don\'t lock the knees']),
-  X('Hack Squat','squat',['Feet mid-platform','Go deep, control the descent']),
-  X('Goblet Squat','squat',['Upright torso, elbows inside the knees']),
-  X('Smith Machine Squat','squat',['Feet slightly forward','Full depth'])]},
+  X('Seated DB Shoulder Press','ohp',['Back flat against the bench','Press up, don\'t clank the DBs together','Lower to ear level']),
+  X('Arnold Press','ohp',['Start palms facing you, rotate as you press']),
+  X('Machine Shoulder Press','ohp',['Seat height: handles at shoulder level']),
+  X('Standing DB Press','ohp',['Squeeze your glutes and abs, no leaning back'])]},
+ {sets:3,reps:'12–15',rest:45,opts:[
+  X('DB Lateral Raise','latraise',['Slight bend in the elbows','Lead with your elbows to shoulder height, not higher','Light weight, slow lower. This builds shoulder width']),
+  X('Cable Lateral Raise','latraise',['Cable at the bottom, cross-body','Constant tension']),
+  X('Seated Lateral Raise','latraise',['Removes swinging and cheating']),
+  X('Lean-Away Lateral Raise','latraise',['Hold a pole, lean away, one arm at a time'])]},
  {sets:3,reps:'12',rest:60,opts:[
   X('Cable Flyes + Tricep Pushdown (rope)','fly',['SUPERSET: flyes, then pushdowns at the next cable','Flyes: soft elbows, hug a tree, squeeze','Pushdowns: elbows pinned, spread the rope at the bottom']),
   X('Pec Deck + Straight-Bar Pushdown','seatedfly',['Superset','Slow on the way back on the pec deck']),
   X('Dumbbell Flyes + Tricep Dips','fly',['Superset','Stop the flyes at a comfortable stretch'])]}
 ]},
-{d:'Thu',title:'Abs & Core',slots:[
- {sets:3,reps:'failure',rest:75,opts:[
-  X('Hanging Leg Raises','legraise',['Dead hang, no swinging','Curl your pelvis up, don\'t just lift the legs','Lower slowly for the lower abs']),
-  X('Captain\'s Chair Knee Raise','legraise',['Back against the pad','Knees to chest, curl the hips']),
-  X('Lying Leg Raise','legraise',['Lower back pressed to the floor','Lower until just before the back arches']),
-  X('Reverse Crunch','legraise',['On your back, knees bent','Roll your hips off the floor toward your chest'])]},
- {sets:3,reps:'12–15',rest:60,opts:[
-  X('Weighted Cable Crunch','crunch',['Kneel, rope beside your head','Crunch your ribs toward your hips, don\'t pull with the arms','Hips stay still']),
-  X('Decline Weighted Sit-Up','crunch',['Plate on your chest','Curl up one vertebra at a time']),
-  X('Ab Crunch Machine','crunch',['Heavy and controlled','Squeeze hard at the bottom']),
-  X('Ab Wheel Rollout','plank',['Kneel, roll out as far as you can with a flat back','Pull back with the abs'])]},
- {sets:3,reps:'15 per side',rest:60,opts:[
-  X('Decline Russian Twist','twist',['Plate or DB held at your chest','Rotate through your torso, not just your arms','Feet anchored, controlled pace']),
-  X('Cable Woodchopper','twist',['Cable high, chop down across your body','Pivot the back foot']),
-  X('Landmine Rotation','twist',['Arms straight, move the bar end in an arc','Rotate the hips with it']),
-  X('Seated Russian Twist','twist',['Feet off the floor for a harder version'])]},
- {sets:3,reps:'45 sec',time:45,rest:60,opts:[
-  X('Plank-to-Pushup Transitions','plank',['Forearm plank, then push up to high plank','Hips stay square, no rocking side to side','Alternate the lead arm']),
-  X('Plank','plank',['Squeeze glutes and quads','Straight line from head to heels']),
-  X('Mountain Climbers','plank',['High plank, drive knees to chest','Fast but controlled']),
-  X('Bear Crawl Hold','plank',['On hands and toes, knees hovering 1 inch off the floor','Back flat'])]}
-]},
-{d:'Fri',title:'Back & Biceps',slots:[
+{d:'Wed',title:'Pull: Back & Biceps',slots:[
  {sets:4,reps:'8–10',rest:120,opts:[
   X('Pull-Ups','pullup',['Full dead hang at the bottom','Drive elbows down to your back pockets','Chest to the bar, add weight once 10 reps is easy']),
   X('Lat Pulldown','pullup',['Thighs locked under the pad','Pull to the upper chest, lean back slightly','Control the bar up']),
@@ -145,7 +109,73 @@ const DAYS_KING=[
  {sets:3,reps:'10–12',rest:60,opts:[
   X('Hammer Curls + Preacher Curl','curl',['SUPERSET: two curl angles back to back for full biceps and forearms','Hammers: palms facing, slow on the way down','Preacher: armpit snug on the pad, don\'t lock out at the bottom']),
   X('Rope Hammer Curl + Cable Curl','curl',['Superset','Constant tension from the cable']),
-  X('Cross-Body Hammer Curl + Spider Curl','curl',['Superset','Spider curls: chest on an incline bench, arms hanging'])]}
+  X('Cross-Body Hammer Curl + Spider Curl','curl',['Superset','Spider curls: chest on an incline bench, arms hanging'])]},
+ {sets:3,reps:'12–15',rest:60,opts:[
+  X('Weighted Cable Crunch','crunch',['Kneel, rope beside your head','Crunch your ribs toward your hips, don\'t pull with the arms','Hips stay still']),
+  X('Decline Weighted Sit-Up','crunch',['Plate on your chest','Curl up one vertebra at a time']),
+  X('Ab Crunch Machine','crunch',['Heavy and controlled','Squeeze hard at the bottom']),
+  X('Ab Wheel Rollout','plank',['Kneel, roll out as far as you can with a flat back','Pull back with the abs'])]}
+]},
+{d:'Thu',title:'Legs: Glutes & Hamstrings',slots:[
+ {sets:4,reps:'8–10',rest:150,opts:[
+  X('Romanian Deadlift','hinge',['Soft knees, push your hips straight back','Bar slides down your thighs, back flat','Stop when the hamstrings are stretched, then squeeze glutes up']),
+  X('Dumbbell RDL','hinge',['DBs close to your legs the whole time','Hips back, not down','Feel the hamstring stretch, don\'t chase the floor']),
+  X('Good Morning','hinge',['Bar on upper back, slight knee bend','Hinge until the torso is near parallel','Go lighter than you think']),
+  X('Cable Pull-Through','hinge',['Face away from the low pulley, rope between legs','Hips back, then snap them forward','Squeeze glutes hard at the top'])]},
+ {sets:4,reps:'8–12',rest:120,opts:[
+  X('Barbell Hip Thrust','thrust',['Upper back on the bench edge, bar padded over hips','Chin tucked, drive hips until the body is flat','Pause and squeeze at the top']),
+  X('Smith Machine Hip Thrust','thrust',['Same setup, more stable bar path','Feet flat, shins vertical at the top']),
+  X('Glute Bridge','thrust',['Shoulders on the floor, weight on the hips','Drive through heels','2 sec squeeze at the top']),
+  X('Single-Leg Hip Thrust','thrust',['Bodyweight or a DB on the hip','Keep the pelvis level','Great for fixing side-to-side imbalance'])]},
+ {sets:3,reps:'10 per leg',rest:90,opts:[
+  X('Bulgarian Split Squat','lunge',['Rear foot up on a bench','Front foot far enough out that the knee stays over the ankle','Drop straight down, drive up through the front heel']),
+  X('Walking Lunges','lunge',['Long stride, torso upright','Back knee drops to just above the floor','Push through the front heel']),
+  X('Reverse Lunge','lunge',['Step back instead of forward, easier on the knees','Keep most of the weight in the front leg','Control the step back']),
+  X('Step-Ups','lunge',['Box around knee height','Drive through the top leg only, no bouncing off the back foot','Control on the way down'])]},
+ {sets:3,reps:'10–12',rest:75,opts:[
+  X('Seated Leg Curl','legcurl',['Thigh pad snug, back against the seat','Full curl, slow return','Point toes up for more hamstring']),
+  X('Lying Leg Curl','legcurl',['Hips pressed into the pad','Curl all the way, squeeze 1 sec','2–3 seconds down']),
+  X('Nordic Curl','legcurl',['Anchor your heels under something solid','Lower as slowly as you can','Push off the floor to come back up']),
+  X('Stability Ball Leg Curl','legcurl',['Lie on your back, heels on the ball','Lift hips and keep them up','Roll the ball in, then out slowly'])]},
+ {sets:3,reps:'15',rest:60,opts:[
+  X('Seated Calf Raise','calf',['Hits the soleus (lower calf)','Slow and full range']),
+  X('Standing Calf Raise','calf',['Balls of feet on a step','Full stretch at the bottom','Hold 1 sec at the top, no bouncing']),
+  X('Leg Press Calf Press','calf',['Toes on the bottom edge of the platform','Don\'t lock the knees hard']),
+  X('Single-Leg DB Calf Raise','calf',['Hold a DB on the same side','Balance with your other hand','Slow and controlled'])]},
+ {sets:3,reps:'15 per side',rest:60,opts:[
+  X('Decline Russian Twist','twist',['Plate or DB held at your chest','Rotate through your torso, not just your arms','Feet anchored, controlled pace']),
+  X('Cable Woodchopper','twist',['Cable high, chop down across your body','Pivot the back foot']),
+  X('Landmine Rotation','twist',['Arms straight, move the bar end in an arc','Rotate the hips with it']),
+  X('Seated Russian Twist','twist',['Feet off the floor for a harder version'])]}
+]},
+{d:'Fri',title:'Upper: Arms & Shoulders',slots:[
+ {sets:3,reps:'8–10',rest:105,opts:[
+  X('Close-Grip Bench Press','bench',['Hands just inside shoulder width, not touching','Elbows tucked close to your sides','Your heaviest tricep builder, it hits chest too']),
+  X('Chest Dips','dip',['Stay more upright to bias the triceps','Lower until the shoulders are just below the elbows']),
+  X('Diamond Push-Ups','pushup',['Hands together under your chest','Elbows brush your sides']),
+  X('Landmine Press','landmine',['Press up and forward, follow the arc'])]},
+ {sets:3,reps:'8–10',rest:75,opts:[
+  X('Dumbbell Row + Overhead DB Press','row',['SUPERSET: row, then straight into the press. Pull and push muscles rest while the other works, so you save time','Row the DB to your hip, squeeze 1 sec','Press straight up, brace abs, no leaning back']),
+  X('Chest-Supported Row + Seated Dumbbell Press','row',['Superset','Chest on an incline bench for the row','Back on a near-upright bench for the press']),
+  X('Seated Cable Row + Arnold Press','seatedrow',['Superset','Squeeze the shoulder blades on the row','Rotate out as you press'])]},
+ {sets:3,reps:'10–12',rest:90,opts:[
+  X('Lat Pulldown','pullup',['Thighs locked under the pad','Pull to the upper chest, lean back slightly','Control the bar up']),
+  X('Pull-Ups','pullup',['Full dead hang at the bottom','Drive elbows down to your back pockets','Chest to the bar, add weight once 10 reps is easy']),
+  X('Assisted Pull-Up','pullup',['Use the least assistance you can','Full range of motion']),
+  X('Chin-Ups','pullup',['Palms facing you','More biceps involvement'])]},
+ {sets:3,reps:'10–12',rest:45,opts:[
+  X('EZ-Bar Curl + Skull Crushers','curl',['SUPERSET: your heavy arm pair. Curls, then straight into skull crushers','Elbows pinned on the curls, no swinging','Lower the skull crushers to just behind your head, elbows pointing up']),
+  X('Barbell Curl + Rope Pushdown','curl',['Superset','Spread the rope at the bottom of the pushdown']),
+  X('Bicep Curls + Tricep Pushdowns','curl',['Superset','Elbows pinned at your sides on both'])]},
+ {sets:3,reps:'12',rest:45,opts:[
+  X('Incline DB Curl + Overhead Cable Extension','curl',['SUPERSET: stretch pair. Both moves hit the long heads that build arm size','Incline curl: let the arms hang behind you, curl without moving the elbows','Overhead extension: face away from the cable, full stretch behind your head']),
+  X('Cable Curl + Overhead Tricep Extension','curl',['Superset','Constant tension on both']),
+  X('Hammer Curls + Tricep Pushdown (rope)','curl',['Superset','Palms facing each other on the curls'])]},
+ {sets:3,reps:'45 sec',time:45,rest:60,opts:[
+  X('Plank-to-Pushup Transitions','plank',['Forearm plank, then push up to high plank','Hips stay square, no rocking side to side','Alternate the lead arm']),
+  X('Plank','plank',['Squeeze glutes and quads','Straight line from head to heels']),
+  X('Mountain Climbers','plank',['High plank, drive knees to chest','Fast but controlled']),
+  X('Bear Crawl Hold','plank',['On hands and toes, knees hovering 1 inch off the floor','Back flat'])]}
 ]}
 ];
 
