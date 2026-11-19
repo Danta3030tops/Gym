@@ -25,6 +25,13 @@ function mySave() {
   S.settings.myMeals = [{ id: m.id, n: m.n, items: m.items.slice(0, MY_ITEMS), u: Date.now() }, ...list]; touchSettings();
   MY.draft = null; closeSheet(); toast('Meal saved'); if (typeof renderFuel === 'function' && tab === 'fuel') renderFuel();
 }
+/* a meal on the plan → save it as one of my meals, so it can be logged in one tap any day */
+const myItems = items => items.slice(0, MY_ITEMS).map(i => ({ n: String(i.n || '').slice(0, 60), cal: num(i.cal), p: num(i.p), c: num(i.c), f: num(i.f) }));
+const mySig = items => JSON.stringify(myItems(items).map(i => [i.n, i.cal, i.p, i.c, i.f]));
+function myMealBtn(mi, m) {
+  const saved = myMeals().some(x => mySig(x.items) === mySig(m.items));
+  return saved ? '<div class="muted" style="margin-top:6px;font-size:13px">✓ In My meals</div>' : `<button class="chip" data-myfrom="${mi}" style="margin-top:6px">＋ Save as my meal</button>`;
+}
 /* the Fuel tab: a "My meals" card under the plan */
 const _myTop = mealsTopHtml;
 mealsTopHtml = function () {
@@ -34,9 +41,10 @@ mealsTopHtml = function () {
     <button class="btn" data-mynew>＋ Build a meal</button></div>`;
 };
 document.addEventListener('click', e => {
-  if (appOff()) return; const t = e.target.closest('[data-mynew],[data-myedit],[data-mylog],[data-myadd],[data-myidel],[data-mysave],[data-mydel],[data-mlsave="mym"],[data-myback]'); if (!t) return; const d = t.dataset;
+  if (appOff()) return; const t = e.target.closest('[data-mynew],[data-myedit],[data-mylog],[data-myadd],[data-myidel],[data-mysave],[data-mydel],[data-mlsave="mym"],[data-myback],[data-myfrom]'); if (!t) return; const d = t.dataset;
   if (d.mynew !== undefined) { MY.draft = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), n: '', items: [] }; return mySheet(); }
   if (d.myedit) { const m = myMeals().find(x => x.id === d.myedit); if (!m) return; MY.draft = JSON.parse(JSON.stringify(m)); return mySheet(); }
+  if (d.myfrom !== undefined) { const m = MEALS && MEALS.meals[+d.myfrom]; if (!m || !m.items.length) return; MY.draft = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), n: String(m.n || '').slice(0, 60), items: myItems(m.items) }; return mySheet(); }
   if (d.mylog) { const m = myMeals().find(x => x.id === d.mylog); if (!m) return; const s = myTot(m); logFood(fuelDate, { n: m.n, cal: s.cal, p: s.p, c: s.c, f: s.f }); renderFuel(); return toast(`Logged ${m.n}`); }
   if (!MY.draft) return;
   if (d.myadd !== undefined) { myName(); foodSheet('log'); const h = document.querySelector('#sheetin h3'), b = document.querySelector('#sheetin [data-mlsave]'); if (h) h.textContent = 'Add an ingredient'; const sub = document.querySelector('#sheetin .sub'); if (sub) sub.textContent = 'Search for it, or type the name and numbers yourself.'; if (b) { b.dataset.mlsave = 'mym'; b.textContent = 'Add to meal'; b.insertAdjacentHTML('afterend', '<button class="btn ghost" data-myback>Back</button>'); } return; }

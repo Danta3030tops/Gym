@@ -462,6 +462,9 @@ with sync_playwright() as p:
     A.click('[data-mylog]'); until(lambda: A.evaluate("Math.round(fuelOf(fuelDate).cal)") == k and 'Usual breakfast' in A.inner_text('#mlLog'), 'one tap logs the whole meal')
     A.click('[data-mllog]'); A.fill('#fsQ', 'usual'); until(lambda: 'my meals' in A.inner_text('#fsRes').lower() and 'Usual breakfast' in A.inner_text('#fsRes'), 'saved meals show in food search'); A.evaluate("closeSheet()")
     A.click('[data-mlun]'); until(lambda: A.evaluate("fuelOf(fuelDate).cal") == 0, 'and the logged meal can be removed')
+    assert not any('(1 1' in i['n'] for i in A.evaluate("S.settings.myMeals[0].items")), 'portion names read "1 medium", not "1 1 medium"'
+    A.click('#mlPlan [data-myfrom="0"]'); until(lambda: A.input_value('#myN') == A.evaluate("MEALS.meals[0].n") and A.locator('#sheetin .mlitem').count() == A.evaluate("MEALS.meals[0].items.length"), 'a plan meal opens in the builder with its foods')
+    A.click('[data-mysave]'); until(lambda: A.evaluate("S.settings.myMeals.length") == 2 and 'In My meals' in A.inner_text('#mlPlan') and A.locator('#mlPlan [data-myfrom="0"]').count() == 0, 'a plan meal is saved as my meal')
     reload(); go('fuel'); until(lambda: 'Eggs on toast' in A.inner_text('#mlPlan') and A.evaluate("ROUTINE.length") == nd, 'the meal plan survives a reload')
     # editing the workout plan keeps the meal plan
     A.click('#menuBtn'); A.click('#hmenu [data-edopen]'); A.fill('#edTitle', 'Renamed day'); A.click('#sx') if False else A.click('[data-edday="0"]')

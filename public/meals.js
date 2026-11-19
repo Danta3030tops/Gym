@@ -35,7 +35,7 @@ function mealsTopHtml() {
     <button class="btn acc" data-mllog>＋ Log food</button></div>`;
   if (M) h += `<div class="card" id="mlPlan"><h3>Meal plan</h3>${fromCoach() ? '<div class="muted" style="margin:-4px 0 8px">Written by your coach. Tick each food as you eat it.</div>' : ''}
     ${M.meals.map((m, mi) => { const s = mealSum(m.items); return `<div class="mlmeal"><div class="mlh"><b>${esc(m.n)}</b><span>${m.items.length ? macLine(s) : 'empty'}</span></div>${m.note ? `<p class="mlnote">${esc(m.note)}</p>` : ''}
-      ${m.items.map((it, ii) => { const on = log.some(x => x.k === ateKey(mi, ii, it)); return `<div class="mlitem ${on ? 'on' : ''}"><div><b>${esc(it.n)}</b><span>${macLine(it)}</span></div><button class="chk" data-mlate="${mi}:${ii}" aria-label="${on ? 'Untick' : 'Tick as eaten'}" aria-pressed="${on}">✓</button></div>`; }).join('')}</div>`; }).join('')}
+      ${m.items.map((it, ii) => { const on = log.some(x => x.k === ateKey(mi, ii, it)); return `<div class="mlitem ${on ? 'on' : ''}"><div><b>${esc(it.n)}</b><span>${macLine(it)}</span></div><button class="chk" data-mlate="${mi}:${ii}" aria-label="${on ? 'Untick' : 'Tick as eaten'}" aria-pressed="${on}">✓</button></div>`; }).join('')}${m.items.length && typeof myMealBtn === 'function' ? myMealBtn(mi, m) : ''}</div>`; }).join('')}
     <button class="btn ghost" data-mledit>Edit meal plan</button></div>`;
   else h += `<div class="card" id="mlPlan"><h3>No meal plan yet</h3><div class="muted">Plan your meals and tick them off as you eat, or just log food as you go. If you have a coach, they can write your plan for you.</div><button class="btn" data-mledit>Build a meal plan</button></div>`;
   const extra = log.map((x, i) => [x, i]).filter(([x]) => !x.k || !M);

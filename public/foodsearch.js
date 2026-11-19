@@ -80,7 +80,7 @@ function fsFill() {
   const s = FS.sel; if (!s) return; const amt = Math.max(0, num(($('fsAmt') || {}).value)), [lab, g] = FS.opts[+(($('fsPor') || {}).value) || 0] || ['', 0];
   let m; if (s.fixed) m = { cal: s.fixed.cal * amt, p: s.fixed.p * amt, c: s.fixed.c * amt, f: s.fixed.f * amt };
   else { const grams = amt * g; m = { cal: s.k * grams / 100, p: s.p * grams / 100, c: s.c * grams / 100, f: s.f * grams / 100 }; }
-  const qty = s.fixed ? (amt === 1 ? '' : `×${r1(amt)}`) : lab === 'grams' ? `${r1(amt)} g` : lab === '100 g' ? `${r1(amt * 100)} g` : `${r1(amt)} ${lab}`;
+  const qty = s.fixed ? (amt === 1 ? '' : `×${r1(amt)}`) : lab === 'grams' ? `${r1(amt)} g` : lab === '100 g' ? `${r1(amt * 100)} g` : /^1 [^/]/.test(lab) ? `${r1(amt)} ${lab.slice(2)}` : /^[\d.\/]/.test(lab) ? (amt === 1 ? lab : `${r1(amt)} × ${lab}`) : `${r1(amt)} ${lab}`; // USDA labels already start with "1 ": "1 cup", not "1 1 cup"
   const nm = qty ? `${s.n.slice(0, 56 - qty.length).replace(/[ ,·]+$/, '')} (${qty})` : s.n.slice(0, 60);
   const set = (id, v) => { const el = $(id); if (el) el.value = v; };
   set('mfN', nm); set('mf_cal', Math.round(m.cal)); set('mf_p', r1(m.p)); set('mf_c', r1(m.c)); set('mf_f', r1(m.f));
