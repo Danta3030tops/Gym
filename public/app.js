@@ -659,6 +659,7 @@ function renderMore() {
   // settings
   h += `<div class="card"><h3>Settings</h3>
     <div class="hrow"><span>Appearance</span><div class="row">${[['light', 'Light'], ['dark', 'Dark'], ['auto', 'Auto']].map(([k, l]) => `<button class="chip ${appearance === k ? 'on' : ''}" data-appear="${k}">${l}</button>`).join('')}</div></div>
+    <div class="hrow" style="flex-wrap:wrap"><span>Color</span><div class="swatches" id="accPick" style="gap:10px">${ACCENTS.map(([c, n]) => `<button class="sw ${c === ME.color ? 'on' : ''}" data-accent="${c}" style="--c:${c};width:32px;height:32px" aria-label="${n}" aria-pressed="${c === ME.color}"></button>`).join('')}</div></div>
     <div class="hrow"><span>Weight unit</span><div class="row"><button class="chip ${unit() === 'lb' ? 'on' : ''}" data-unit="lb">LB</button><button class="chip ${unit() === 'kg' ? 'on' : ''}" data-unit="kg">KG</button></div></div>
     <div class="hrow"><span>☕ Caffeine: keep the screen awake while the app is open${cafState === 'video' ? ' <small class="muted">(backup mode)</small>' : cafState === 'failed' ? ' <small class="muted">(not supported here)</small>' : ''}</span><button class="chip ${cafOn() ? 'on' : ''}" id="wakeT">${cafOn() ? 'On' : 'Off'}</button></div>
     <div class="hrow"><span>Rep pacer speed</span><div class="row"><b>${Math.round(100 / S.settings.tempoScale)}%</b><button class="chip" id="tReset">Reset</button></div></div>
@@ -899,3 +900,15 @@ function stopApp() {
   if (PC) { PC.done = true; PC = null; } $('pacer').classList.remove('show'); pvStop(); closeSheet();
   for (const k in urlCache) delete urlCache[k]; lastSync = 0; DAYS = []; localStorage.removeItem('gymp.session'); localStorage.removeItem('gymp.sessFired'); /* the session timer belongs to whoever was signed in */ document.body.classList.add('out');
 }
+/* Settings → Color: the accent is saved on the profile (friends see it too), so it needs a connection */
+let accBusy = false;
+document.addEventListener('click', async e => {
+  const t = e.target.closest('[data-accent]'); if (!t || appOff() || accBusy) return;
+  const c = t.dataset.accent, old = ME.color, id = uid(); if (c === old || !ACCENTS.some(([x]) => x === c)) return;
+  if (!sb || !navigator.onLine) return toast('You’re offline. Try again when you’re connected.', 3500);
+  accBusy = true; ME.color = c; applyTheme(c); renderMore();
+  const { error } = await sb.from('app_profiles').update({ color: c }).eq('id', id).then(r => r, e => ({ error: e }));
+  accBusy = false; if (uid() !== id) return;
+  if (error) { ME.color = old; applyTheme(old); renderMore(); return toast('Couldn’t change the color. Try again in a moment.', 3500); }
+  cacheSet('gymp.me.' + id, ME);
+});

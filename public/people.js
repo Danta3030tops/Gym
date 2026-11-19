@@ -4,7 +4,7 @@
    avUrl() and frAv() live in friends.js so every avatar in the app picks the picture up. */
 const HAS_AV = () => !!ME && 'avatar' in ME;
 
-/* ---------- profile picture: pick, shrink to a 320px square JPEG, upload, point the profile at it ---------- */
+/* ---------- profile picture: pick, crop, shrink to a 320px square JPEG, upload, point the profile at it ---------- */
 const AV = { busy: false };
 document.body.insertAdjacentHTML('beforeend', '<input type="file" accept="image/*" id="avInput" hidden>');
 function avSheet() {
@@ -14,10 +14,50 @@ function avSheet() {
     <button class="btn acc" data-avpick>${ME.avatar ? 'Choose a new photo' : 'Choose a photo'}</button>
     ${ME.avatar ? '<button class="btn ghost" data-avrm style="color:#ff453a">Remove photo</button>' : ''}`);
 }
-async function avSquare(file) {
-  const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }).catch(() => createImageBitmap(file));
-  const s = Math.min(bmp.width, bmp.height), c = document.createElement('canvas'); c.width = c.height = 320;
-  c.getContext('2d').drawImage(bmp, (bmp.width - s) / 2, (bmp.height - s) / 2, s, s, 0, 0, 320, 320);
+/* crop: the photo fills a square; drag to move it, pinch or use the slider to zoom. The circle shows what friends see. */
+const CROP = { bmp: null, z: 1, x: 0, y: 0, P: 280 };
+const cropBase = () => Math.max(CROP.P / CROP.bmp.width, CROP.P / CROP.bmp.height);
+function cropClamp() {
+  const k = cropBase() * CROP.z, w = CROP.bmp.width * k, h = CROP.bmp.height * k;
+  CROP.x = Math.min(0, Math.max(CROP.P - w, CROP.x)); CROP.y = Math.min(0, Math.max(CROP.P - h, CROP.y));
+}
+function cropDraw(c, size) {
+  const f = size / CROP.P, k = cropBase() * CROP.z * f, g = c.getContext('2d');
+  g.fillStyle = '#000'; g.fillRect(0, 0, size, size);
+  g.drawImage(CROP.bmp, CROP.x * f, CROP.y * f, CROP.bmp.width * k, CROP.bmp.height * k);
+}
+function cropZoom(z, cx = CROP.P / 2, cy = CROP.P / 2) { // zoom around a point, so what's under your fingers stays put
+  z = Math.min(5, Math.max(1, z)); const r = z / CROP.z;
+  CROP.x = cx - (cx - CROP.x) * r; CROP.y = cy - (cy - CROP.y) * r; CROP.z = z; cropClamp();
+  const cv = $('avCrop'); if (cv) cropDraw(cv, cv.width); const sl = $('avZoom'); if (sl && +sl.value !== z) sl.value = z;
+}
+async function avCrop(file) {
+  if (!file) return;
+  try { CROP.bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }).catch(() => createImageBitmap(file)); }
+  catch (e) { return toast('Couldn’t open that photo. Try a different one.', 3500); }
+  CROP.z = 1; const k = cropBase(); CROP.x = (CROP.P - CROP.bmp.width * k) / 2; CROP.y = (CROP.P - CROP.bmp.height * k) / 2;
+  const px = Math.round(CROP.P * Math.min(2, window.devicePixelRatio || 1));
+  openSheet(`<h3>Move and scale</h3><div class="sub">Drag the photo to place it. Pinch or use the slider to zoom.</div>
+    <div class="avcrop" data-nodrag><canvas id="avCrop" width="${px}" height="${px}"></canvas><i></i></div>
+    <input type="range" id="avZoom" min="1" max="5" step="0.01" value="1" aria-label="Zoom">
+    <button class="btn acc" data-avuse>Use photo</button><button class="btn ghost" data-avpick>Choose a different photo</button>`);
+  cropDraw($('avCrop'), px);
+  const box = document.querySelector('.avcrop'), pts = new Map(); let last = null;
+  const loc = e => { const r = box.getBoundingClientRect(), s = CROP.P / r.width; return [(e.clientX - r.left) * s, (e.clientY - r.top) * s]; };
+  box.addEventListener('pointerdown', e => { box.setPointerCapture(e.pointerId); pts.set(e.pointerId, loc(e)); last = null; });
+  box.addEventListener('pointermove', e => {
+    if (!pts.has(e.pointerId)) return; const prev = pts.get(e.pointerId), now = loc(e); pts.set(e.pointerId, now);
+    if (pts.size === 1) { CROP.x += now[0] - prev[0]; CROP.y += now[1] - prev[1]; cropClamp(); cropDraw($('avCrop'), px); return; }
+    const [a, b] = [...pts.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+    if (last) cropZoom(CROP.z * d / last, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2); last = d;
+  });
+  const up = e => { pts.delete(e.pointerId); last = null; };
+  box.addEventListener('pointerup', up); box.addEventListener('pointercancel', up);
+  box.addEventListener('wheel', e => { e.preventDefault(); const [x, y] = loc(e); cropZoom(CROP.z * (e.deltaY < 0 ? 1.08 : 1 / 1.08), x, y); }, { passive: false });
+}
+document.addEventListener('input', e => { if (e.target.id === 'avZoom') cropZoom(+e.target.value); });
+async function avSquare() {
+  const c = document.createElement('canvas'); c.width = c.height = 320; cropDraw(c, 320);
   return new Promise(r => c.toBlob(r, 'image/jpeg', .85));
 }
 async function avSet(path) { // path '' removes it
@@ -29,24 +69,25 @@ async function avSet(path) { // path '' removes it
   if (old && old !== path && old.startsWith(id + '/')) sb.storage.from('app-avatars').remove([old]).then(() => { }, () => { }); // tidy up; no harm if it stays
   return true;
 }
-async function avUpload(file) {
-  if (AV.busy || !file || !HAS_AV()) return;
+async function avUpload() {
+  if (AV.busy || !CROP.bmp || !HAS_AV()) return;
   if (!sb || !navigator.onLine) return toast('You’re offline. Try again when you’re connected.', 3500);
   AV.busy = true; toast('Saving your picture…', 8000);
   try {
-    const blob = await avSquare(file); if (!blob) throw 0;
+    const blob = await avSquare(); if (!blob) throw 0;
     const path = uid() + '/' + Date.now() + '.jpg';
     const up = await sb.storage.from('app-avatars').upload(path, blob, { contentType: 'image/jpeg', cacheControl: '31536000' }); if (up.error) throw up.error;
     if (!await avSet(path)) throw 0;
-    toast('Profile picture updated'); closeSheet(); renderAll();
+    toast('Profile picture updated'); CROP.bmp = null; closeSheet(); renderAll();
   } catch (e) { toast('Couldn’t save that picture. Try a different photo.', 3500); }
   AV.busy = false;
 }
-$('avInput').onchange = e => { const f = e.target.files[0]; e.target.value = ''; avUpload(f); };
+$('avInput').onchange = e => { const f = e.target.files[0]; e.target.value = ''; avCrop(f); };
 document.addEventListener('click', async e => {
   if (appOff()) return;
   if (e.target.closest('#avPick')) return avSheet();
   if (e.target.closest('[data-avpick]')) return $('avInput').click();
+  if (e.target.closest('[data-avuse]')) return avUpload();
   if (e.target.closest('[data-avrm]')) {
     if (AV.busy || !sb || !navigator.onLine) return toast('You’re offline. Try again when you’re connected.', 3500);
     AV.busy = true; const ok = await avSet(''); AV.busy = false;

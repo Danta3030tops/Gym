@@ -133,8 +133,13 @@ with sync_playwright() as p:
     # profile picture: picked in Settings, shrunk and saved to the profile, and it can be removed
     png = base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==')
     go('more'); A.click('#avPick'); has('#sheetin', 'Profile picture'); A.set_input_files('#avInput', {'name': 'me.png', 'mimeType': 'image/png', 'buffer': png})
+    until(lambda: A.locator('#avCrop').count() == 1, 'the crop screen opens'); x0 = A.evaluate("CROP.x")
+    A.fill('#avZoom', '2'); until(lambda: abs(A.evaluate("CROP.z") - 2) < .01 and A.evaluate("CROP.x") < x0, 'the slider zooms in around the middle')
+    bx = A.locator('.avcrop').bounding_box(); A.mouse.move(bx['x'] + 100, bx['y'] + 100); A.mouse.down(); A.mouse.move(bx['x'] + 140, bx['y'] + 120, steps=4); A.mouse.up()
+    assert A.evaluate("CROP.x <= 0 && CROP.y <= 0"), 'dragging never leaves a gap'; shot('28-crop'); A.click('[data-avuse]')
     until(lambda: re.match(r'^[0-9a-f-]{36}/\d+\.jpg$', db()['t']['app_profiles'][0]['avatar'] or '') and A.evaluate("avUrl(ME).endsWith('/app-avatars/' + ME.avatar) && ME.avatar.startsWith(ME.id + '/')"), 'the picture is saved to the profile')
     assert A.evaluate("avUrl({ id: ME.id, avatar: 'x/../../evil.jpg' }) === '' && avUrl({ id: 'someone-else', avatar: ME.avatar }) === ''"), 'a path outside the person’s own folder is never used'
+    A.click('[data-accent="#30d158"]'); until(lambda: db()['t']['app_profiles'][0]['color'] == '#30d158' and A.evaluate("ME.color === '#30d158' && themeColor === '#30d158'") and A.locator('[data-accent="#30d158"].on').count() == 1, 'the color can be changed in Settings')
     A.click('#avPick'); A.click('[data-avrm]'); until(lambda: db()['t']['app_profiles'][0]['avatar'] == '' and A.evaluate("ME.avatar === ''"), 'and it can be removed')
     # Coach Bigz: off by default, switched on in Settings; his clips download and the right ones are queued
     go('more'); has('#more', 'Coach Bigz'); assert A.inner_text('#bzT') == 'Off' and A.text_content('#pvoice') == 'Coach Bigz off', 'Coach Bigz starts off'

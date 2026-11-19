@@ -18,7 +18,7 @@
   const endDrag = () => { y0 = null; sh.classList.remove('drag'); ov.classList.remove('drag'); sh.style.transform = ''; ov.style.opacity = ''; };
   sh.addEventListener('touchstart', e => {
     if (!sh.classList.contains('show') || sh.scrollTop > 0 || e.touches.length > 1) return;
-    const tag = e.target.tagName; if (/INPUT|TEXTAREA|SELECT/.test(tag) || e.target.closest('input[type=range]')) return;
+    const tag = e.target.tagName; if (/INPUT|TEXTAREA|SELECT/.test(tag) || e.target.closest('input[type=range],[data-nodrag]')) return;
     y0 = e.touches[0].clientY; dy = 0; t0 = Date.now(); hgt = sh.offsetHeight || 1;
   }, { passive: true });
   sh.addEventListener('touchmove', e => {
