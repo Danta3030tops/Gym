@@ -117,8 +117,8 @@ const DAYS_QXEEN=[
   X('Curtsy Lunge','lunge',['Step behind and across','Side glute focus']),
   X('Step-Ups','lunge',['Drive through the top heel'])]},
  {sets:3,reps:'12–15',rest:45,opts:[
-  X('Lying Leg Curl','legcurl',['Hips pressed into the pad','Curl fully, lower slowly']),
   X('Seated Leg Curl','legcurl',['Back flat, slow on the way back']),
+  X('Lying Leg Curl','legcurl',['Hips pressed into the pad','Curl fully, lower slowly']),
   X('Stability Ball Leg Curl','legcurl',['Hips up, roll the ball in and out']),
   X('Single-Leg Curl','legcurl',['One leg at a time'])]},
  {sets:3,reps:'15',rest:45,opts:[
@@ -132,18 +132,18 @@ const DAYS_QXEEN=[
   X('Single-Leg Calf Raise','calf',['Hold something for balance']),
   X('Leg Press Calf Press','calf',['Toes on the edge of the platform'])]}
 ]},
-{d:'Fri',title:'Chest & Arms',slots:[
+{d:'Fri',title:'Chest, Back & Arms',slots:[
  {sets:3,reps:'10–12',rest:75,opts:[
   X('Flat Dumbbell Bench Press','bench',['DBs start over the shoulders','Lower until you feel a deep chest stretch','Press up and slightly together']),
   X('Flat Barbell Bench Press','bench',['Shoulder blades pinned back and down','Bar touches lower chest, elbows ~45°','Feet planted, drive the bar up and slightly back']),
   X('Machine Chest Press','bench',['Seat height: handles at mid-chest','Great for pushing near failure safely']),
   X('Smith Machine Bench','bench',['Bar lines up with lower chest','Same setup as barbell, just more stable'])]},
  {sets:3,reps:'10–12',rest:60,opts:[
-  X('Incline Dumbbell Press','inclinepress',['After flat pressing, this hits the upper chest','Bench at 30°, lower to the upper chest','Press up and slightly together']),
-  X('Incline Barbell Press','inclinepress',['Bench at 30°, bar touches just under the collarbone']),
-  X('Incline Machine Press','inclinepress',['Push near failure safely']),
-  X('Flat Bench Press','bench',['Controlled descent, explosive press'])]},
- {sets:3,reps:'12–15',rest:45,opts:[
+  X('Single-Arm DB Row','row',['Hand and knee on the bench','Pull to the hip']),
+  X('Seated Cable Row','seatedrow',['Sit tall, pull to your belly button','Squeeze your shoulder blades for 1 sec']),
+  X('Machine Row','seatedrow',['Chest on the pad','Elbows straight back']),
+  X('Band Row','seatedrow',['Band around something sturdy','Slow return'])]},
+ {sets:3,reps:'12–20',rest:45,opts:[
   X('Cable Lateral Raise','latraise',['Cable at the bottom, cross-body','Constant tension']),
   X('DB Lateral Raise','latraise',['Slight bend in the elbows','Lead with your elbows to shoulder height, not higher','Light weight, slow lower. This gives the toned shoulder look']),
   X('Seated Lateral Raise','latraise',['Removes swinging and cheating']),

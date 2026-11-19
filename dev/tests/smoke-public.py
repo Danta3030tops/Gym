@@ -84,7 +84,7 @@ with sync_playwright() as p:
     for d in [2, 3, 4, 6]: A.click(f'[data-wd="{d}"]')
     assert A.evaluate("OB.wds.join()") == '1,5,7'
     A.click('[data-mins="45"]'); A.click('[data-split="ppl"]'); until(lambda: A.locator('[data-split="ppl"].on').count() == 1, 'a split style can be picked')
-    assert 'Push / Pull / Legs' in A.inner_text('[data-split="auto"]'), 'Pick for me says what it picks for these days'
+    assert 'Upper / Lower / Full Body' in A.inner_text('[data-split="auto"]'), 'Pick for me says what it picks for these days'
     A.click('[data-split="auto"]'); shot('4b-setup-schedule'); nx()
     A.click('[data-equip="home"]'); A.click('[data-level="some"]'); A.click('[data-unit="kg"]'); shot('4c-setup-equipment')
     nx(); A.click('[data-avoid="knees"]'); A.click('[data-avoid="wrists"]'); A.click('[data-avoid="wrists"]'); shot('4d-setup-avoid')
@@ -96,7 +96,7 @@ with sync_playwright() as p:
     plan = A.evaluate("OB.routine.map(d => d.slots.map(s => s.opts[0].n))")
     assert all(len(d) == 6 for d in plan), '45 min: 5 exercises + cardio finisher per day'
     assert A.evaluate("OB.routine.every(d => d.slots.every(s => s.opts.length >= 2 && s.opts.every(o => P[o.pat])))"), 'every option has a figure and something to swap to'
-    assert A.evaluate("OB.routine.some(d => d.slots.some(s => s.mv && s.sets === 4))"), 'focus areas get an extra set'
+    assert A.evaluate("volTarget(obAnswers(), 'glutes')[0] > volTarget({ ...obAnswers(), focus: [] }, 'glutes')[0] && planVolume(OB.routine).week.glutes >= 6"), 'focus areas get more weekly sets'
     # the builder holds up for every combination of answers
     bad = A.evaluate("""(() => { const out = [];
       for (const goal of ['muscle','strength','lean','general']) for (const equip of ['gym','home','body']) for (const mins of [30,45,60]) for (const level of ['new','seasoned']) for (const wds of [[3],[2,6],[1,3,5],[2,4,6,7],[1,2,3,4,5],[1,2,3,5,6,7],[1,2,3,4,5,6,7]]) for (const focus of [[],['glutes','arms'],['back','shoulders']]) {

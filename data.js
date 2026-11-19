@@ -44,12 +44,12 @@ const DAYS_KING=[
   X('Bulgarian Split Squat','lunge',['Rear foot up on a bench','Front foot far enough out that the knee stays over the ankle','Drop straight down, drive up through the front heel']),
   X('Reverse Lunge','lunge',['Step back instead of forward, easier on the knees','Keep most of the weight in the front leg','Control the step back']),
   X('Step-Ups','lunge',['Box around knee height','Drive through the top leg only, no bouncing off the back foot','Control on the way down'])]},
- {sets:3,reps:'12',rest:75,opts:[
+ {sets:3,reps:'10–12',rest:75,opts:[
+  X('Seated Leg Curl','legcurl',['Thigh pad snug, back against the seat','Full curl, slow return','Grows the hamstrings more than lying curls, because they work from a stretch']),
   X('Lying Leg Curl','legcurl',['Hips pressed into the pad','Curl all the way, squeeze 1 sec','2–3 seconds down']),
-  X('Seated Leg Curl','legcurl',['Thigh pad snug, back against the seat','Full curl, slow return','Point toes up for more hamstring']),
   X('Nordic Curl','legcurl',['Anchor your heels under something solid','Lower as slowly as you can','Push off the floor to come back up']),
   X('Stability Ball Leg Curl','legcurl',['Lie on your back, heels on the ball','Lift hips and keep them up','Roll the ball in, then out slowly'])]},
- {sets:4,reps:'15',rest:60,opts:[
+ {sets:4,reps:'12–20',rest:60,opts:[
   X('Standing Calf Raise','calf',['Balls of feet on a step','Full stretch at the bottom','Hold 1 sec at the top, no bouncing']),
   X('Seated Calf Raise','calf',['Hits the soleus (lower calf)','Slow and full range']),
   X('Leg Press Calf Press','calf',['Toes on the bottom edge of the platform','Don\'t lock the knees hard']),
@@ -76,7 +76,7 @@ const DAYS_KING=[
   X('Arnold Press','ohp',['Start palms facing you, rotate as you press']),
   X('Machine Shoulder Press','ohp',['Seat height: handles at shoulder level']),
   X('Standing DB Press','ohp',['Squeeze your glutes and abs, no leaning back'])]},
- {sets:3,reps:'12–15',rest:45,opts:[
+ {sets:4,reps:'12–20',rest:45,opts:[
   X('DB Lateral Raise','latraise',['Slight bend in the elbows','Lead with your elbows to shoulder height, not higher','Light weight, slow lower. This builds shoulder width']),
   X('Cable Lateral Raise','latraise',['Cable at the bottom, cross-body','Constant tension']),
   X('Seated Lateral Raise','latraise',['Removes swinging and cheating']),
@@ -133,11 +133,11 @@ const DAYS_KING=[
   X('Reverse Lunge','lunge',['Step back instead of forward, easier on the knees','Keep most of the weight in the front leg','Control the step back']),
   X('Step-Ups','lunge',['Box around knee height','Drive through the top leg only, no bouncing off the back foot','Control on the way down'])]},
  {sets:3,reps:'10–12',rest:75,opts:[
-  X('Seated Leg Curl','legcurl',['Thigh pad snug, back against the seat','Full curl, slow return','Point toes up for more hamstring']),
+  X('Seated Leg Curl','legcurl',['Thigh pad snug, back against the seat','Full curl, slow return','Grows the hamstrings more than lying curls, because they work from a stretch']),
   X('Lying Leg Curl','legcurl',['Hips pressed into the pad','Curl all the way, squeeze 1 sec','2–3 seconds down']),
   X('Nordic Curl','legcurl',['Anchor your heels under something solid','Lower as slowly as you can','Push off the floor to come back up']),
   X('Stability Ball Leg Curl','legcurl',['Lie on your back, heels on the ball','Lift hips and keep them up','Roll the ball in, then out slowly'])]},
- {sets:3,reps:'15',rest:60,opts:[
+ {sets:3,reps:'12–20',rest:60,opts:[
   X('Seated Calf Raise','calf',['Hits the soleus (lower calf)','Slow and full range']),
   X('Standing Calf Raise','calf',['Balls of feet on a step','Full stretch at the bottom','Hold 1 sec at the top, no bouncing']),
   X('Leg Press Calf Press','calf',['Toes on the bottom edge of the platform','Don\'t lock the knees hard']),
@@ -171,11 +171,11 @@ const DAYS_KING=[
   X('Incline DB Curl + Overhead Cable Extension','curl',['SUPERSET: stretch pair. Both moves hit the long heads that build arm size','Incline curl: let the arms hang behind you, curl without moving the elbows','Overhead extension: face away from the cable, full stretch behind your head']),
   X('Cable Curl + Overhead Tricep Extension','curl',['Superset','Constant tension on both']),
   X('Hammer Curls + Tricep Pushdown (rope)','curl',['Superset','Palms facing each other on the curls'])]},
- {sets:3,reps:'45 sec',time:45,rest:60,opts:[
-  X('Plank-to-Pushup Transitions','plank',['Forearm plank, then push up to high plank','Hips stay square, no rocking side to side','Alternate the lead arm']),
-  X('Plank','plank',['Squeeze glutes and quads','Straight line from head to heels']),
-  X('Mountain Climbers','plank',['High plank, drive knees to chest','Fast but controlled']),
-  X('Bear Crawl Hold','plank',['On hands and toes, knees hovering 1 inch off the floor','Back flat'])]}
+ {sets:3,reps:'12–20',rest:45,opts:[
+  X('Cable Lateral Raise','latraise',['Cable at the bottom, cross-body','Constant tension']),
+  X('DB Lateral Raise','latraise',['Slight bend in the elbows','Lead with your elbows to shoulder height, not higher','Light weight, slow lower. This builds shoulder width']),
+  X('Seated Lateral Raise','latraise',['Removes swinging and cheating']),
+  X('Lean-Away Lateral Raise','latraise',['Hold a pole, lean away, one arm at a time'])]}
 ]}
 ];
 

@@ -30,9 +30,10 @@ document.body.insertAdjacentHTML('beforeend', `
    ===================================================================== */
 function baseRoutine() { return S.routine || PROFILES[PROF].days; }
 function refreshFigures() { if (S.routine) for (const d of S.routine) for (const sl of d.slots) for (const o of sl.opts) { const l = libFind(o.n); o.pat = l ? l.pat : figFor(o.n, o.pat); } }
-/* routine v3 (every day keeps to one muscle group: Dantá push / pull / legs / upper, Desrica's Friday is chest & arms):
+/* routine v3, set from the training research (weekly sets per muscle, each muscle twice a week, stretch-position exercises):
+   Dantá push / pull / legs / upper, Desrica's Friday chest, back & arms and seated leg curls.
    drop old swaps on slots whose exercise changed, and the removed-exercise picks on days that were rebuilt */
-const ROUTINE_V = 3, ROUTINE_CHG = { king: [0, 1, 2, 3, 4].flatMap(d => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(s => d + '-' + s)), qxeen: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(s => '4-' + s) },
+const ROUTINE_V = 3, ROUTINE_CHG = { king: [0, 1, 2, 3, 4].flatMap(d => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(s => d + '-' + s)), qxeen: ['3-3', ...[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(s => '4-' + s)] },
   ROUTINE_DAYS = { king: [0, 1, 2, 3, 4], qxeen: [4] };
 function migrateRoutine() {
   if ((S.settings.rv || 0) >= ROUTINE_V) return;

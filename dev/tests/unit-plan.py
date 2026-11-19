@@ -3,7 +3,7 @@ Run from the repo root, with the same setup as the smoke tests:
   python3 -m http.server 8765 &
   python3 dev/tests/unit-plan.py
 Loads only the plain-data and pure-function files into a blank page, then checks named cases and every combination of setup answers."""
-import json
+import re, json
 from playwright.sync_api import sync_playwright
 BASE = 'http://localhost:8765/'
 FILES = ['data.js', 'data-qxeen.js', 'figures.js', 'library.js', 'public/templates.js', 'public/exlib.js', 'public/plan.js']
@@ -28,11 +28,11 @@ with sync_playwright() as p:
 
     # 1. bodyweight-only beginner, 2 days
     r = J("(() => { const pl = generatePlan({ goal: 'general', level: 'new', equip: 'body', mins: 45, avoid: [], wds: [1, 4] }); return { days: pl.map(d => d.title), eq: [...new Set(U.ex(pl).map(n => exMeta(n).eq))], maxD: Math.max(...U.ex(pl).map(n => exMeta(n).d)), n: pl.map(d => d.slots.length), sets: [...new Set(pl.flatMap(d => d.slots.map(s => s.sets)))], reps: [...new Set(pl.flatMap(d => d.slots.filter(s => !s.time).map(s => s.reps)))] }; })()")
-    check(r['days'] == ['Upper', 'Lower'], f'bodyweight beginner, 2 days: upper / lower, got {r["days"]}')
+    check(r['days'] == ['Full Body A', 'Full Body B'], f'bodyweight beginner, 2 days: full body, so each muscle gets two sessions, got {r["days"]}')
     check(r['eq'] == ['body'], f'bodyweight beginner: only bodyweight moves, got {r["eq"]}')
     check(r['maxD'] <= 2, f'beginner: nothing harder than difficulty 2, got {r["maxD"]}')
     check(all(4 <= x <= 5 for x in r['n']), f'45 min: up to 5 exercises a day, got {r["n"]}')
-    check(r['sets'] == [2] and r['reps'] == ['10–15'], f'general, beginner: 2 sets of 10–15, got {r["sets"]} {r["reps"]}')
+    check(set(r['sets']) <= {2, 3, 4} and set(r['reps']) <= {'8–12', '12–15', '15–20'}, f'general, beginner: 2–4 sets, 8–12 on compounds and 12–20 on small muscles, got {r["sets"]} {r["reps"]}')
 
     # 2. dumbbell-only intermediate, 4 days, shoulder injury
     r = J("(() => { const pl = generatePlan({ goal: 'muscle', level: 'some', equip: 'home', mins: 60, avoid: ['shoulders'], wds: [1, 2, 4, 5] }); return { days: pl.map(d => d.title), eq: [...new Set(U.ex(pl).map(n => exMeta(n).eq))].sort(), sh: U.ex(pl).filter(n => exMeta(n).st.includes('shoulders')), n: pl.map(d => d.slots.length), dose: [...new Set(pl.flatMap(d => d.slots.filter(s => !s.time).map(s => s.sets + 'x' + s.reps)))].sort() }; })()")
@@ -40,21 +40,36 @@ with sync_playwright() as p:
     check(set(r['eq']) <= {'body', 'db'}, f'dumbbells only: no gym kit, got {r["eq"]}')
     check(not r['sh'], f'shoulder injury: nothing that loads the shoulders, got {r["sh"]}')
     check(all(x >= 5 for x in r['n']), f'dumbbells + shoulder injury still fills the days: {r["n"]}')
-    check(set(r['dose']) <= {'3x8–12', '4x8–12', '3x5–8', '4x5–8', '3x12–15'}, f'muscle: 3–4 sets of 8–12, heavy day 5–8, volume day 12–15, got {r["dose"]}')
+    check(all(re.match(r'^[2-5]x(5–8|6–10|8–12|10–15|12–20)$', x) for x in r['dose']), f'muscle: 2–5 sets in 5–20 rep ranges, got {r["dose"]}')
 
     # 3. full-gym advanced, 6 days
     r = J("(() => { const pl = generatePlan({ goal: 'strength', level: 'seasoned', equip: 'gym', mins: 90, avoid: [], wds: [1, 2, 3, 4, 5, 6] }); return { days: pl.map(d => d.title), n: pl.map(d => d.slots.length), main: pl.map(d => d.slots[0].sets + 'x' + d.slots[0].reps), acc: [...new Set(pl.flatMap(d => d.slots.filter(s => s.mv === 'iso' && !s.time).map(s => s.sets + 'x' + s.reps)))], gym: U.ex(pl).some(n => exMeta(n).eq === 'gym'), same: pl[0].slots.map(s => s.opts[0].n).join() === pl[3].slots.map(s => s.opts[0].n).join() }; })()")
     check(r['days'] == ['Push A', 'Pull A', 'Legs A', 'Push B', 'Pull B', 'Legs B'], f'6 days: push / pull / legs twice, got {r["days"]}')
-    check(all(x == 8 for x in r['n']), f'90 min: 8 exercises a day, got {r["n"]}')
+    check(all(5 <= x <= 8 for x in r['n']), f'90 min: up to 8 exercises a day, got {r["n"]}')
     check(all(m == '5x3–6' for m in r['main']), f'strength, advanced: main lifts 5 x 3–6, got {r["main"]}')
-    check(r['acc'] == ['3x6–10'], f'strength accessories: 3 x 6–10, got {r["acc"]}')
+    check(all(re.match(r'^[2-4]x(8–12|10–15)$', x) for x in r['acc']), f'strength accessories: 2–4 x 8–15, got {r["acc"]}')
     check(r['gym'] and not r['same'], 'full gym uses gym kit, and the B days differ from the A days')
 
     # the push day from the brief, at 30 min: heavy press, incline press, shoulder press or raise, triceps
-    r = J("generatePlan({ goal: 'muscle', level: 'some', equip: 'gym', mins: 30, wds: [1,2,3,4,5] })[0].slots.map(s => [s.opts[0].n, exMeta(s.opts[0].n).mv, exMeta(s.opts[0].n).m])")
-    check(len(r) == 4 and r[0][1] == 'hpush' and 'Incline' in r[1][0] and r[2][1] == 'vpush' and r[3][2] == 'triceps', f'30-min push day: press, incline, shoulder press, triceps; got {r}')
+    r = J("generatePlan({ goal: 'muscle', level: 'some', equip: 'gym', mins: 30, split: 'ppl', wds: [1,2,3,4,5] })[0].slots.map(s => [s.opts[0].n, exMeta(s.opts[0].n).mv, exMeta(s.opts[0].n).m])")
+    check(len(r) == 4 and r[0][1] == 'hpush' and 'Incline' in r[1][0] and r[2][2] in ('shoulders', 'sidedelt') and r[3][2] == 'triceps', f'30-min push day: press, incline, a shoulder move, triceps; got {r}')
     r = J("[2,3,4,5,6].map(n => generatePlan({ wds: [1,2,3,4,5,6].slice(0, n) }).map(d => d.title).join('/'))")
-    check(r == ['Upper/Lower', 'Push/Pull/Legs', 'Upper A/Lower A/Upper B/Lower B', 'Push/Pull/Legs/Upper/Lower', 'Push A/Pull A/Legs A/Push B/Pull B/Legs B'], f'splits by days a week: {r}')
+    check(r == ['Full Body A/Full Body B', 'Upper/Lower/Full Body', 'Upper A/Lower A/Upper B/Lower B', 'Upper/Lower/Push/Pull/Legs', 'Push A/Pull A/Legs A/Push B/Pull B/Legs B'], f'splits by days a week: {r}')
+    # weekly volume, the research-backed core: big muscles in range and trained twice a week, sessions fit their time, no session over-stuffs a muscle
+    r = J("""(() => { const bad = []; let n = 0;
+      for (const goal of ['muscle', 'strength', 'general']) for (const level of ['new', 'some', 'seasoned']) for (const equip of ['gym', 'home'])
+      for (const [mins, days] of [[60, 4], [60, 5], [60, 6], [90, 3], [90, 4], [45, 6]]) {
+        const a = { goal, level, equip, mins, wds: [1, 2, 3, 4, 5, 6].slice(0, days) }, pl = generatePlan(a), V = planVolume(pl); n++;
+        const full = pl.every(d => d.slots.reduce((x, s) => x + (s.mv ? s.sets * setSecs(s) : (s.time || 0)), 0) > sessSecs(mins) - 300); // no time left to add more
+        for (const m of ['chest', 'back', 'quads', 'hamstrings', 'glutes', 'biceps', 'triceps']) { const [lo, hi] = volTarget(a, m), w = V.week[m] || 0;
+          if ((w < (level === 'seasoned' ? lo * .75 : lo - 1) && !(full && w >= lo * .7)) || (w > hi + 2 && !LOOSE.includes(m) && goal !== 'strength')) bad.push([m, w, lo + '-' + hi, goal, level, equip, mins, days]);
+          if ((V.hits[m] || 0) < 2 && goal !== 'general') bad.push([m, 'once a week', goal, level, equip, mins, days]); }
+        pl.forEach((d, i) => { const t = d.slots.reduce((x, s) => x + (s.mv ? s.sets * setSecs(s) : (s.time || 0)), 0);
+          if (t > sessSecs(mins)) bad.push(['too long', d.title, Math.round(t / 60), mins]);
+          for (const m in V.days[i]) if (V.days[i][m] > SESS_MAX) bad.push(['too much in one session', m, V.days[i][m], d.title]); }); }
+      return { n, bad: bad.slice(0, 8), nbad: bad.length }; })()""")
+    check(r['nbad'] == 0, f"{r['nbad']} volume problems across {r['n']} plans, e.g. {r['bad']}")
+    print(f"  {r['n']} plans: weekly sets in range, every big muscle twice a week, sessions fit their time")
     r = J("['ppl','ul','arnold','bro','fb'].map(st => [3,5].map(n => generatePlan({ split: st, wds: [1,2,3,4,5,6].slice(0, n) }).map(d => d.title).join('/')))")
     check(r == [['Push/Pull/Legs', 'Push A/Pull A/Legs/Push B/Pull B'], ['Upper A/Lower/Upper B', 'Upper A/Lower A/Upper B/Lower B/Upper C'], ['Chest & Back/Shoulders & Arms/Legs', 'Chest & Back A/Shoulders & Arms A/Legs/Chest & Back B/Shoulders & Arms B'], ['Chest & Triceps/Back & Biceps/Legs & Shoulders', 'Chest/Back/Legs/Shoulders/Arms'], ['Full Body A/Full Body B/Full Body C', 'Full Body A/Full Body B/Full Body C/Full Body D/Full Body E']], f'split styles: {r}')
     # the point of the rework: every exercise on a day, and every swap choice, trains that day's muscles
